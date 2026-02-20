@@ -44,11 +44,11 @@ build-and-publish: build publish ## Build and publish.
 
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors
-	@uv run mkdocs build -s
+	@uv run zensical build --clean
 
 .PHONY: docs
 docs: ## Build and serve the documentation
-	@uv run mkdocs serve
+	@uv run zensical serve --dev-addr localhost:8001
 
 .PHONY: docker-build
 docker-build: ## Build Docker image for the project

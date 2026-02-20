@@ -31,7 +31,8 @@ import idfkit_mcp
 
 ## Development
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management and
+[Zensical](https://zensical.io/) for documentation.
 
 ### Setup
 
@@ -95,7 +96,8 @@ For detailed setup instructions, see the [cookiecutter-gi tutorial](https://samu
 
 The GitHub Action will automatically publish to PyPI. See the [publishing guide](https://samuelduchesne.github.io/cookiecutter-gi/features/publishing/) for initial setup.
 
-> **First release?** After the workflow completes, enable GitHub Pages: go to `Settings > Pages` and select the `gh-pages` branch.
+> **First release?** After the workflow completes, enable GitHub Pages: go to
+> `Settings > Pages` and select the `gh-pages` branch.
 
 
 ## Contributing

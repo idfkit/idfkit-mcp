@@ -1,7 +1,7 @@
 site_name: idfkit-mcp
 repo_url: https://github.com/samuelduchesne/idfkit-mcp
 site_url: https://samuelduchesne.github.io/idfkit-mcp
-site_description: An MCP server based on idfkit
+site_description: MCP server for EnergyPlus model authoring, validation, weather workflows, and simulation via idfkit.
 site_author: Samuel Letellier-Duchesne
 edit_uri: edit/main/docs/
 repo_name: samuelduchesne/idfkit-mcp
@@ -9,34 +9,102 @@ copyright: Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>
 
 nav:
   - Home: index.md
-  - Modules: modules.md
+
+  - Get Started:
+    - Installation: getting-started/installation.md
+    - MCP Client Setup: getting-started/client-setup.md
+    - First Session: getting-started/first-session.md
+
+  - Agent Workflows:
+    - Codex Workflow: workflows/codex.md
+    - Claude Workflow: workflows/claude.md
+    - Multi-Agent Patterns: workflows/multi-agent-patterns.md
+
+  - Tool Reference:
+    - Overview: tools/index.md
+    - Schema Tools: tools/schema.md
+    - Model Read Tools: tools/model-read.md
+    - Model Write Tools: tools/model-write.md
+    - Validation Tools: tools/validation.md
+    - Simulation Tools: tools/simulation.md
+    - Weather Tools: tools/weather.md
+
+  - Concepts:
+    - Server State: concepts/server-state.md
+    - Error Semantics: concepts/error-semantics.md
+
+  - Troubleshooting:
+    - Setup & Configuration: troubleshooting/setup.md
+    - Modeling & Simulation: troubleshooting/simulation.md
+
+  - API Reference:
+    - Overview: api/index.md
+    - Server: api/server.md
+    - State: api/state.md
+    - Tools:
+      - Schema: api/tools-schema.md
+      - Read: api/tools-read.md
+      - Write: api/tools-write.md
+      - Validation: api/tools-validation.md
+      - Simulation: api/tools-simulation.md
+      - Weather: api/tools-weather.md
+
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
-          paths: ["src/idfkit_mcp"]
+          paths: ["src"]
+          inventories:
+            - https://docs.python.org/3/objects.inv
+
 theme:
   name: material
+  custom_dir: docs/overrides
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: white
+      primary: custom
       accent: deep orange
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: black
+      primary: custom
       accent: deep orange
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   icon:
     repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+    logo: material/fire
 
 extra:
   social:
@@ -44,9 +112,48 @@ extra:
       link: https://github.com/samuelduchesne/idfkit-mcp
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/idfkit-mcp
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
   - toc:
       permalink: true
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde

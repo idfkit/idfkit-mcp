@@ -1,1 +1,0 @@
-::: idfkit_mcp.foo
