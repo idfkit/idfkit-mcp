@@ -23,10 +23,16 @@ uv add idfkit-mcp
 
 ## Usage
 
-```python
-import idfkit_mcp
+Run as stdio MCP server (default):
 
-# TODO: Add usage examples
+```bash
+idfkit-mcp
+```
+
+Run as Streamable HTTP MCP server:
+
+```bash
+idfkit-mcp --transport streamable-http --host 127.0.0.1 --port 8000
 ```
 
 ## Development
@@ -55,7 +61,9 @@ make check      # Run linting, formatting, and type checks
 make test       # Run tests with coverage
 make docs       # Serve documentation locally
 make docs-test  # Test documentation build
-make docker-build  # Build Docker image
+make docker-build  # Build base Docker image (no EnergyPlus)
+make docker-build-sim ENERGYPLUS_TARBALL_URL=<linux-tarball-url>  # Build simulation image
+make docker-build-sim DOCKER_PLATFORM=linux/amd64 ENERGYPLUS_TARBALL_URL=<linux-x86_64-tarball-url>  # Apple Silicon + x86 tarball
 make docker-run    # Run Docker container
 ```
 

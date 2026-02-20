@@ -1,6 +1,6 @@
 # Installation
 
-`idfkit-mcp` is distributed on PyPI and runs as a stdio MCP server.
+`idfkit-mcp` is distributed on PyPI and supports `stdio` and Streamable HTTP transports.
 
 ## Install the Package
 
@@ -22,6 +22,51 @@
 - EnergyPlus installed and discoverable (required for simulation tools)
 - Network access for weather station downloads (when using weather tools)
 
+## Docker Images
+
+This repo provides two Docker build targets:
+
+- `runtime`: Small HTTP server image without EnergyPlus (`run_simulation` unavailable)
+- `sim`: Includes EnergyPlus for full simulation support
+
+### Build Base Image
+
+```bash
+docker build --target runtime -t idfkit-mcp:latest .
+```
+
+### Build Simulation Image
+
+```bash
+docker build \
+  --target sim \
+  --build-arg ENERGYPLUS_TARBALL_URL=<energyplus-linux-tarball-url> \
+  -t idfkit-mcp:sim .
+```
+
+Optional integrity verification:
+
+```bash
+docker build \
+  --target sim \
+  --build-arg ENERGYPLUS_TARBALL_URL=<energyplus-linux-tarball-url> \
+  --build-arg ENERGYPLUS_TARBALL_SHA256=<sha256> \
+  -t idfkit-mcp:sim .
+```
+
+Architecture note:
+
+- The tarball architecture must match the image architecture.
+- On Apple Silicon, most official EnergyPlus Linux tarballs are `x86_64`; build with `--platform linux/amd64` when using those assets or use the `arm64` tarball if available.
+
+### Build with Make Targets
+
+```bash
+make docker-build
+make docker-build-sim ENERGYPLUS_TARBALL_URL=<energyplus-linux-tarball-url>
+make docker-build-sim DOCKER_PLATFORM=linux/amd64 ENERGYPLUS_TARBALL_URL=<energyplus-linux-x86_64-tarball-url>
+```
+
 ## Launch the Server
 
 === "Installed script"
@@ -41,6 +86,28 @@
     ```bash
     uvx --from idfkit-mcp idfkit-mcp
     ```
+
+## Transport Selection
+
+`idfkit-mcp` can run either local stdio or network HTTP transport from the same codebase.
+
+### stdio (default)
+
+```bash
+idfkit-mcp --transport stdio
+```
+
+### Streamable HTTP
+
+```bash
+idfkit-mcp --transport streamable-http --host 127.0.0.1 --port 8000
+```
+
+### Environment Variable Configuration
+
+```bash
+IDFKIT_MCP_TRANSPORT=streamable-http IDFKIT_MCP_HOST=0.0.0.0 IDFKIT_MCP_PORT=8000 idfkit-mcp
+```
 
 ## EnergyPlus Discovery
 

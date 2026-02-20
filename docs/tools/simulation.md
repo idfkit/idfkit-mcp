@@ -9,11 +9,14 @@ Parameters:
 - `weather_file`: explicit EPW path (optional if weather already downloaded)
 - `design_day`: design-day-only run
 - `annual`: annual run
+- `energyplus_dir`: optional explicit EnergyPlus directory or executable path
+- `energyplus_version`: optional EnergyPlus version filter (for example `25.1.0`)
 
 Behavior:
 
 - Uses server-cached weather path when available.
 - Returns runtime, output directory, and error counts.
+- Returns the resolved EnergyPlus executable, install directory, and version.
 - Stores result in server state for follow-up tools.
 
 ## `get_results_summary`

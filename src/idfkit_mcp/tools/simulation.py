@@ -37,6 +37,8 @@ def run_simulation(
     weather_file: str | None = None,
     design_day: bool = False,
     annual: bool = False,
+    energyplus_dir: str | None = None,
+    energyplus_version: str | None = None,
 ) -> dict[str, Any]:
     """Run an EnergyPlus simulation on the loaded model.
 
@@ -44,9 +46,12 @@ def run_simulation(
         weather_file: Path to EPW weather file. Uses previously downloaded file if None.
         design_day: Run design-day-only simulation.
         annual: Run annual simulation.
+        energyplus_dir: Optional explicit EnergyPlus installation directory or executable path.
+        energyplus_version: Optional EnergyPlus version filter (e.g. "25.1.0").
     """
     from pathlib import Path
 
+    from idfkit.simulation.config import find_energyplus
     from idfkit.simulation.runner import simulate
 
     state = get_state()
@@ -63,8 +68,10 @@ def run_simulation(
             "error": "No weather file specified. Provide weather_file or use download_weather_file first, or set design_day=True."
         }
 
-    kwargs: dict[str, Any] = {"design_day": design_day, "annual": annual}
-    result = simulate(doc, weather=epw_path, **kwargs) if epw_path is not None else simulate(doc, weather="", **kwargs)
+    config = find_energyplus(path=energyplus_dir, version=energyplus_version)
+
+    weather = epw_path if epw_path is not None else ""
+    result = simulate(doc, weather=weather, design_day=design_day, annual=annual, energyplus=config)
 
     state.simulation_result = result
 
@@ -73,6 +80,11 @@ def run_simulation(
         "success": result.success,
         "runtime_seconds": round(result.runtime_seconds, 2),
         "output_directory": str(result.run_dir),
+        "energyplus": {
+            "version": ".".join(str(part) for part in config.version),
+            "install_dir": str(config.install_dir),
+            "executable": str(config.executable),
+        },
         "errors": {
             "fatal": errors.fatal_count,
             "severe": errors.severe_count,

@@ -18,6 +18,11 @@ uvx --from idfkit-mcp idfkit-mcp
 
 Use `uvx` when you want a managed, versioned runtime without installing into a project environment.
 
+## Transport Options
+
+- Local desktop clients (Codex, Claude Desktop, Cursor, VS Code MCP): use `stdio` (default).
+- Hosted deployments: use `streamable-http` and expose a reachable host/port.
+
 ## Codex
 
 In Codex, add a new MCP server pointing to `idfkit-mcp` (or the `uvx` wrapper command).
