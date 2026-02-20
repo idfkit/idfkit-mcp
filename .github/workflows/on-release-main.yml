@@ -76,6 +76,7 @@ jobs:
       - name: Initialize gh-pages branch if missing
         if: steps.checkout_gh_pages.outcome == 'failure'
         run: |
+          rm -rf gh-pages-deploy
           git clone "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages-deploy
           cd gh-pages-deploy
           git checkout --orphan gh-pages
