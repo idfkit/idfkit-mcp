@@ -76,6 +76,23 @@ def run_simulation(
     state.simulation_result = result
 
     errors = result.errors
+
+    error_detail: dict[str, Any] = {
+        "fatal": errors.fatal_count,
+        "severe": errors.severe_count,
+        "warnings": errors.warning_count,
+    }
+    if errors.has_fatal:
+        error_detail["fatal_messages"] = [{"message": m.message, "details": list(m.details)} for m in errors.fatal]
+    if errors.has_severe:
+        error_detail["severe_messages"] = [
+            {"message": m.message, "details": list(m.details)} for m in errors.severe[:10]
+        ]
+    if errors.warning_count > 0:
+        error_detail["warning_messages"] = [
+            {"message": m.message, "details": list(m.details)} for m in errors.warnings[:10]
+        ]
+
     return {
         "success": result.success,
         "runtime_seconds": round(result.runtime_seconds, 2),
@@ -85,11 +102,7 @@ def run_simulation(
             "install_dir": str(config.install_dir),
             "executable": str(config.executable),
         },
-        "errors": {
-            "fatal": errors.fatal_count,
-            "severe": errors.severe_count,
-            "warnings": errors.warning_count,
-        },
+        "errors": error_detail,
         "simulation_complete": errors.simulation_complete,
     }
 
