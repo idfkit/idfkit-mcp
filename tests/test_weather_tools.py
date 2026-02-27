@@ -29,3 +29,17 @@ class TestSearchWeatherStations:
         assert result["count"] > 0
         for station in result["stations"]:
             assert station["country"].upper() == "USA"
+
+
+class TestDownloadWeatherFile:
+    def test_no_params(self) -> None:
+        result = _tool("download_weather_file").fn()
+        assert "error" in result
+
+    def test_query_no_match(self) -> None:
+        result = _tool("download_weather_file").fn(query="zzz_nonexistent_place_xyz")
+        assert "error" in result
+
+    def test_wmo_no_match(self) -> None:
+        result = _tool("download_weather_file").fn(wmo="0000000")
+        assert "error" in result

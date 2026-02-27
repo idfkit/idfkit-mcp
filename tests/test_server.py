@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
-from idfkit_mcp.server import Transport, _parse_args, create_server
+from idfkit_mcp.server import _parse_args, create_server
 
 
 class TestCreateServer:
@@ -41,6 +39,8 @@ class TestCreateServer:
             "run_simulation",
             "get_results_summary",
             "list_output_variables",
+            "query_timeseries",
+            "export_timeseries",
             "search_weather_stations",
             "download_weather_file",
         }
@@ -66,10 +66,14 @@ class TestParseArgs:
 
     def test_cli_overrides(self) -> None:
         args = _parse_args([
-            "--transport", "streamable-http",
-            "--host", "0.0.0.0",
-            "--port", "9090",
-            "--mount-path", "/mcp",
+            "--transport",
+            "streamable-http",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "9090",
+            "--mount-path",
+            "/mcp",
         ])
         assert args.transport == "streamable-http"
         assert args.host == "0.0.0.0"

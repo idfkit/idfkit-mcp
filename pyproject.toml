@@ -7,7 +7,7 @@ readme = "README.md"
 keywords = ["energyplus", "mcp", "idfkit", "building-energy"]
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "idfkit>=0.2.0",
+    "idfkit>=0.3.0",
     "mcp>=1.2.0",
 ]
 classifiers = [
@@ -106,7 +106,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]
+"tests/*" = ["S101", "S104"]
 
 [tool.ruff.format]
 preview = true

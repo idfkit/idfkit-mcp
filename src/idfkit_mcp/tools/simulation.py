@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
@@ -30,6 +30,8 @@ def register(mcp: FastMCP) -> None:
     mcp.tool()(run_simulation)
     mcp.tool()(get_results_summary)
     mcp.tool()(list_output_variables)
+    mcp.tool()(query_timeseries)
+    mcp.tool()(export_timeseries)
 
 
 @_safe_tool
@@ -39,6 +41,7 @@ def run_simulation(
     annual: bool = False,
     energyplus_dir: str | None = None,
     energyplus_version: str | None = None,
+    output_directory: str | None = None,
 ) -> dict[str, Any]:
     """Run an EnergyPlus simulation on the loaded model.
 
@@ -48,6 +51,7 @@ def run_simulation(
         annual: Run annual simulation.
         energyplus_dir: Optional explicit EnergyPlus installation directory or executable path.
         energyplus_version: Optional EnergyPlus version filter (e.g. "25.1.0").
+        output_directory: Optional explicit output directory for simulation results.
     """
     from pathlib import Path
 
@@ -70,8 +74,11 @@ def run_simulation(
 
     config = find_energyplus(path=energyplus_dir, version=energyplus_version)
 
+    output_dir = Path(output_directory) if output_directory is not None else None
     weather = epw_path if epw_path is not None else ""
-    result = simulate(doc, weather=weather, design_day=design_day, annual=annual, energyplus=config)
+    result = simulate(
+        doc, weather=weather, design_day=design_day, annual=annual, energyplus=config, output_dir=output_dir
+    )
 
     state.simulation_result = result
 
@@ -186,3 +193,108 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> dict[st
 
     total = len(variables.variables) + len(variables.meters)
     return {"total_available": total, "returned": len(serialized), "variables": serialized}
+
+
+@_safe_tool
+def query_timeseries(
+    variable_name: str,
+    key_value: str = "*",
+    frequency: str | None = None,
+    environment: Literal["sizing", "annual"] | None = None,
+    limit: int = 24,
+) -> dict[str, Any]:
+    """Query time series data from the last simulation's SQL output.
+
+    Returns the first `limit` data points inline for quick inspection.
+
+    Args:
+        variable_name: The output variable name (e.g. "Zone Mean Air Temperature").
+        key_value: Key value such as zone or surface name. Use "*" for environment-level variables.
+        frequency: Optional frequency filter (e.g. "Hourly").
+        environment: Filter by environment type: "sizing" or "annual".
+        limit: Maximum number of data points to return (default 24).
+    """
+    state = get_state()
+    result = state.require_simulation_result()
+
+    sql = result.sql
+    if sql is None:
+        return {"error": "No SQL output available. The simulation may not have produced an .sql file."}
+
+    ts = sql.get_timeseries(
+        variable_name=variable_name,
+        key_value=key_value,
+        frequency=frequency,
+        environment=environment,
+    )
+
+    rows = [
+        {"timestamp": ts.timestamps[i].isoformat(), "value": ts.values[i]} for i in range(min(limit, len(ts.values)))
+    ]
+
+    return {
+        "variable_name": ts.variable_name,
+        "key_value": ts.key_value,
+        "units": ts.units,
+        "frequency": ts.frequency,
+        "total_points": len(ts.values),
+        "returned": len(rows),
+        "data": rows,
+    }
+
+
+@_safe_tool
+def export_timeseries(
+    variable_name: str,
+    key_value: str = "*",
+    frequency: str | None = None,
+    environment: Literal["sizing", "annual"] | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Export time series data from the last simulation to a CSV file.
+
+    Args:
+        variable_name: The output variable name (e.g. "Zone Mean Air Temperature").
+        key_value: Key value such as zone or surface name. Use "*" for environment-level variables.
+        frequency: Optional frequency filter (e.g. "Hourly").
+        environment: Filter by environment type: "sizing" or "annual".
+        output_path: Output CSV file path. Defaults to a file in the simulation output directory.
+    """
+    import csv
+    import re
+    from pathlib import Path
+
+    state = get_state()
+    result = state.require_simulation_result()
+
+    sql = result.sql
+    if sql is None:
+        return {"error": "No SQL output available. The simulation may not have produced an .sql file."}
+
+    ts = sql.get_timeseries(
+        variable_name=variable_name,
+        key_value=key_value,
+        frequency=frequency,
+        environment=environment,
+    )
+
+    if output_path is not None:
+        csv_path = Path(output_path)
+    else:
+        safe_name = re.sub(r"[^\w]+", "_", variable_name).strip("_").lower()
+        csv_path = result.run_dir / f"timeseries_{safe_name}.csv"
+
+    with csv_path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["timestamp", ts.variable_name + f" [{ts.units}]"])
+        for i in range(len(ts.values)):
+            writer.writerow([ts.timestamps[i].isoformat(), ts.values[i]])
+
+    return {
+        "path": str(csv_path),
+        "variable_name": ts.variable_name,
+        "key_value": ts.key_value,
+        "units": ts.units,
+        "frequency": ts.frequency,
+        "rows": len(ts.values),
+    }
