@@ -1,13 +1,13 @@
 # idfkit-mcp
 
-[![Release](https://img.shields.io/github/v/release/samuelduchesne/idfkit-mcp)](https://github.com/samuelduchesne/idfkit-mcp/releases)
-[![Build status](https://img.shields.io/github/actions/workflow/status/samuelduchesne/idfkit-mcp/main.yml?branch=main)](https://github.com/samuelduchesne/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/samuelduchesne/idfkit-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/samuelduchesne/idfkit-mcp)
-[![License](https://img.shields.io/github/license/samuelduchesne/idfkit-mcp)](https://github.com/samuelduchesne/idfkit-mcp/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/releases)
+[![Build status](https://img.shields.io/github/actions/workflow/status/idfkit/idfkit-mcp/main.yml?branch=main)](https://github.com/idfkit/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/idfkit/idfkit-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/idfkit/idfkit-mcp)
+[![License](https://img.shields.io/github/license/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/blob/main/LICENSE)
 
 An MCP server based on idfkit
 
-**[Documentation](https://samuelduchesne.github.io/idfkit-mcp/)** | **[GitHub](https://github.com/samuelduchesne/idfkit-mcp/)**
+**[Documentation](https://mcp.idfkit.com/docs/)** | **[GitHub](https://github.com/idfkit/idfkit-mcp/)**
 
 ## Installation
 
@@ -35,6 +35,23 @@ Run as Streamable HTTP MCP server:
 idfkit-mcp --transport streamable-http --host 127.0.0.1 --port 8000
 ```
 
+## Quick MCP Setup
+
+Add `idfkit-mcp` to your MCP client. Example for Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "idfkit": {
+      "command": "uvx",
+      "args": ["--from", "idfkit-mcp", "idfkit-mcp"]
+    }
+  }
+}
+```
+
+See [MCP Client Setup](https://mcp.idfkit.com/docs/getting-started/client-setup/) for all supported clients (Claude Desktop, Cursor, VS Code, Claude Code, Windsurf, ChatGPT, Codex, JetBrains, Cline, Continue, and Zed).
+
 ## Development
 
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management and
@@ -44,7 +61,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management and
 
 ```bash
 # Clone the repository
-git clone https://github.com/samuelduchesne/idfkit-mcp.git
+git clone https://github.com/idfkit/idfkit-mcp.git
 cd idfkit-mcp
 
 # Install dependencies and pre-commit hooks
@@ -78,7 +95,7 @@ If you just created this project from the cookiecutter template:
    git init -b main
    git add .
    git commit -m "Initial commit"
-   git remote add origin git@github.com:samuelduchesne/idfkit-mcp.git
+   git remote add origin git@github.com:idfkit/idfkit-mcp.git
    git push -u origin main
    ```
 
@@ -100,7 +117,7 @@ For detailed setup instructions, see the [cookiecutter-gi tutorial](https://samu
 
 1. Bump the version: `uv version --bump <major|minor|patch>`
 2. Commit and push
-3. Create a [new release](https://github.com/samuelduchesne/idfkit-mcp/releases/new) on GitHub with a tag matching the version (e.g., `1.0.0`)
+3. Create a [new release](https://github.com/idfkit/idfkit-mcp/releases/new) on GitHub with a tag matching the version (e.g., `1.0.0`)
 
 The GitHub Action will automatically publish to PyPI. See the [publishing guide](https://samuelduchesne.github.io/cookiecutter-gi/features/publishing/) for initial setup.
 

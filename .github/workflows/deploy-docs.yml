@@ -47,8 +47,11 @@ jobs:
           cd gh-pages-deploy
           # Remove everything except .git and pr-preview
           find . -maxdepth 1 ! -name '.' ! -name '.git' ! -name 'pr-preview' -exec rm -rf {} +
-          # Copy new site content
-          cp -r ../site/. .
+          # Copy root-level files (CNAME, redirect index.html)
+          cp -r ../gh-pages-extra/. .
+          # Copy built docs into /docs subdirectory
+          mkdir -p docs
+          cp -r ../site/. docs/
           touch .nojekyll
 
           git config user.name "github-actions[bot]"

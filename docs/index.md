@@ -15,9 +15,9 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 
 <div class="badges" markdown>
 
-[![Release](https://img.shields.io/github/v/release/samuelduchesne/idfkit-mcp)](https://github.com/samuelduchesne/idfkit-mcp/releases)
-[![Build status](https://img.shields.io/github/actions/workflow/status/samuelduchesne/idfkit-mcp/main.yml?branch=main)](https://github.com/samuelduchesne/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain)
-[![License](https://img.shields.io/github/license/samuelduchesne/idfkit-mcp)](https://github.com/samuelduchesne/idfkit-mcp/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/releases)
+[![Build status](https://img.shields.io/github/actions/workflow/status/idfkit/idfkit-mcp/main.yml?branch=main)](https://github.com/idfkit/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain)
+[![License](https://img.shields.io/github/license/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/blob/main/LICENSE)
 
 </div>
 
