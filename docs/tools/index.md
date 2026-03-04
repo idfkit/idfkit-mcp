@@ -1,11 +1,11 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **25 tools** in six categories.
+`idfkit-mcp` exposes **26 tools** in six categories.
 
 ## Categories
 
 - Schema exploration: 4 tools
-- Model read: 6 tools
+- Model read: 7 tools
 - Model write: 8 tools
 - Validation: 2 tools
 - Simulation: 3 tools
@@ -20,6 +20,7 @@
 | Schema | `search_schema` | Search object types by name/memo |
 | Schema | `get_available_references` | Resolve valid reference values from model |
 | Read | `load_model` | Load IDF/epJSON into active server state |
+| Read | `convert_osm_to_idf` | Convert OSM to IDF and load into active server state |
 | Read | `get_model_summary` | Summarize loaded model |
 | Read | `list_objects` | List objects by type |
 | Read | `get_object` | Fetch one object by type/name |
