@@ -511,6 +511,7 @@ source = { editable = "." }
 dependencies = [
     { name = "idfkit" },
     { name = "mcp" },
+    { name = "openstudio" },
 ]
 
 [package.dev-dependencies]
@@ -530,6 +531,7 @@ dev = [
 requires-dist = [
     { name = "idfkit", specifier = ">=0.3.0" },
     { name = "mcp", specifier = ">=1.2.0" },
+    { name = "openstudio", specifier = "==3.11.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -821,6 +823,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/24/bf/d1bda4f6168e0b2e9e5958945e01910052158313224ada5ce1fb2e1113b8/nodeenv-1.10.0.tar.gz", hash = "sha256:996c191ad80897d076bdfba80a41994c2b47c68e224c542b48feba42ba00f8bb", size = 55611, upload-time = "2025-12-20T14:08:54.006Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/b2/d0896bdcdc8d28a7fc5717c305f1a861c26e18c05047949fb371034d98bd/nodeenv-1.10.0-py2.py3-none-any.whl", hash = "sha256:5bb13e3eed2923615535339b3c620e76779af4cb4c6a90deccc9e36b274d3827", size = 23438, upload-time = "2025-12-20T14:08:52.782Z" },
+]
+
+[[package]]
+name = "openstudio"
+version = "3.11.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/b1/303cfc092520b88222419661322a28d5e76a67b0c20fea5b9891ad6d5104/openstudio-3.11.0-cp310-cp310-win_amd64.whl", hash = "sha256:2f591b83cedc2708396f8c88ced0e6d9a643fbdfd8c796c413e70ad244b3f025", size = 54691213, upload-time = "2026-01-15T19:26:36.142Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/2a/9122850b438ebcce7aad835698db89863423f24cf742dd9464e961a98eeb/openstudio-3.11.0-cp311-cp311-win_amd64.whl", hash = "sha256:6ab9dc75d58ed75b23ec28ec90f70f161829325cc6f130dbcc9bc2029883922d", size = 54696144, upload-time = "2026-01-15T19:26:39.753Z" },
+    { url = "https://files.pythonhosted.org/packages/01/af/baff8138e5f9f7a5cb9280c3a1531b8b447a42ea798554474b7873636eef/openstudio-3.11.0-cp312-cp312-win_amd64.whl", hash = "sha256:0c25324b9a4a680c6bfe5c599ef30da9b03b37858e1a0d8584b3581da1fbbf03", size = 54718575, upload-time = "2026-01-15T19:26:42.929Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/75/7f6bf6f992dc83bb541261024592ee2a2068127b50c63f21d867b675de5d/openstudio-3.11.0-cp313-cp313-win_amd64.whl", hash = "sha256:c7155acd6b6b917d051d0e929efa4b95a08028b6a3e165af2da2fb761dda1839", size = 54717105, upload-time = "2026-01-15T19:26:46.156Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/1f/89b722bada459fe2714e3c2bb5cea102b391c5bd2e6af94ffd6871d42287/openstudio-3.11.0-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:cbcabf329565d2d86982e15a0909d52a6ba609fae79b18760ae4b9fddeab820c", size = 64167599, upload-time = "2026-01-15T19:26:59.12Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/88/0deeb3e182bc337521d95f115575b4d383f5458903aa70302442f0251df2/openstudio-3.11.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:7e9516a180bf322551836e13adb67e4592b17e83c9cdf36f2100d7cf758ec99e", size = 61302534, upload-time = "2026-01-15T19:27:02.538Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/31/1df7509892fe8be1b953337310d8416d0192aba59ec545fdeb6395d5e9ca/openstudio-3.11.0-py3-none-manylinux1_x86_64.whl", hash = "sha256:4d909e8e2fa6a9f7b35ca467bdedcca5f2dc53d539f1f9dc39f1697303a9ea2a", size = 78702566, upload-time = "2026-01-15T19:27:06.193Z" },
+    { url = "https://files.pythonhosted.org/packages/03/76/ca6fccf10e4fffaa05e4e764bbe375c518641aeceefd79a1e46b802a15dd/openstudio-3.11.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:3f3b401b3b3098ce49be8096c1b922ddbf757d88cc01cb279b30361c07400e7c", size = 74067456, upload-time = "2026-01-15T19:27:10.073Z" },
 ]
 
 [[package]]

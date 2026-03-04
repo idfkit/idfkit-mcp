@@ -12,6 +12,25 @@ Notes:
 - Optional `version` override (`X.Y.Z`) is supported.
 - Loading resets previous simulation result state.
 
+## `convert_osm_to_idf`
+
+Converts an OpenStudio `.osm` model to `.idf` using OpenStudio SDK and loads the
+resulting IDF into active server state.
+
+Parameters:
+
+- `osm_path` (required): source `.osm` file path
+- `output_path` (required): output `.idf` file path
+- `allow_newer_versions` (default `true`)
+- `overwrite` (default `false`)
+
+Behavior:
+
+- Validates input/output extensions and file existence.
+- Fails safely if OpenStudio SDK is unavailable.
+- Writes IDF, then loads it with the same state semantics as `load_model`.
+- Returns conversion metadata plus standard model summary fields.
+
 ## `get_model_summary`
 
 Returns:

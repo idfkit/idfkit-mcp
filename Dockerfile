@@ -47,7 +47,7 @@ RUN wget -O /tmp/energyplus.tar.gz "$ENERGYPLUS_TARBALL_URL" \
     && rm -f /tmp/energyplus.tar.gz \
     && test -x /opt/EnergyPlus/energyplus \
     && /opt/EnergyPlus/energyplus --version >/dev/null \
-    && chown -R appuser:appuser /opt/EnergyPlus
+    && chown -R appuser:appuser /opt/EnergyPlus /app/.venv
 
 ENV ENERGYPLUS_DIR=/opt/EnergyPlus \
     PATH="/opt/EnergyPlus:${PATH}"
