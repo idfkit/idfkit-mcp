@@ -95,7 +95,7 @@ def convert_osm_to_idf(
     except ImportError:
         return {
             "error": "OpenStudio SDK not available.",
-            "suggestion": "Install 'idfkit-mcp[openstudio]' or use the Docker sim target with OpenStudio installed.",
+            "suggestion": "Reinstall 'idfkit-mcp' in this environment, or use the Docker image where dependencies are preinstalled.",
         }
     openstudio = cast(Any, openstudio)
 

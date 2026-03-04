@@ -511,10 +511,6 @@ source = { editable = "." }
 dependencies = [
     { name = "idfkit" },
     { name = "mcp" },
-]
-
-[package.optional-dependencies]
-openstudio = [
     { name = "openstudio" },
 ]
 
@@ -535,9 +531,8 @@ dev = [
 requires-dist = [
     { name = "idfkit", specifier = ">=0.3.0" },
     { name = "mcp", specifier = ">=1.2.0" },
-    { name = "openstudio", marker = "extra == 'openstudio'", specifier = "==3.11.0" },
+    { name = "openstudio", specifier = "==3.11.0" },
 ]
-provides-extras = ["openstudio"]
 
 [package.metadata.requires-dev]
 dev = [

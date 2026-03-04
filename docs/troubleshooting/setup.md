@@ -55,8 +55,8 @@ Call one of:
 
 ### Fix
 
-1. Use the `sim` Docker target which includes OpenStudio support.
-2. Or install with the optional extra: `pip install "idfkit-mcp[openstudio]"`.
+1. Reinstall `idfkit-mcp` in the active environment so required dependencies are present.
+2. Or use the Docker image where dependencies are preinstalled.
 
 ## Schema Version Errors
 
