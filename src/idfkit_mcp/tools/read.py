@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -29,6 +29,7 @@ def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, A
 def register(mcp: FastMCP) -> None:
     """Register read tools on the MCP server."""
     mcp.tool()(load_model)
+    mcp.tool()(convert_osm_to_idf)
     mcp.tool()(get_model_summary)
     mcp.tool()(list_objects)
     mcp.tool()(get_object)
@@ -68,6 +69,88 @@ def load_model(file_path: str, version: str | None = None) -> dict[str, Any]:
     state.simulation_result = None
 
     return _build_summary(doc, state)
+
+
+@_safe_tool
+def convert_osm_to_idf(
+    osm_path: str,
+    output_path: str,
+    allow_newer_versions: bool = True,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Convert an OpenStudio OSM model to IDF and load it as the active model.
+
+    Args:
+        osm_path: Path to the source .osm file.
+        output_path: Path where the translated .idf file will be written.
+        allow_newer_versions: Allow loading OSM files with newer OpenStudio versions.
+        overwrite: Whether to overwrite an existing output file.
+    """
+    from pathlib import Path
+
+    from idfkit import load_idf
+
+    try:
+        import openstudio  # type: ignore[import-untyped]
+    except ImportError:
+        return {
+            "error": "OpenStudio SDK not available.",
+            "suggestion": "Install 'idfkit-mcp[openstudio]' or use the Docker sim target with OpenStudio installed.",
+        }
+    openstudio = cast(Any, openstudio)
+
+    input_path = Path(osm_path)
+    out_path = Path(output_path)
+
+    if input_path.suffix.lower() != ".osm":
+        return {"error": f"Input file must have .osm extension: '{input_path}'."}
+    if not input_path.exists():
+        return {"error": f"Input OSM file not found: '{input_path}'."}
+    if not input_path.is_file():
+        return {"error": f"Input OSM path is not a file: '{input_path}'."}
+
+    if out_path.suffix.lower() != ".idf":
+        return {"error": f"Output file must have .idf extension: '{out_path}'."}
+    if out_path.exists() and not overwrite:
+        return {"error": f"Output file already exists: '{out_path}'. Set overwrite=True to replace it."}
+    if not out_path.parent.exists():
+        return {"error": f"Output directory does not exist: '{out_path.parent}'."}
+
+    version_translator = openstudio.osversion.VersionTranslator()
+    version_translator.setAllowNewerVersions(allow_newer_versions)
+    optional_model = version_translator.loadModel(openstudio.path(str(input_path)))
+    if optional_model.empty():
+        return {"error": f"Failed to load OSM model: '{input_path}'."}
+
+    model = optional_model.get()
+    forward_translator = openstudio.energyplus.ForwardTranslator()
+    workspace = forward_translator.translateModel(model)
+
+    saved = workspace.save(openstudio.path(str(out_path)), overwrite)
+    if not saved:
+        return {"error": f"Failed to save translated IDF to '{out_path}'."}
+
+    doc = load_idf(str(out_path))
+    state = get_state()
+    state.document = doc
+    state.schema = doc.schema
+    state.file_path = out_path
+    state.simulation_result = None
+
+    version_getter = getattr(openstudio, "openStudioVersion", None)
+    openstudio_version = str(version_getter()) if callable(version_getter) else "unknown"
+
+    summary = _build_summary(doc, state)
+    summary.update({
+        "status": "converted",
+        "osm_path": str(input_path),
+        "output_path": str(out_path),
+        "openstudio_version": openstudio_version,
+        "allow_newer_versions": allow_newer_versions,
+        "translator_warnings_count": len(version_translator.warnings()) + len(forward_translator.warnings()),
+        "translator_errors_count": len(version_translator.errors()) + len(forward_translator.errors()),
+    })
+    return summary
 
 
 @_safe_tool

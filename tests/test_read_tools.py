@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import builtins
+import sys
 import tempfile
+import types
 from pathlib import Path
+from unittest.mock import patch
 
 from idfkit import new_document, write_idf
 
@@ -102,3 +106,161 @@ class TestGetReferences:
     def test_unreferenced(self, state_with_zones: ServerState) -> None:
         result = _tool("get_references").fn(name="Corridor")
         assert result["referenced_by_count"] == 0
+
+
+class TestConvertOsmToIdf:
+    def test_missing_openstudio(self, tmp_path: Path) -> None:
+        osm_path = tmp_path / "input.osm"
+        osm_path.write_text("OSM")
+        output_path = tmp_path / "out.idf"
+
+        original_import = builtins.__import__
+
+        def _import(name: str, *args: object, **kwargs: object) -> object:
+            if name == "openstudio":
+                msg = "No module named openstudio"
+                raise ImportError(msg)
+            return original_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_import):
+            result = _tool("convert_osm_to_idf").fn(
+                osm_path=str(osm_path),
+                output_path=str(output_path),
+            )
+
+        assert "error" in result
+        assert "OpenStudio" in result["error"]
+        assert "suggestion" in result
+
+    def test_missing_input_file(self, tmp_path: Path) -> None:
+        fake_openstudio = _fake_openstudio_module()
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
+            result = _tool("convert_osm_to_idf").fn(
+                osm_path=str(tmp_path / "missing.osm"),
+                output_path=str(tmp_path / "out.idf"),
+            )
+        assert "error" in result
+        assert "not found" in result["error"]
+
+    def test_invalid_extensions(self, tmp_path: Path) -> None:
+        fake_openstudio = _fake_openstudio_module()
+        bad_input = tmp_path / "input.txt"
+        bad_input.write_text("not osm")
+        good_input = tmp_path / "input.osm"
+        good_input.write_text("osm")
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
+            bad_in = _tool("convert_osm_to_idf").fn(
+                osm_path=str(bad_input),
+                output_path=str(tmp_path / "out.idf"),
+            )
+            bad_out = _tool("convert_osm_to_idf").fn(
+                osm_path=str(good_input),
+                output_path=str(tmp_path / "out.txt"),
+            )
+        assert "error" in bad_in
+        assert ".osm" in bad_in["error"]
+        assert "error" in bad_out
+        assert ".idf" in bad_out["error"]
+
+    def test_output_exists_requires_overwrite(self, tmp_path: Path) -> None:
+        fake_openstudio = _fake_openstudio_module()
+        osm_path = tmp_path / "input.osm"
+        osm_path.write_text("OSM")
+        output_path = tmp_path / "out.idf"
+        output_path.write_text("existing")
+
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
+            result = _tool("convert_osm_to_idf").fn(
+                osm_path=str(osm_path),
+                output_path=str(output_path),
+                overwrite=False,
+            )
+        assert "error" in result
+        assert "overwrite=True" in result["error"]
+
+    def test_successful_conversion_loads_state(self, tmp_path: Path) -> None:
+        fake_openstudio = _fake_openstudio_module()
+        osm_path = tmp_path / "input.osm"
+        osm_path.write_text("OSM")
+        output_path = tmp_path / "out.idf"
+
+        doc = new_document()
+        doc.add("Zone", "ConvertedZone")
+
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}), patch("idfkit.load_idf", return_value=doc):
+            result = _tool("convert_osm_to_idf").fn(
+                osm_path=str(osm_path),
+                output_path=str(output_path),
+                allow_newer_versions=True,
+                overwrite=False,
+            )
+
+        assert result["status"] == "converted"
+        assert result["osm_path"] == str(osm_path)
+        assert result["output_path"] == str(output_path)
+        assert result["openstudio_version"] == "3.11.0"
+        assert "zone_count" in result
+        assert "total_objects" in result
+        assert "translator_warnings_count" in result
+        assert "translator_errors_count" in result
+
+        state = get_state()
+        assert state.document is doc
+        assert state.file_path == output_path
+        assert state.simulation_result is None
+
+
+class _OptionalModel:
+    def empty(self) -> bool:
+        return False
+
+    def get(self) -> object:
+        return object()
+
+
+class _VersionTranslator:
+    def __init__(self) -> None:
+        self._warnings = ["warn"]
+        self._errors: list[str] = []
+
+    def setAllowNewerVersions(self, _allow: bool) -> None:
+        return None
+
+    def loadModel(self, _path: str) -> _OptionalModel:
+        return _OptionalModel()
+
+    def warnings(self) -> list[str]:
+        return self._warnings
+
+    def errors(self) -> list[str]:
+        return self._errors
+
+
+class _Workspace:
+    def save(self, path: str, _overwrite: bool) -> bool:
+        Path(path).write_text("Version,24.1;")
+        return True
+
+
+class _ForwardTranslator:
+    def __init__(self) -> None:
+        self._warnings: list[str] = []
+        self._errors: list[str] = []
+
+    def translateModel(self, _model: object) -> _Workspace:
+        return _Workspace()
+
+    def warnings(self) -> list[str]:
+        return self._warnings
+
+    def errors(self) -> list[str]:
+        return self._errors
+
+
+def _fake_openstudio_module() -> object:
+    return types.SimpleNamespace(
+        openStudioVersion=lambda: "3.11.0",
+        path=lambda value: value,
+        osversion=types.SimpleNamespace(VersionTranslator=_VersionTranslator),
+        energyplus=types.SimpleNamespace(ForwardTranslator=_ForwardTranslator),
+    )

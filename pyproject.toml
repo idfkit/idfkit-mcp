@@ -29,6 +29,9 @@ Homepage = "https://mcp.idfkit.com/docs/"
 Repository = "https://github.com/idfkit/idfkit-mcp"
 Documentation = "https://mcp.idfkit.com/docs/"
 
+[project.optional-dependencies]
+openstudio = ["openstudio==3.11.0"]
+
 [dependency-groups]
 dev = [
     "pytest>=7.2.0",

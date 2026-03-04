@@ -20,6 +20,7 @@ class TestCreateServer:
             "describe_object_type",
             "search_schema",
             "load_model",
+            "convert_osm_to_idf",
             "get_model_summary",
             "list_objects",
             "get_object",

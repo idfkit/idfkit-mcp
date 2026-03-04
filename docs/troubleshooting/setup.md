@@ -47,6 +47,17 @@ Call one of:
 - `load_model(file_path=...)`
 - `new_model()`
 
+## `OpenStudio SDK not available`
+
+### Cause
+
+`convert_osm_to_idf` was called in an environment without OpenStudio Python bindings.
+
+### Fix
+
+1. Use the `sim` Docker target which includes OpenStudio support.
+2. Or install with the optional extra: `pip install "idfkit-mcp[openstudio]"`.
+
 ## Schema Version Errors
 
 ### Symptom
