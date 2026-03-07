@@ -13,52 +13,31 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - name: Check out gh-pages
-        id: checkout_gh_pages
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages-deploy
-
-      - name: Initialize gh-pages branch if missing
-        if: steps.checkout_gh_pages.outcome == 'failure'
-        run: |
-          rm -rf gh-pages-deploy
-          git clone "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages-deploy
-          cd gh-pages-deploy
-          git checkout --orphan gh-pages
-          git rm -rf . >/dev/null 2>&1 || true
-          touch .nojekyll
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .nojekyll
-          git commit -m "Initialize gh-pages branch"
-          git push origin gh-pages
-
       - name: Set up the environment
         uses: ./.github/actions/setup-python-env
 
       - name: Build documentation
         run: uv run zensical build --clean
 
-      - name: Deploy documentation to gh-pages
+      - name: Prepare deploy directory
         run: |
-          cd gh-pages-deploy
-          # Remove everything except .git and pr-preview
-          find . -maxdepth 1 ! -name '.' ! -name '.git' ! -name 'pr-preview' -exec rm -rf {} +
-          # Copy root-level files (CNAME, redirect index.html)
-          cp -r ../gh-pages-extra/. .
-          # Copy built docs into /docs subdirectory
-          mkdir -p docs
-          cp -r ../site/. docs/
-          touch .nojekyll
+          mkdir -p deploy-staging/docs
+          cp gh-pages-extra/index.html deploy-staging/
+          cp -r site/. deploy-staging/docs/
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet || {
-            git commit -m "Deploy documentation"
-            git pull --rebase origin gh-pages
-            git push origin gh-pages
-          }
+      - name: Preserve PR previews from gh-pages
+        run: |
+          git fetch origin gh-pages:gh-pages || true
+          if git show gh-pages:pr-preview >/dev/null 2>&1; then
+            git worktree add --detach gh-pages-ref gh-pages
+            cp -r gh-pages-ref/pr-preview deploy-staging/pr-preview
+            git worktree remove gh-pages-ref
+          fi
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy-staging
+          force_orphan: true
+          cname: mcp.idfkit.com
