@@ -142,7 +142,7 @@ def get_available_references(object_type: str, field_name: str) -> dict[str, Any
         names: list[str] = []
         for ptype in provider_types:
             if ptype in doc:
-                for obj in doc[ptype]:
+                for obj in doc.get_collection(ptype):
                     if obj.name:
                         names.append(obj.name)
         if names:

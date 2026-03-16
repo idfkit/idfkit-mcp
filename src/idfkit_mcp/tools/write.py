@@ -133,7 +133,7 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
     if object_type not in doc:
         return {"error": f"No objects of type '{object_type}' in the model."}
 
-    obj = doc[object_type].get(name)
+    obj = doc.get_collection(object_type).get(name)
     if obj is None:
         return {"error": f"Object '{name}' not found in '{object_type}'."}
 
@@ -161,7 +161,7 @@ def remove_object(object_type: str, name: str, force: bool = False) -> dict[str,
     if object_type not in doc:
         return {"error": f"No objects of type '{object_type}' in the model."}
 
-    obj = doc[object_type].get(name)
+    obj = doc.get_collection(object_type).get(name)
     if obj is None:
         return {"error": f"Object '{name}' not found in '{object_type}'."}
 
@@ -216,7 +216,7 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
     state = get_state()
     doc = state.require_model()
 
-    obj = doc.copyidfobject(doc[object_type][name], new_name=new_name)
+    obj = doc.copyidfobject(doc.get_collection(object_type)[name], new_name=new_name)
     return serialize_object(obj)
 
 
