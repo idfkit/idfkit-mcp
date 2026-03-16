@@ -180,7 +180,7 @@ def list_objects(object_type: str, limit: int = 50) -> dict[str, Any]:
     if object_type not in doc:
         return {"error": f"No objects of type '{object_type}' in the model."}
 
-    collection = doc[object_type]
+    collection = doc.get_collection(object_type)
     total = len(collection)
     objects = [serialize_object(obj, schema=state.schema, brief=True) for obj in list(collection)[:limit]]
 
@@ -201,7 +201,7 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
     if object_type not in doc:
         return {"error": f"No objects of type '{object_type}' in the model."}
 
-    collection = doc[object_type]
+    collection = doc.get_collection(object_type)
     obj = collection.get(name)
     if obj is None:
         return {"error": f"Object '{name}' not found in '{object_type}'."}
