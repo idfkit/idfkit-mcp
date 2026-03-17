@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from idfkit.document import IDFDocument
     from idfkit.schema import EpJSONSchema
     from idfkit.simulation.result import SimulationResult
+    from idfkit.weather.index import StationIndex
 
 
 @dataclass
@@ -26,6 +27,7 @@ class ServerState:
     file_path: Path | None = None
     simulation_result: SimulationResult | None = None
     weather_file: Path | None = None
+    station_index: StationIndex | None = None
 
     def require_model(self) -> IDFDocument:
         """Return the active document or raise a descriptive error."""
@@ -48,6 +50,14 @@ class ServerState:
         if self.schema is not None:
             return self.schema
         return get_schema(LATEST_VERSION)
+
+    def get_or_load_station_index(self) -> StationIndex:
+        """Return the cached station index, loading it on first use."""
+        if self.station_index is None:
+            from idfkit.weather import StationIndex
+
+            self.station_index = StationIndex.load()
+        return self.station_index
 
     def require_simulation_result(self) -> SimulationResult:
         """Return the simulation result or raise a descriptive error."""
