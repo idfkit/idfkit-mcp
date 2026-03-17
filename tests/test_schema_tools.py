@@ -53,6 +53,36 @@ class TestListObjectTypes:
         result = tool.fn(version="1.0.0")
         assert "error" in result
 
+    def test_truncated_when_over_limit(self) -> None:
+        from idfkit_mcp.server import mcp
+
+        tool = mcp._tool_manager._tools["list_object_types"]
+        result = tool.fn()
+        assert result["truncated"] is True
+        # Truncated response should have counts but no type lists
+        for group_data in result["groups"].values():
+            assert "count" in group_data
+            assert "types" not in group_data
+
+    def test_not_truncated_with_group_filter(self) -> None:
+        from idfkit_mcp.server import mcp
+
+        tool = mcp._tool_manager._tools["list_object_types"]
+        result = tool.fn(group="Thermal Zones and Surfaces")
+        # A single group should fit within the default limit
+        assert result["truncated"] is False
+        for group_data in result["groups"].values():
+            assert "types" in group_data
+
+    def test_high_limit_includes_types(self) -> None:
+        from idfkit_mcp.server import mcp
+
+        tool = mcp._tool_manager._tools["list_object_types"]
+        result = tool.fn(limit=10000)
+        assert result["truncated"] is False
+        for group_data in result["groups"].values():
+            assert "types" in group_data
+
 
 class TestDescribeObjectType:
     def test_zone(self) -> None:
@@ -90,6 +120,22 @@ class TestSearchSchema:
         tool = mcp._tool_manager._tools["search_schema"]
         result = tool.fn(query="xyznonexistent123")
         assert result["count"] == 0
+
+    def test_limit_caps_results(self) -> None:
+        from idfkit_mcp.server import mcp
+
+        tool = mcp._tool_manager._tools["search_schema"]
+        result = tool.fn(query="Zone", limit=5)
+        assert result["count"] <= 5
+        assert len(result["matches"]) <= 5
+        assert result["limit"] == 5
+
+    def test_default_limit_in_response(self) -> None:
+        from idfkit_mcp.server import mcp
+
+        tool = mcp._tool_manager._tools["search_schema"]
+        result = tool.fn(query="Zone")
+        assert result["limit"] == 50
 
 
 class TestGetAvailableReferences:

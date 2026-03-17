@@ -57,9 +57,7 @@ def search_weather_stations(
         state: Filter by state/province code (e.g. "MA", "IL").
         limit: Maximum results (default 10).
     """
-    from idfkit.weather import StationIndex
-
-    index = StationIndex.load()
+    index = get_state().get_or_load_station_index()
 
     if latitude is not None and longitude is not None:
         spatial_results = index.nearest(latitude, longitude, limit=limit)
@@ -128,9 +126,9 @@ def download_weather_file(
         country: Filter by country code (e.g. "USA").
         state: Filter by state/province code (e.g. "MA").
     """
-    from idfkit.weather import StationIndex, WeatherDownloader
+    from idfkit.weather import WeatherDownloader
 
-    index = StationIndex.load()
+    index = get_state().get_or_load_station_index()
 
     if query is not None:
         results = index.search(query, limit=30)
