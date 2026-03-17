@@ -1,0 +1,437 @@
+{
+  "cold_import": {
+    "name": "cold_import",
+    "runs": 3,
+    "mean_ms": 268.988,
+    "median_ms": 260.385,
+    "min_ms": 257.318,
+    "max_ms": 289.26,
+    "p95_ms": 289.26,
+    "extra": {
+      "subprocess_total_ms": 310.4
+    }
+  },
+  "import_breakdown": [
+    {
+      "name": "import_idfkit",
+      "runs": 3,
+      "mean_ms": 48.965,
+      "median_ms": 48.962,
+      "min_ms": 48.786,
+      "max_ms": 49.147,
+      "p95_ms": 49.147
+    },
+    {
+      "name": "import_mcp_sdk",
+      "runs": 3,
+      "mean_ms": 215.462,
+      "median_ms": 216.059,
+      "min_ms": 213.727,
+      "max_ms": 216.601,
+      "p95_ms": 216.601
+    },
+    {
+      "name": "import_idfkit_mcp_server",
+      "runs": 3,
+      "mean_ms": 264.665,
+      "median_ms": 266.668,
+      "min_ms": 256.738,
+      "max_ms": 270.587,
+      "p95_ms": 270.587
+    },
+    {
+      "name": "import_idfkit_mcp_tools",
+      "runs": 3,
+      "mean_ms": 251.185,
+      "median_ms": 249.187,
+      "min_ms": 246.615,
+      "max_ms": 257.754,
+      "p95_ms": 257.754
+    }
+  ],
+  "server_creation": {
+    "name": "server_creation",
+    "runs": 10,
+    "mean_ms": 18.414,
+    "median_ms": 16.538,
+    "min_ms": 16.066,
+    "max_ms": 34.584,
+    "p95_ms": 34.584
+  },
+  "schema_loading": [
+    {
+      "name": "schema_load_25.2.0",
+      "runs": 5,
+      "mean_ms": 5.403,
+      "median_ms": 0.0,
+      "min_ms": 0.0,
+      "max_ms": 27.013,
+      "p95_ms": 27.013
+    },
+    {
+      "name": "schema_load_24.2.0",
+      "runs": 5,
+      "mean_ms": 5.169,
+      "median_ms": 0.0,
+      "min_ms": 0.0,
+      "max_ms": 25.842,
+      "p95_ms": 25.842
+    },
+    {
+      "name": "schema_load_9.6.0",
+      "runs": 5,
+      "mean_ms": 5.044,
+      "median_ms": 0.0,
+      "min_ms": 0.0,
+      "max_ms": 25.217,
+      "p95_ms": 25.217
+    }
+  ],
+  "tool_calls": [
+    {
+      "name": "tool:list_object_types",
+      "runs": 20,
+      "mean_ms": 0.134,
+      "median_ms": 0.117,
+      "min_ms": 0.11,
+      "max_ms": 0.464,
+      "p95_ms": 0.464
+    },
+    {
+      "name": "tool:list_object_types(group)",
+      "runs": 20,
+      "mean_ms": 0.116,
+      "median_ms": 0.114,
+      "min_ms": 0.113,
+      "max_ms": 0.125,
+      "p95_ms": 0.125
+    },
+    {
+      "name": "tool:describe_object_type(Zone)",
+      "runs": 20,
+      "mean_ms": 0.017,
+      "median_ms": 0.014,
+      "min_ms": 0.014,
+      "max_ms": 0.064,
+      "p95_ms": 0.064
+    },
+    {
+      "name": "tool:describe_object_type(large)",
+      "runs": 20,
+      "mean_ms": 0.016,
+      "median_ms": 0.015,
+      "min_ms": 0.015,
+      "max_ms": 0.026,
+      "p95_ms": 0.026
+    },
+    {
+      "name": "tool:search_schema(zone)",
+      "runs": 20,
+      "mean_ms": 0.09,
+      "median_ms": 0.087,
+      "min_ms": 0.087,
+      "max_ms": 0.13,
+      "p95_ms": 0.13
+    },
+    {
+      "name": "tool:search_schema(no_match)",
+      "runs": 20,
+      "mean_ms": 0.288,
+      "median_ms": 0.27,
+      "min_ms": 0.259,
+      "max_ms": 0.455,
+      "p95_ms": 0.455
+    },
+    {
+      "name": "tool:get_model_summary",
+      "runs": 20,
+      "mean_ms": 0.005,
+      "median_ms": 0.004,
+      "min_ms": 0.003,
+      "max_ms": 0.021,
+      "p95_ms": 0.021
+    },
+    {
+      "name": "tool:list_objects(Zone)",
+      "runs": 20,
+      "mean_ms": 0.018,
+      "median_ms": 0.017,
+      "min_ms": 0.017,
+      "max_ms": 0.029,
+      "p95_ms": 0.029
+    },
+    {
+      "name": "tool:list_objects(Surface,limit=10)",
+      "runs": 20,
+      "mean_ms": 0.007,
+      "median_ms": 0.007,
+      "min_ms": 0.007,
+      "max_ms": 0.01,
+      "p95_ms": 0.01
+    },
+    {
+      "name": "tool:get_object",
+      "runs": 20,
+      "mean_ms": 0.001,
+      "median_ms": 0.001,
+      "min_ms": 0.001,
+      "max_ms": 0.008,
+      "p95_ms": 0.008
+    },
+    {
+      "name": "tool:search_objects(Zone_2)",
+      "runs": 20,
+      "mean_ms": 0.032,
+      "median_ms": 0.031,
+      "min_ms": 0.031,
+      "max_ms": 0.041,
+      "p95_ms": 0.041
+    },
+    {
+      "name": "tool:search_objects(all_types)",
+      "runs": 20,
+      "mean_ms": 0.053,
+      "median_ms": 0.053,
+      "min_ms": 0.053,
+      "max_ms": 0.054,
+      "p95_ms": 0.054
+    },
+    {
+      "name": "tool:get_references",
+      "runs": 20,
+      "mean_ms": 0.002,
+      "median_ms": 0.002,
+      "min_ms": 0.002,
+      "max_ms": 0.007,
+      "p95_ms": 0.007
+    },
+    {
+      "name": "tool:get_available_references",
+      "runs": 20,
+      "mean_ms": 0.01,
+      "median_ms": 0.009,
+      "min_ms": 0.009,
+      "max_ms": 0.025,
+      "p95_ms": 0.025
+    },
+    {
+      "name": "tool:validate_model",
+      "runs": 10,
+      "mean_ms": 0.267,
+      "median_ms": 0.254,
+      "min_ms": 0.25,
+      "max_ms": 0.353,
+      "p95_ms": 0.353
+    },
+    {
+      "name": "tool:check_references",
+      "runs": 10,
+      "mean_ms": 0.025,
+      "median_ms": 0.025,
+      "min_ms": 0.024,
+      "max_ms": 0.028,
+      "p95_ms": 0.028
+    },
+    {
+      "name": "tool:new_model",
+      "runs": 10,
+      "mean_ms": 0.018,
+      "median_ms": 0.016,
+      "min_ms": 0.016,
+      "max_ms": 0.031,
+      "p95_ms": 0.031
+    },
+    {
+      "name": "tool:update_object",
+      "runs": 10,
+      "mean_ms": 0.003,
+      "median_ms": 0.002,
+      "min_ms": 0.001,
+      "max_ms": 0.011,
+      "p95_ms": 0.011
+    },
+    {
+      "name": "tool:add_object",
+      "runs": 10,
+      "mean_ms": 0.004,
+      "median_ms": 0.004,
+      "min_ms": 0.004,
+      "max_ms": 0.006,
+      "p95_ms": 0.006
+    },
+    {
+      "name": "tool:remove_object",
+      "runs": 10,
+      "mean_ms": 0.007,
+      "median_ms": 0.006,
+      "min_ms": 0.006,
+      "max_ms": 0.011,
+      "p95_ms": 0.011
+    },
+    {
+      "name": "tool:batch_add_objects(20)",
+      "runs": 5,
+      "mean_ms": 0.065,
+      "median_ms": 0.063,
+      "min_ms": 0.062,
+      "max_ms": 0.07,
+      "p95_ms": 0.07
+    },
+    {
+      "name": "tool:rename_object",
+      "runs": 1,
+      "mean_ms": 0.009,
+      "median_ms": 0.009,
+      "min_ms": 0.009,
+      "max_ms": 0.009,
+      "p95_ms": 0.009
+    },
+    {
+      "name": "tool:duplicate_object",
+      "runs": 1,
+      "mean_ms": 0.007,
+      "median_ms": 0.007,
+      "min_ms": 0.007,
+      "max_ms": 0.007,
+      "p95_ms": 0.007
+    },
+    {
+      "name": "tool:search_weather_stations",
+      "runs": 5,
+      "mean_ms": 137.263,
+      "median_ms": 107.022,
+      "min_ms": 105.154,
+      "max_ms": 260.19,
+      "p95_ms": 260.19
+    }
+  ],
+  "serialization": [
+    {
+      "name": "serialize:Zone(full)",
+      "runs": 50,
+      "mean_ms": 0.0,
+      "median_ms": 0.0,
+      "min_ms": 0.0,
+      "max_ms": 0.001,
+      "p95_ms": 0.0
+    },
+    {
+      "name": "serialize:Zone(brief)",
+      "runs": 50,
+      "mean_ms": 0.0,
+      "median_ms": 0.0,
+      "min_ms": 0.0,
+      "max_ms": 0.001,
+      "p95_ms": 0.0
+    },
+    {
+      "name": "serialize:Surface(full)",
+      "runs": 50,
+      "mean_ms": 0.0,
+      "median_ms": 0.0,
+      "min_ms": 0.0,
+      "max_ms": 0.001,
+      "p95_ms": 0.0
+    },
+    {
+      "name": "serialize:Surface(brief)",
+      "runs": 50,
+      "mean_ms": 0.001,
+      "median_ms": 0.001,
+      "min_ms": 0.001,
+      "max_ms": 0.002,
+      "p95_ms": 0.001
+    },
+    {
+      "name": "serialize:describe(Zone)",
+      "runs": 50,
+      "mean_ms": 0.003,
+      "median_ms": 0.003,
+      "min_ms": 0.003,
+      "max_ms": 0.005,
+      "p95_ms": 0.003
+    },
+    {
+      "name": "serialize:describe(Surface)",
+      "runs": 50,
+      "mean_ms": 0.003,
+      "median_ms": 0.003,
+      "min_ms": 0.003,
+      "max_ms": 0.004,
+      "p95_ms": 0.003
+    },
+    {
+      "name": "json.dumps:Zone",
+      "runs": 50,
+      "mean_ms": 0.001,
+      "median_ms": 0.001,
+      "min_ms": 0.001,
+      "max_ms": 0.01,
+      "p95_ms": 0.002
+    },
+    {
+      "name": "json.dumps:Surface",
+      "runs": 50,
+      "mean_ms": 0.001,
+      "median_ms": 0.001,
+      "min_ms": 0.001,
+      "max_ms": 0.006,
+      "p95_ms": 0.002
+    },
+    {
+      "name": "json.dumps:100_zones",
+      "runs": 20,
+      "mean_ms": 0.019,
+      "median_ms": 0.018,
+      "min_ms": 0.018,
+      "max_ms": 0.027,
+      "p95_ms": 0.027
+    }
+  ],
+  "memory": {
+    "baseline_mb": 0.0,
+    "after_server_creation_mb": 0.7,
+    "after_schema_load_mb": 0.69,
+    "after_200_objects_mb": 0.85,
+    "server_delta_mb": 0.7,
+    "schema_delta_mb": -0.01,
+    "doc_200_objects_delta_mb": 0.16
+  },
+  "response_sizes": [
+    {
+      "tool_call": "list_object_types()",
+      "payload_bytes": 2399,
+      "payload_kb": 2.34
+    },
+    {
+      "tool_call": "describe_object_type(Zone)",
+      "payload_bytes": 4258,
+      "payload_kb": 4.16
+    },
+    {
+      "tool_call": "describe_object_type(Surface)",
+      "payload_bytes": 4116,
+      "payload_kb": 4.02
+    },
+    {
+      "tool_call": "search_schema(zone)",
+      "payload_bytes": 12490,
+      "payload_kb": 12.2
+    },
+    {
+      "tool_call": "get_model_summary()",
+      "payload_bytes": 322,
+      "payload_kb": 0.31
+    },
+    {
+      "tool_call": "list_objects(Zone,50)",
+      "payload_bytes": 2255,
+      "payload_kb": 2.2
+    },
+    {
+      "tool_call": "list_objects(Surface,50)",
+      "payload_bytes": 9015,
+      "payload_kb": 8.8
+    }
+  ]
+}

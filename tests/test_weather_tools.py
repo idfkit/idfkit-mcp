@@ -10,6 +10,17 @@ def _tool(name: str):
 
 
 class TestSearchWeatherStations:
+    def test_station_index_cached(self) -> None:
+        from idfkit_mcp.state import get_state
+
+        state = get_state()
+        assert state.station_index is None
+        _tool("search_weather_stations").fn(query="Chicago")
+        assert state.station_index is not None
+        cached = state.station_index
+        _tool("search_weather_stations").fn(query="Boston")
+        assert state.station_index is cached
+
     def test_text_search(self) -> None:
         result = _tool("search_weather_stations").fn(query="Chicago")
         assert result["search_type"] == "text"

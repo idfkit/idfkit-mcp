@@ -46,15 +46,19 @@ def register(mcp: FastMCP) -> None:
 
 
 @_safe_tool
-def list_object_types(group: str | None = None, version: str | None = None) -> dict[str, Any]:
+def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> dict[str, Any]:
     """List all EnergyPlus object types, optionally filtered by group.
+
+    When the total exceeds the limit, type names are omitted and only group
+    names with counts are returned.  Filter by group to see individual types.
 
     Args:
         group: Filter to a specific IDD group (e.g. "Thermal Zones and Surfaces").
         version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
+        limit: Maximum number of type names to include (default 50).
 
     Returns:
-        Groups with their object type names.
+        Groups with their object type names (or counts only when truncated).
     """
     state = get_state()
     schema = state.get_or_load_schema(_parse_version(version))
@@ -66,9 +70,18 @@ def list_object_types(group: str | None = None, version: str | None = None) -> d
             continue
         groups.setdefault(g, []).append(obj_type)
 
+    total_types = sum(len(v) for v in groups.values())
+    truncated = total_types > limit
+
+    if truncated:
+        groups_result = {g: {"count": len(types)} for g, types in sorted(groups.items())}
+    else:
+        groups_result = {g: {"count": len(types), "types": types} for g, types in sorted(groups.items())}
+
     return {
-        "total_types": sum(len(v) for v in groups.values()),
-        "groups": {g: {"count": len(types), "types": types} for g, types in sorted(groups.items())},
+        "total_types": total_types,
+        "truncated": truncated,
+        "groups": groups_result,
     }
 
 
@@ -92,12 +105,13 @@ def describe_object_type(object_type: str, version: str | None = None) -> dict[s
 
 
 @_safe_tool
-def search_schema(query: str, version: str | None = None) -> dict[str, Any]:
+def search_schema(query: str, version: str | None = None, limit: int = 50) -> dict[str, Any]:
     """Search for EnergyPlus object types by name or description.
 
     Args:
         query: Search string (case-insensitive substring match).
         version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
+        limit: Maximum number of results to return (default 50).
     """
     state = get_state()
     schema = state.get_or_load_schema(_parse_version(version))
@@ -113,8 +127,10 @@ def search_schema(query: str, version: str | None = None) -> dict[str, Any]:
                 "group": group,
                 "memo": memo[:200] if memo else None,
             })
+            if len(matches) >= limit:
+                break
 
-    return {"query": query, "count": len(matches), "matches": matches}
+    return {"query": query, "count": len(matches), "limit": limit, "matches": matches}
 
 
 @_safe_tool

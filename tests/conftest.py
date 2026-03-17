@@ -17,6 +17,7 @@ def _reset_state() -> None:
     state.file_path = None
     state.simulation_result = None
     state.weather_file = None
+    state.station_index = None
 
 
 @pytest.fixture()
