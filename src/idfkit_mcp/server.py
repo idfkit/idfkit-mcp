@@ -27,7 +27,14 @@ _INSTRUCTIONS = (
 
 
 def create_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
-    """Create a configured FastMCP instance and register all tools."""
+    """Create a configured FastMCP instance and register all tools.
+
+    TODO: Enable ``structured_output`` on tools once Pydantic return models
+    are defined for each tool function. This would populate both ``content``
+    (text) and ``structuredContent`` (typed JSON) in MCP responses, improving
+    compatibility with clients that consume structured tool output (e.g.
+    OpenAI Agents SDK ``convert_schemas_to_strict``).
+    """
     server = FastMCP("idfkit", instructions=_INSTRUCTIONS, host=host, port=port)
 
     schema.register(server)

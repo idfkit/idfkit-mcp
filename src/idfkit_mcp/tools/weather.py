@@ -2,37 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import format_error
+from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.serializers import serialize_station
 from idfkit_mcp.state import get_state
 
-
-def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return format_error(e)
-
-    return wrapper
+_READ_ONLY_OPEN = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
+_DOWNLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 
 
-def register(mcp: FastMCP) -> None:
-    """Register weather tools on the MCP server."""
-    mcp.tool()(search_weather_stations)
-    mcp.tool()(download_weather_file)
-
-
-@_safe_tool
+@safe_tool
 def search_weather_stations(
     query: str | None = None,
     latitude: float | None = None,
@@ -43,7 +26,8 @@ def search_weather_stations(
 ) -> dict[str, Any]:
     """Search for weather stations by name/location or coordinates.
 
-    Provide either a text query or latitude/longitude for spatial search.
+    Use this to find an EPW weather file for simulation. Provide either a text
+    query or latitude/longitude for spatial search.
 
     IMPORTANT: Keep query short (just the city name). Use country/state params
     to disambiguate. For example, use query="Boston", country="USA", state="MA"
@@ -105,7 +89,7 @@ def _matches_filters(station: Any, country: str | None, state: str | None) -> bo
     return not (state and station.state.upper() != state.upper())
 
 
-@_safe_tool
+@safe_tool
 def download_weather_file(
     wmo: str | None = None,
     query: str | None = None,
@@ -114,7 +98,8 @@ def download_weather_file(
 ) -> dict[str, Any]:
     """Download an EPW weather file for simulation.
 
-    The downloaded file path is stored for reuse with run_simulation.
+    Use this to get a weather file before running a simulation. The downloaded
+    file path is stored for reuse with run_simulation.
 
     IMPORTANT: Keep query short (just the city name). Use country/state params
     to disambiguate. For example, use query="Boston", country="USA", state="MA"
@@ -164,3 +149,16 @@ def download_weather_file(
         "epw_path": str(files.epw),
         "ddy_path": str(files.ddy),
     }
+
+
+# Annotations are defined after functions to avoid forward-reference errors.
+_TOOL_REGISTRY = [
+    (search_weather_stations, _READ_ONLY_OPEN),
+    (download_weather_file, _DOWNLOAD),
+]
+
+
+def register(mcp: FastMCP) -> None:
+    """Register weather tools on the MCP server."""
+    for func, hints in _TOOL_REGISTRY:
+        mcp.tool(annotations=hints)(func)
