@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+from mcp.server.fastmcp.exceptions import ToolError
+
 
 def _tool(name: str):
     from idfkit_mcp.server import mcp
@@ -23,34 +26,34 @@ class TestSearchWeatherStations:
 
     def test_text_search(self) -> None:
         result = _tool("search_weather_stations").fn(query="Chicago")
-        assert result["search_type"] == "text"
-        assert result["count"] > 0
+        assert result.search_type == "text"
+        assert result.count > 0
 
     def test_spatial_search(self) -> None:
         result = _tool("search_weather_stations").fn(latitude=41.88, longitude=-87.63)
-        assert result["search_type"] == "spatial"
-        assert result["count"] > 0
+        assert result.search_type == "spatial"
+        assert result.count > 0
 
     def test_no_params(self) -> None:
-        result = _tool("search_weather_stations").fn()
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("search_weather_stations").fn()
 
     def test_country_filter(self) -> None:
         result = _tool("search_weather_stations").fn(query="Chicago", country="USA")
-        assert result["count"] > 0
-        for station in result["stations"]:
+        assert result.count > 0
+        for station in result.stations:
             assert station["country"].upper() == "USA"
 
 
 class TestDownloadWeatherFile:
     def test_no_params(self) -> None:
-        result = _tool("download_weather_file").fn()
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("download_weather_file").fn()
 
     def test_query_no_match(self) -> None:
-        result = _tool("download_weather_file").fn(query="zzz_nonexistent_place_xyz")
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("download_weather_file").fn(query="zzz_nonexistent_place_xyz")
 
     def test_wmo_no_match(self) -> None:
-        result = _tool("download_weather_file").fn(wmo="0000000")
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("download_weather_file").fn(wmo="0000000")

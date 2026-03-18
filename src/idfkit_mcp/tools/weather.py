@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.errors import safe_tool
+from idfkit_mcp.models import DownloadWeatherFileResult, SearchWeatherStationsResult
 from idfkit_mcp.serializers import serialize_station
 from idfkit_mcp.state import get_state
 
@@ -23,7 +25,7 @@ def search_weather_stations(
     country: str | None = None,
     state: str | None = None,
     limit: int = 10,
-) -> dict[str, Any]:
+) -> SearchWeatherStationsResult:
     """Search for weather stations by name/location or coordinates.
 
     Use this to find an EPW weather file for simulation. Provide either a text
@@ -53,11 +55,11 @@ def search_weather_stations(
                 **serialize_station(r.station),
                 "distance_km": round(r.distance_km, 1),
             })
-        return {
-            "search_type": "spatial",
-            "count": len(spatial_stations),
-            "stations": spatial_stations[:limit],
-        }
+        return SearchWeatherStationsResult(
+            search_type="spatial",
+            count=len(spatial_stations),
+            stations=spatial_stations[:limit],
+        )
 
     if query is not None:
         search_results = index.search(query, limit=limit * 3)
@@ -72,14 +74,14 @@ def search_weather_stations(
             })
             if len(text_stations) >= limit:
                 break
-        return {
-            "search_type": "text",
-            "query": query,
-            "count": len(text_stations),
-            "stations": text_stations,
-        }
+        return SearchWeatherStationsResult(
+            search_type="text",
+            query=query,
+            count=len(text_stations),
+            stations=text_stations,
+        )
 
-    return {"error": "Provide either 'query' for text search or 'latitude'/'longitude' for spatial search."}
+    raise ToolError("Provide either 'query' for text search or 'latitude'/'longitude' for spatial search.")
 
 
 def _matches_filters(station: Any, country: str | None, state: str | None) -> bool:
@@ -95,7 +97,7 @@ def download_weather_file(
     query: str | None = None,
     country: str | None = None,
     state: str | None = None,
-) -> dict[str, Any]:
+) -> DownloadWeatherFileResult:
     """Download an EPW weather file for simulation.
 
     Use this to get a weather file before running a simulation. The downloaded
@@ -124,7 +126,7 @@ def download_weather_file(
             station = r.station
             break
         if station is None:
-            return {"error": f"No weather stations found for query '{query}'."}
+            raise ToolError(f"No weather stations found for query '{query}'.")
     elif wmo is not None:
         results = index.search(wmo, limit=10)
         station = None
@@ -133,9 +135,9 @@ def download_weather_file(
                 station = r.station
                 break
         if station is None:
-            return {"error": f"No weather station found with WMO '{wmo}'."}
+            raise ToolError(f"No weather station found with WMO '{wmo}'.")
     else:
-        return {"error": "Provide either 'wmo' or 'query' to identify the weather station."}
+        raise ToolError("Provide either 'wmo' or 'query' to identify the weather station.")
 
     downloader = WeatherDownloader()
     files = downloader.download(station)
@@ -143,12 +145,12 @@ def download_weather_file(
     server_state = get_state()
     server_state.weather_file = files.epw
 
-    return {
+    return DownloadWeatherFileResult.model_validate({
         "status": "downloaded",
         "station": serialize_station(station),
         "epw_path": str(files.epw),
         "ddy_path": str(files.ddy),
-    }
+    })
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
@@ -161,4 +163,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register weather tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
+        mcp.tool(annotations=hints, structured_output=True)(func)

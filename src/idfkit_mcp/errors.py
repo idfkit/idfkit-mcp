@@ -2,30 +2,38 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import TypeVar
+
+from mcp.server.fastmcp.exceptions import ToolError
+
+_T = TypeVar("_T")
 
 
-def safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts.
+def safe_tool(func: Callable[..., _T]) -> Callable[..., _T]:
+    """Convert exceptions into MCP ``ToolError`` instances.
 
-    Decorator for MCP tool functions that catches all exceptions and returns
-    structured error responses instead of raising.
+    Decorator for MCP tool functions that catches all exceptions and
+    re-raises them as ``ToolError`` with a human-readable message.
+    The MCP SDK surfaces these to clients via ``isError=True`` responses.
     """
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    def wrapper(*args: object, **kwargs: object) -> _T:
         try:
             return func(*args, **kwargs)
+        except ToolError:
+            raise
         except Exception as e:
-            return format_error(e)
+            raise ToolError(format_error(e)) from e
 
     return wrapper
 
 
-def format_error(error: Exception) -> dict[str, Any]:
-    """Convert an exception into a structured error dict for tool responses."""
+def format_error(error: Exception) -> str:
+    """Convert an exception into a human-readable error string for tool responses."""
     from idfkit.exceptions import (
         DuplicateObjectError,
         EnergyPlusNotFoundError,
@@ -37,24 +45,32 @@ def format_error(error: Exception) -> dict[str, Any]:
     )
 
     if isinstance(error, ValidationFailedError):
-        return {"error": "Validation failed", "details": str(error)}
+        return f"Validation failed: {error}"
     if isinstance(error, KeyError):
-        return {"error": f"Not found: {error}"}
+        return f"Not found: {error}"
     if isinstance(error, EnergyPlusNotFoundError):
-        return {
-            "error": "EnergyPlus not found",
-            "suggestion": "Install EnergyPlus or set the ENERGYPLUS_DIR environment variable.",
-        }
+        return "EnergyPlus not found. Install EnergyPlus or set the ENERGYPLUS_DIR environment variable."
     if isinstance(error, SchemaNotFoundError):
-        return {"error": f"Schema not found: {error}"}
+        return f"Schema not found: {error}"
     if isinstance(error, VersionNotFoundError):
-        return {"error": f"Version not found: {error}"}
+        return f"Version not found: {error}"
     if isinstance(error, UnknownObjectTypeError):
-        return {"error": f"Unknown object type: {error}"}
+        return f"Unknown object type: {error}"
     if isinstance(error, DuplicateObjectError):
-        return {"error": f"Duplicate object: {error}"}
+        return f"Duplicate object: {error}"
     if isinstance(error, SimulationError):
-        return {"error": f"Simulation error: {error}"}
+        return f"Simulation error: {error}"
     if isinstance(error, RuntimeError):
-        return {"error": str(error)}
-    return {"error": f"{type(error).__name__}: {error}"}
+        return str(error)
+    return f"{type(error).__name__}: {error}"
+
+
+def tool_error(message: str, **extra: object) -> ToolError:
+    """Build a ``ToolError`` with optional structured detail.
+
+    Extra keyword arguments are appended as a JSON snippet so that
+    clients can still parse structured information from the error text.
+    """
+    if extra:
+        return ToolError(f"{message}\n{json.dumps(extra, default=str)}")
+    return ToolError(message)
