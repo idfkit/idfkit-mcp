@@ -2,45 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import format_error
+from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 
-
-def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return format_error(e)
-
-    return wrapper
+_MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+_DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
+_SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-def register(mcp: FastMCP) -> None:
-    """Register write tools on the MCP server."""
-    mcp.tool()(new_model)
-    mcp.tool()(add_object)
-    mcp.tool()(batch_add_objects)
-    mcp.tool()(update_object)
-    mcp.tool()(remove_object)
-    mcp.tool()(rename_object)
-    mcp.tool()(duplicate_object)
-    mcp.tool()(save_model)
-
-
-@_safe_tool
+@safe_tool
 def new_model(version: str | None = None) -> dict[str, Any]:
     """Create a new empty EnergyPlus model.
+
+    Use this to start building a model from scratch.
 
     Args:
         version: EnergyPlus version as "X.Y.Z" (default: latest).
@@ -62,11 +42,12 @@ def new_model(version: str | None = None) -> dict[str, Any]:
     return {"status": "created", "version": version_string(ver)}
 
 
-@_safe_tool
+@safe_tool
 def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None = None) -> dict[str, Any]:
     """Add a new object to the model.
 
-    Call describe_object_type first to see valid fields for this type.
+    Use this to create a single EnergyPlus object. Call describe_object_type first
+    to see valid fields for this type.
 
     Args:
         object_type: The EnergyPlus object type (e.g. "Zone", "Material").
@@ -80,13 +61,14 @@ def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None =
     return serialize_object(obj)
 
 
-@_safe_tool
+@safe_tool
 def batch_add_objects(objects: list[dict[str, Any]]) -> dict[str, Any]:
     """Add multiple objects to the model in a single call.
 
-    Critical for efficiency — creating a building zone-by-zone requires many objects.
-    Each entry should have: object_type (required), name (optional), fields (optional).
-    Continues on individual failures and reports per-object results.
+    Use this when creating multiple objects at once for efficiency — building a zone
+    requires many related objects. Each entry should have: object_type (required),
+    name (optional), fields (optional). Continues on individual failures and reports
+    per-object results.
 
     Args:
         objects: List of dicts with keys: object_type, name, fields.
@@ -118,9 +100,11 @@ def batch_add_objects(objects: list[dict[str, Any]]) -> dict[str, Any]:
     return {"total": len(objects), "success": success_count, "errors": error_count, "results": results}
 
 
-@_safe_tool
+@safe_tool
 def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[str, Any]:
     """Update fields on an existing object.
+
+    Use this to modify field values on an object already in the model.
 
     Args:
         object_type: The EnergyPlus object type.
@@ -143,12 +127,12 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
     return serialize_object(obj)
 
 
-@_safe_tool
+@safe_tool
 def remove_object(object_type: str, name: str, force: bool = False) -> dict[str, Any]:
     """Remove an object from the model.
 
-    By default, refuses removal if other objects reference this one.
-    Use force=True to remove anyway.
+    Use this to delete an object. Refuses removal if other objects reference it
+    unless force=True.
 
     Args:
         object_type: The EnergyPlus object type.
@@ -178,9 +162,11 @@ def remove_object(object_type: str, name: str, force: bool = False) -> dict[str,
     return {"status": "removed", "object_type": object_type, "name": name}
 
 
-@_safe_tool
+@safe_tool
 def rename_object(object_type: str, old_name: str, new_name: str) -> dict[str, Any]:
     """Rename an object and update all references to it.
+
+    Use this to change an object's name while keeping the model consistent.
 
     Args:
         object_type: The EnergyPlus object type.
@@ -204,9 +190,11 @@ def rename_object(object_type: str, old_name: str, new_name: str) -> dict[str, A
     }
 
 
-@_safe_tool
+@safe_tool
 def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, Any]:
     """Duplicate an existing object with a new name.
+
+    Use this to copy an object as a starting point for a similar one.
 
     Args:
         object_type: The EnergyPlus object type.
@@ -220,9 +208,11 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
     return serialize_object(obj)
 
 
-@_safe_tool
-def save_model(file_path: str | None = None, output_format: str = "idf") -> dict[str, Any]:
+@safe_tool
+def save_model(file_path: str | None = None, output_format: Literal["idf", "epjson"] = "idf") -> dict[str, Any]:
     """Save the model to a file.
+
+    Use this to persist changes to disk in IDF or epJSON format.
 
     Args:
         file_path: Output path. If None, uses the original load path.
@@ -242,10 +232,29 @@ def save_model(file_path: str | None = None, output_format: str = "idf") -> dict
     else:
         return {"error": "No file path specified and no original path available."}
 
-    if output_format.lower() == "epjson":
+    if output_format == "epjson":
         write_epjson(doc, path)
     else:
         write_idf(doc, path)
 
     state.file_path = path
     return {"status": "saved", "file_path": str(path), "format": output_format}
+
+
+# Annotations are defined after functions to avoid forward-reference errors.
+_TOOL_REGISTRY = [
+    (new_model, _MUTATE),
+    (add_object, _MUTATE),
+    (batch_add_objects, _MUTATE),
+    (update_object, _MUTATE),
+    (remove_object, _DESTRUCTIVE),
+    (rename_object, _MUTATE),
+    (duplicate_object, _MUTATE),
+    (save_model, _SAVE),
+]
+
+
+def register(mcp: FastMCP) -> None:
+    """Register write tools on the MCP server."""
+    for func, hints in _TOOL_REGISTRY:
+        mcp.tool(annotations=hints)(func)

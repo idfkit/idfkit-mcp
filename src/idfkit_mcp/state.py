@@ -20,6 +20,11 @@ class ServerState:
     """Holds the active document, schema, and simulation result.
 
     MCP stdio transport is single-threaded, so a module-level instance is safe.
+
+    WARNING: For streamable-http or SSE transports with multiple concurrent
+    clients, this singleton will cause cross-session state contamination.
+    A future improvement should key state by session/connection ID using
+    FastMCP's ``context.session`` or a similar mechanism.
     """
 
     document: IDFDocument | None = None

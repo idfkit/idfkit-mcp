@@ -2,45 +2,24 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
 from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import format_error
+from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 
-
-def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return format_error(e)
-
-    return wrapper
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+_LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-def register(mcp: FastMCP) -> None:
-    """Register read tools on the MCP server."""
-    mcp.tool()(load_model)
-    mcp.tool()(convert_osm_to_idf)
-    mcp.tool()(get_model_summary)
-    mcp.tool()(list_objects)
-    mcp.tool()(get_object)
-    mcp.tool()(search_objects)
-    mcp.tool()(get_references)
-
-
-@_safe_tool
+@safe_tool
 def load_model(file_path: str, version: str | None = None) -> dict[str, Any]:
-    """Load an IDF or epJSON file as the active model.
+    """Open an existing IDF or epJSON file as the active model.
 
+    Use this to load a building energy model for inspection or editing.
     Auto-detects format by file extension (.idf or .epjson/.json).
 
     Args:
@@ -71,7 +50,7 @@ def load_model(file_path: str, version: str | None = None) -> dict[str, Any]:
     return _build_summary(doc, state)
 
 
-@_safe_tool
+@safe_tool
 def convert_osm_to_idf(
     osm_path: str,
     output_path: str,
@@ -79,6 +58,8 @@ def convert_osm_to_idf(
     overwrite: bool = False,
 ) -> dict[str, Any]:
     """Convert an OpenStudio OSM model to IDF and load it as the active model.
+
+    Use this when working with OpenStudio models that need EnergyPlus simulation.
 
     Args:
         osm_path: Path to the source .osm file.
@@ -153,10 +134,11 @@ def convert_osm_to_idf(
     return summary
 
 
-@_safe_tool
+@safe_tool
 def get_model_summary() -> dict[str, Any]:
     """Get a summary of the currently loaded model.
 
+    Use this first after loading a model to understand its contents.
     Returns version, total objects, zone count, and counts by group/type.
     """
     state = get_state()
@@ -164,10 +146,11 @@ def get_model_summary() -> dict[str, Any]:
     return _build_summary(doc, state)
 
 
-@_safe_tool
+@safe_tool
 def list_objects(object_type: str, limit: int = 50) -> dict[str, Any]:
     """List objects of a given type from the loaded model.
 
+    Use this to browse existing objects before inspecting or editing them.
     Returns object names and required field values in brief format.
 
     Args:
@@ -187,9 +170,11 @@ def list_objects(object_type: str, limit: int = 50) -> dict[str, Any]:
     return {"object_type": object_type, "total": total, "returned": len(objects), "objects": objects}
 
 
-@_safe_tool
+@safe_tool
 def get_object(object_type: str, name: str) -> dict[str, Any]:
     """Get all field values for a specific object.
+
+    Use this to inspect the full details of a single object.
 
     Args:
         object_type: The EnergyPlus object type.
@@ -209,9 +194,11 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
     return serialize_object(obj)
 
 
-@_safe_tool
+@safe_tool
 def search_objects(query: str, object_type: str | None = None, limit: int = 20) -> dict[str, Any]:
     """Search for objects by name or field values.
+
+    Use this to find objects when you know a keyword but not the exact name or type.
 
     Args:
         query: Search string (case-insensitive substring match on name and string fields).
@@ -234,10 +221,11 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
     return {"query": query, "count": len(matches), "matches": matches}
 
 
-@_safe_tool
+@safe_tool
 def get_references(name: str) -> dict[str, Any]:
     """Get bidirectional references for an object name.
 
+    Use this to understand dependencies before renaming or removing an object.
     Returns objects that reference this name, and names this object references.
 
     Args:
@@ -264,6 +252,24 @@ def get_references(name: str) -> dict[str, Any]:
         "references": references,
         "references_count": len(references),
     }
+
+
+# Annotations are defined after functions to avoid forward-reference errors.
+_TOOL_REGISTRY = [
+    (load_model, _LOAD),
+    (convert_osm_to_idf, _LOAD),
+    (get_model_summary, _READ_ONLY),
+    (list_objects, _READ_ONLY),
+    (get_object, _READ_ONLY),
+    (search_objects, _READ_ONLY),
+    (get_references, _READ_ONLY),
+]
+
+
+def register(mcp: FastMCP) -> None:
+    """Register read tools on the MCP server."""
+    for func, hints in _TOOL_REGISTRY:
+        mcp.tool(annotations=hints)(func)
 
 
 def _build_summary(doc: Any, state: Any) -> dict[str, Any]:

@@ -2,7 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from functools import wraps
 from typing import Any
+
+
+def safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+    """Convert exceptions into MCP-friendly error dicts.
+
+    Decorator for MCP tool functions that catches all exceptions and returns
+    structured error responses instead of raising.
+    """
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            return format_error(e)
+
+    return wrapper
 
 
 def format_error(error: Exception) -> dict[str, Any]:

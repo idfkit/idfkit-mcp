@@ -2,39 +2,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import format_error
+from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.state import get_state
 
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+_RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True)
+_EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
-def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return format_error(e)
-
-    return wrapper
+# Valid EnergyPlus reporting frequencies for time series queries.
+ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPeriod", "Annual"]
 
 
-def register(mcp: FastMCP) -> None:
-    """Register simulation tools on the MCP server."""
-    mcp.tool()(run_simulation)
-    mcp.tool()(get_results_summary)
-    mcp.tool()(list_output_variables)
-    mcp.tool()(query_timeseries)
-    mcp.tool()(export_timeseries)
-
-
-@_safe_tool
+@safe_tool
 def run_simulation(
     weather_file: str | None = None,
     design_day: bool = False,
@@ -43,7 +27,9 @@ def run_simulation(
     energyplus_version: str | None = None,
     output_directory: str | None = None,
 ) -> dict[str, Any]:
-    """Run an EnergyPlus simulation on the loaded model.
+    """Execute an EnergyPlus simulation on the loaded model.
+
+    Use this to run the simulation after building or modifying a model.
 
     Args:
         weather_file: Path to EPW weather file. Uses previously downloaded file if None.
@@ -114,11 +100,11 @@ def run_simulation(
     }
 
 
-@_safe_tool
+@safe_tool
 def get_results_summary() -> dict[str, Any]:
     """Get a summary of the last simulation results.
 
-    Returns energy metrics, error counts, and key tables from the HTML output.
+    Use this after run_simulation to review energy metrics, error counts, and key tables.
     """
     state = get_state()
     result = state.require_simulation_result()
@@ -161,9 +147,11 @@ def get_results_summary() -> dict[str, Any]:
     return summary
 
 
-@_safe_tool
+@safe_tool
 def list_output_variables(search: str | None = None, limit: int = 50) -> dict[str, Any]:
     """List available output variables from the last simulation.
+
+    Use this to discover what time series data is available for querying.
 
     Args:
         search: Optional regex pattern to filter variables by name.
@@ -195,22 +183,23 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> dict[st
     return {"total_available": total, "returned": len(serialized), "variables": serialized}
 
 
-@_safe_tool
+@safe_tool
 def query_timeseries(
     variable_name: str,
     key_value: str = "*",
-    frequency: str | None = None,
+    frequency: ReportingFrequency | None = None,
     environment: Literal["sizing", "annual"] | None = None,
     limit: int = 24,
 ) -> dict[str, Any]:
     """Query time series data from the last simulation's SQL output.
 
-    Returns the first `limit` data points inline for quick inspection.
+    Use this for quick inspection of simulation output data inline.
+    Returns the first `limit` data points.
 
     Args:
         variable_name: The output variable name (e.g. "Zone Mean Air Temperature").
         key_value: Key value such as zone or surface name. Use "*" for environment-level variables.
-        frequency: Optional frequency filter (e.g. "Hourly").
+        frequency: Reporting frequency filter (e.g. "Hourly", "Monthly").
         environment: Filter by environment type: "sizing" or "annual".
         limit: Maximum number of data points to return (default 24).
     """
@@ -243,20 +232,22 @@ def query_timeseries(
     }
 
 
-@_safe_tool
+@safe_tool
 def export_timeseries(
     variable_name: str,
     key_value: str = "*",
-    frequency: str | None = None,
+    frequency: ReportingFrequency | None = None,
     environment: Literal["sizing", "annual"] | None = None,
     output_path: str | None = None,
 ) -> dict[str, Any]:
     """Export time series data from the last simulation to a CSV file.
 
+    Use this to save full simulation output data for external analysis.
+
     Args:
         variable_name: The output variable name (e.g. "Zone Mean Air Temperature").
         key_value: Key value such as zone or surface name. Use "*" for environment-level variables.
-        frequency: Optional frequency filter (e.g. "Hourly").
+        frequency: Reporting frequency filter (e.g. "Hourly", "Monthly").
         environment: Filter by environment type: "sizing" or "annual".
         output_path: Output CSV file path. Defaults to a file in the simulation output directory.
     """
@@ -298,3 +289,19 @@ def export_timeseries(
         "frequency": ts.frequency,
         "rows": len(ts.values),
     }
+
+
+# Annotations are defined after functions to avoid forward-reference errors.
+_TOOL_REGISTRY = [
+    (run_simulation, _RUN),
+    (get_results_summary, _READ_ONLY),
+    (list_output_variables, _READ_ONLY),
+    (query_timeseries, _READ_ONLY),
+    (export_timeseries, _EXPORT),
+]
+
+
+def register(mcp: FastMCP) -> None:
+    """Register simulation tools on the MCP server."""
+    for func, hints in _TOOL_REGISTRY:
+        mcp.tool(annotations=hints)(func)
