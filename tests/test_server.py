@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from idfkit_mcp.server import _parse_args, create_server
@@ -100,3 +102,52 @@ class TestParseArgs:
     def test_invalid_transport_rejected(self) -> None:
         with pytest.raises(SystemExit):
             _parse_args(["--transport", "invalid"])
+
+
+class TestToolSchemas:
+    """Verify that all tool schemas are well-formed for broad client compatibility."""
+
+    @pytest.fixture()
+    def tools(self) -> dict[str, Any]:
+        server = create_server()
+        return server._tool_manager._tools
+
+    def test_all_tools_have_properties_key(self, tools: dict[str, Any]) -> None:
+        """Every tool's inputSchema must include a 'properties' key.
+
+        OpenAI's Agents SDK and other strict consumers require this key to be
+        present, even for tools with no parameters (where it should be ``{}``).
+        """
+        for name, tool in tools.items():
+            schema = tool.parameters
+            assert "properties" in schema, f"Tool '{name}' inputSchema missing 'properties' key: {schema}"
+
+    def test_all_tools_have_annotations(self, tools: dict[str, Any]) -> None:
+        """Every tool should have ToolAnnotations set (readOnlyHint, etc.)."""
+        for name, tool in tools.items():
+            assert tool.annotations is not None, f"Tool '{name}' is missing annotations"
+
+    def test_schemas_support_additional_properties_false(self, tools: dict[str, Any]) -> None:
+        """Verify schemas can accept additionalProperties: false without conflict.
+
+        OpenAI's ``convert_schemas_to_strict`` applies this constraint. Tools
+        using open-ended ``dict[str, Any]`` parameters (e.g. add_object.fields,
+        batch_add_objects.objects) are exempt since EnergyPlus field names are
+        inherently dynamic.
+        """
+        # Tools with intentionally dynamic dict parameters that cannot be
+        # constrained to a static schema.
+        dynamic_schema_tools = {"add_object", "batch_add_objects", "update_object"}
+
+        for name, tool in tools.items():
+            if name in dynamic_schema_tools:
+                continue
+            schema = tool.parameters
+            properties = schema.get("properties", {})
+            for prop_name, prop_schema in properties.items():
+                # Nested object schemas should not conflict with additionalProperties: false
+                if prop_schema.get("type") == "object" and "properties" not in prop_schema:
+                    pytest.fail(
+                        f"Tool '{name}' param '{prop_name}' is an unstructured object "
+                        f"(no 'properties' key) — incompatible with strict mode."
+                    )

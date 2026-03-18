@@ -2,39 +2,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import format_error
+from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.serializers import serialize_validation_result
 from idfkit_mcp.state import get_state
 
-
-def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return format_error(e)
-
-    return wrapper
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-def register(mcp: FastMCP) -> None:
-    """Register validation tools on the MCP server."""
-    mcp.tool()(validate_model)
-    mcp.tool()(check_references)
-
-
-@_safe_tool
+@safe_tool
 def validate_model(object_types: list[str] | None = None, check_references: bool = True) -> dict[str, Any]:
     """Validate the loaded model against the EnergyPlus schema.
+
+    Use this after making modifications to check for errors before simulation.
 
     Args:
         object_types: Only validate specific types (default: all).
@@ -48,11 +32,11 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
     return serialize_validation_result(result)
 
 
-@_safe_tool
+@safe_tool
 def check_references() -> dict[str, Any]:
     """Check for dangling references in the loaded model.
 
-    Returns a list of references that point to non-existent objects.
+    Use this to find references that point to non-existent objects.
     """
     state = get_state()
     doc = state.require_model()
@@ -73,3 +57,16 @@ def check_references() -> dict[str, Any]:
         })
 
     return {"dangling_count": len(dangling), "dangling_references": dangling}
+
+
+# Annotations are defined after functions to avoid forward-reference errors.
+_TOOL_REGISTRY = [
+    (validate_model, _READ_ONLY),
+    (check_references, _READ_ONLY),
+]
+
+
+def register(mcp: FastMCP) -> None:
+    """Register validation tools on the MCP server."""
+    for func, hints in _TOOL_REGISTRY:
+        mcp.tool(annotations=hints)(func)

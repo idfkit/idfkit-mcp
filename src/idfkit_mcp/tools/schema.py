@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import format_error
+from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.serializers import serialize_object_description
 from idfkit_mcp.state import get_state
+
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
 def _parse_version(version: str | None) -> tuple[int, int, int] | None:
@@ -24,30 +25,11 @@ def _parse_version(version: str | None) -> tuple[int, int, int] | None:
     return (int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-def _safe_tool(func: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert exceptions into MCP-friendly error dicts."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return format_error(e)
-
-    return wrapper
-
-
-def register(mcp: FastMCP) -> None:
-    """Register schema tools on the MCP server."""
-    mcp.tool()(list_object_types)
-    mcp.tool()(describe_object_type)
-    mcp.tool()(search_schema)
-    mcp.tool()(get_available_references)
-
-
-@_safe_tool
+@safe_tool
 def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> dict[str, Any]:
-    """List all EnergyPlus object types, optionally filtered by group.
+    """Discover available EnergyPlus object types, optionally filtered by group.
+
+    Use this to browse what object types exist before creating objects.
 
     When the total exceeds the limit, type names are omitted and only group
     names with counts are returned.  Filter by group to see individual types.
@@ -85,12 +67,12 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
     }
 
 
-@_safe_tool
+@safe_tool
 def describe_object_type(object_type: str, version: str | None = None) -> dict[str, Any]:
-    """Get full field schema for an EnergyPlus object type.
+    """Get the full field schema for an EnergyPlus object type.
 
+    Use this before creating or editing objects to learn valid fields and constraints.
     Returns field names, types, constraints, defaults, references, and memo.
-    Call this before creating or editing objects to know valid fields.
 
     Args:
         object_type: The object type name (e.g. "Zone", "Material").
@@ -104,9 +86,11 @@ def describe_object_type(object_type: str, version: str | None = None) -> dict[s
     return serialize_object_description(desc)
 
 
-@_safe_tool
+@safe_tool
 def search_schema(query: str, version: str | None = None, limit: int = 50) -> dict[str, Any]:
     """Search for EnergyPlus object types by name or description.
+
+    Use this to find the right object type when you know a keyword but not the exact name.
 
     Args:
         query: Search string (case-insensitive substring match).
@@ -133,7 +117,7 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> di
     return {"query": query, "count": len(matches), "limit": limit, "matches": matches}
 
 
-@_safe_tool
+@safe_tool
 def get_available_references(object_type: str, field_name: str) -> dict[str, Any]:
     """Get valid object names for a reference field from the loaded model.
 
@@ -171,3 +155,18 @@ def get_available_references(object_type: str, field_name: str) -> dict[str, Any
         "available_names": all_names,
         "by_reference_list": available,
     }
+
+
+# Annotations are defined after functions to avoid forward-reference errors.
+_TOOL_REGISTRY = [
+    (list_object_types, _READ_ONLY),
+    (describe_object_type, _READ_ONLY),
+    (search_schema, _READ_ONLY),
+    (get_available_references, _READ_ONLY),
+]
+
+
+def register(mcp: FastMCP) -> None:
+    """Register schema tools on the MCP server."""
+    for func, hints in _TOOL_REGISTRY:
+        mcp.tool(annotations=hints)(func)
