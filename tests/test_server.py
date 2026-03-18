@@ -151,3 +151,18 @@ class TestToolSchemas:
                         f"Tool '{name}' param '{prop_name}' is an unstructured object "
                         f"(no 'properties' key) — incompatible with strict mode."
                     )
+
+    def test_structured_output_tools_have_output_schema(self, tools: dict[str, Any]) -> None:
+        """Tools with Pydantic return types must have an output schema defined."""
+        # Tools that return dynamic dicts (no Pydantic model) — intentionally unstructured.
+        unstructured_tools = {"add_object", "update_object", "duplicate_object", "get_object"}
+
+        for name, tool in tools.items():
+            if name in unstructured_tools:
+                assert tool.fn_metadata.output_schema is None, (
+                    f"Tool '{name}' should be unstructured but has an output schema"
+                )
+            else:
+                assert tool.fn_metadata.output_schema is not None, (
+                    f"Tool '{name}' is missing an output schema — add a Pydantic return type"
+                )

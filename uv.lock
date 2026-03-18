@@ -512,6 +512,7 @@ dependencies = [
     { name = "idfkit" },
     { name = "mcp" },
     { name = "openstudio" },
+    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -532,6 +533,7 @@ requires-dist = [
     { name = "idfkit", specifier = ">=0.5.0" },
     { name = "mcp", specifier = ">=1.2.0" },
     { name = "openstudio", specifier = "==3.11.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
 ]
 
 [package.metadata.requires-dev]

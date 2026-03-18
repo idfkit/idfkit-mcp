@@ -5,9 +5,18 @@ from __future__ import annotations
 from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.errors import safe_tool
+from idfkit_mcp.models import (
+    ConvertOsmResult,
+    GroupSummary,
+    ListObjectsResult,
+    ModelSummary,
+    ReferencesResult,
+    SearchObjectsResult,
+)
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 
@@ -16,7 +25,7 @@ _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 
 
 @safe_tool
-def load_model(file_path: str, version: str | None = None) -> dict[str, Any]:
+def load_model(file_path: str, version: str | None = None) -> ModelSummary:
     """Open an existing IDF or epJSON file as the active model.
 
     Use this to load a building energy model for inspection or editing.
@@ -56,7 +65,7 @@ def convert_osm_to_idf(
     output_path: str,
     allow_newer_versions: bool = True,
     overwrite: bool = False,
-) -> dict[str, Any]:
+) -> ConvertOsmResult:
     """Convert an OpenStudio OSM model to IDF and load it as the active model.
 
     Use this when working with OpenStudio models that need EnergyPlus simulation.
@@ -74,34 +83,34 @@ def convert_osm_to_idf(
     try:
         import openstudio  # type: ignore[import-untyped]
     except ImportError:
-        return {
-            "error": "OpenStudio SDK not available.",
-            "suggestion": "Reinstall 'idfkit-mcp' in this environment, or use the Docker image where dependencies are preinstalled.",
-        }
+        raise ToolError(
+            "OpenStudio SDK not available. "
+            "Reinstall 'idfkit-mcp' in this environment, or use the Docker image where dependencies are preinstalled."
+        ) from None
     openstudio = cast(Any, openstudio)
 
     input_path = Path(osm_path)
     out_path = Path(output_path)
 
     if input_path.suffix.lower() != ".osm":
-        return {"error": f"Input file must have .osm extension: '{input_path}'."}
+        raise ToolError(f"Input file must have .osm extension: '{input_path}'.")
     if not input_path.exists():
-        return {"error": f"Input OSM file not found: '{input_path}'."}
+        raise ToolError(f"Input OSM file not found: '{input_path}'.")
     if not input_path.is_file():
-        return {"error": f"Input OSM path is not a file: '{input_path}'."}
+        raise ToolError(f"Input OSM path is not a file: '{input_path}'.")
 
     if out_path.suffix.lower() != ".idf":
-        return {"error": f"Output file must have .idf extension: '{out_path}'."}
+        raise ToolError(f"Output file must have .idf extension: '{out_path}'.")
     if out_path.exists() and not overwrite:
-        return {"error": f"Output file already exists: '{out_path}'. Set overwrite=True to replace it."}
+        raise ToolError(f"Output file already exists: '{out_path}'. Set overwrite=True to replace it.")
     if not out_path.parent.exists():
-        return {"error": f"Output directory does not exist: '{out_path.parent}'."}
+        raise ToolError(f"Output directory does not exist: '{out_path.parent}'.")
 
     version_translator = openstudio.osversion.VersionTranslator()
     version_translator.setAllowNewerVersions(allow_newer_versions)
     optional_model = version_translator.loadModel(openstudio.path(str(input_path)))
     if optional_model.empty():
-        return {"error": f"Failed to load OSM model: '{input_path}'."}
+        raise ToolError(f"Failed to load OSM model: '{input_path}'.")
 
     model = optional_model.get()
     forward_translator = openstudio.energyplus.ForwardTranslator()
@@ -109,7 +118,7 @@ def convert_osm_to_idf(
 
     saved = workspace.save(openstudio.path(str(out_path)), overwrite)
     if not saved:
-        return {"error": f"Failed to save translated IDF to '{out_path}'."}
+        raise ToolError(f"Failed to save translated IDF to '{out_path}'.")
 
     doc = load_idf(str(out_path))
     state = get_state()
@@ -122,20 +131,20 @@ def convert_osm_to_idf(
     openstudio_version = str(version_getter()) if callable(version_getter) else "unknown"
 
     summary = _build_summary(doc, state)
-    summary.update({
-        "status": "converted",
-        "osm_path": str(input_path),
-        "output_path": str(out_path),
-        "openstudio_version": openstudio_version,
-        "allow_newer_versions": allow_newer_versions,
-        "translator_warnings_count": len(version_translator.warnings()) + len(forward_translator.warnings()),
-        "translator_errors_count": len(version_translator.errors()) + len(forward_translator.errors()),
-    })
-    return summary
+    return ConvertOsmResult(
+        **summary.model_dump(),
+        status="converted",
+        osm_path=str(input_path),
+        output_path=str(out_path),
+        openstudio_version=openstudio_version,
+        allow_newer_versions=allow_newer_versions,
+        translator_warnings_count=len(version_translator.warnings()) + len(forward_translator.warnings()),
+        translator_errors_count=len(version_translator.errors()) + len(forward_translator.errors()),
+    )
 
 
 @safe_tool
-def get_model_summary() -> dict[str, Any]:
+def get_model_summary() -> ModelSummary:
     """Get a summary of the currently loaded model.
 
     Use this first after loading a model to understand its contents.
@@ -147,7 +156,7 @@ def get_model_summary() -> dict[str, Any]:
 
 
 @safe_tool
-def list_objects(object_type: str, limit: int = 50) -> dict[str, Any]:
+def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
     """List objects of a given type from the loaded model.
 
     Use this to browse existing objects before inspecting or editing them.
@@ -161,13 +170,13 @@ def list_objects(object_type: str, limit: int = 50) -> dict[str, Any]:
     doc = state.require_model()
 
     if object_type not in doc:
-        return {"error": f"No objects of type '{object_type}' in the model."}
+        raise ToolError(f"No objects of type '{object_type}' in the model.")
 
     collection = doc.get_collection(object_type)
     total = len(collection)
     objects = [serialize_object(obj, schema=state.schema, brief=True) for obj in list(collection)[:limit]]
 
-    return {"object_type": object_type, "total": total, "returned": len(objects), "objects": objects}
+    return ListObjectsResult(object_type=object_type, total=total, returned=len(objects), objects=objects)
 
 
 @safe_tool
@@ -184,18 +193,18 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
     doc = state.require_model()
 
     if object_type not in doc:
-        return {"error": f"No objects of type '{object_type}' in the model."}
+        raise ToolError(f"No objects of type '{object_type}' in the model.")
 
     collection = doc.get_collection(object_type)
     obj = collection.get(name)
     if obj is None:
-        return {"error": f"Object '{name}' not found in '{object_type}'."}
+        raise ToolError(f"Object '{name}' not found in '{object_type}'.")
 
     return serialize_object(obj)
 
 
 @safe_tool
-def search_objects(query: str, object_type: str | None = None, limit: int = 20) -> dict[str, Any]:
+def search_objects(query: str, object_type: str | None = None, limit: int = 20) -> SearchObjectsResult:
     """Search for objects by name or field values.
 
     Use this to find objects when you know a keyword but not the exact name or type.
@@ -209,7 +218,7 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
     doc = state.require_model()
     query_lower = query.lower()
 
-    matches: list[dict[str, Any]] = []
+    matches: list[dict[str, str]] = []
     for obj in doc.all_objects:
         if object_type is not None and obj.obj_type != object_type:
             continue
@@ -218,11 +227,11 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
             if len(matches) >= limit:
                 break
 
-    return {"query": query, "count": len(matches), "matches": matches}
+    return SearchObjectsResult.model_validate({"query": query, "count": len(matches), "matches": matches})
 
 
 @safe_tool
-def get_references(name: str) -> dict[str, Any]:
+def get_references(name: str) -> ReferencesResult:
     """Get bidirectional references for an object name.
 
     Use this to understand dependencies before renaming or removing an object.
@@ -245,35 +254,45 @@ def get_references(name: str) -> dict[str, Any]:
         refs = doc.get_references(target_obj)
         references = sorted(refs)
 
-    return {
+    return ReferencesResult.model_validate({
         "name": name,
         "referenced_by": referenced_by,
         "referenced_by_count": len(referenced_by),
         "references": references,
         "references_count": len(references),
-    }
+    })
 
 
-# Annotations are defined after functions to avoid forward-reference errors.
-_TOOL_REGISTRY = [
+# ---------------------------------------------------------------------------
+# Tool registry - ``structured_output`` is enabled for tools whose return
+# type is a Pydantic model.  ``get_object`` returns a dynamic dict and
+# therefore stays unstructured.
+# ---------------------------------------------------------------------------
+
+_STRUCTURED_TOOLS = [
     (load_model, _LOAD),
     (convert_osm_to_idf, _LOAD),
     (get_model_summary, _READ_ONLY),
     (list_objects, _READ_ONLY),
-    (get_object, _READ_ONLY),
     (search_objects, _READ_ONLY),
     (get_references, _READ_ONLY),
+]
+
+_UNSTRUCTURED_TOOLS = [
+    (get_object, _READ_ONLY),
 ]
 
 
 def register(mcp: FastMCP) -> None:
     """Register read tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
+    for func, hints in _STRUCTURED_TOOLS:
+        mcp.tool(annotations=hints, structured_output=True)(func)
+    for func, hints in _UNSTRUCTURED_TOOLS:
+        mcp.tool(annotations=hints, structured_output=False)(func)
 
 
-def _build_summary(doc: Any, state: Any) -> dict[str, Any]:
-    """Build a model summary dict."""
+def _build_summary(doc: Any, state: Any) -> ModelSummary:
+    """Build a model summary."""
     from idfkit import version_string
 
     groups: dict[str, dict[str, int]] = {}
@@ -286,17 +305,17 @@ def _build_summary(doc: Any, state: Any) -> dict[str, Any]:
         if obj_type == "Zone":
             zone_count = count
         schema = state.schema
-        group = schema.get_group(obj_type) if schema else "Unknown"
-        group = group or "Ungrouped"
-        groups.setdefault(group, {})[obj_type] = count
+        obj_group = schema.get_group(obj_type) if schema else "Unknown"
+        obj_group = obj_group or "Ungrouped"
+        groups.setdefault(obj_group, {})[obj_type] = count
 
-    return {
-        "version": version_string(doc.version),
-        "file_path": str(state.file_path) if state.file_path else None,
-        "total_objects": total_objects,
-        "zone_count": zone_count,
-        "groups": {g: {"count": sum(v.values()), "types": v} for g, v in sorted(groups.items())},
-    }
+    return ModelSummary(
+        version=version_string(doc.version),
+        file_path=str(state.file_path) if state.file_path else None,
+        total_objects=total_objects,
+        zone_count=zone_count,
+        groups={g: GroupSummary(count=sum(v.values()), types=v) for g, v in sorted(groups.items())},
+    )
 
 
 def _matches_query(obj: Any, query_lower: str) -> bool:
