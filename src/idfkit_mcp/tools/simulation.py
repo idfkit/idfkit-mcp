@@ -5,9 +5,17 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.errors import safe_tool
+from idfkit_mcp.models import (
+    ExportTimeseriesResult,
+    GetResultsSummaryResult,
+    ListOutputVariablesResult,
+    QueryTimeseriesResult,
+    RunSimulationResult,
+)
 from idfkit_mcp.state import get_state
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -26,7 +34,7 @@ def run_simulation(
     energyplus_dir: str | None = None,
     energyplus_version: str | None = None,
     output_directory: str | None = None,
-) -> dict[str, Any]:
+) -> RunSimulationResult:
     """Execute an EnergyPlus simulation on the loaded model.
 
     Use this to run the simulation after building or modifying a model.
@@ -54,9 +62,10 @@ def run_simulation(
         epw_path = state.weather_file
 
     if epw_path is None and not design_day:
-        return {
-            "error": "No weather file specified. Provide weather_file or use download_weather_file first, or set design_day=True."
-        }
+        raise ToolError(
+            "No weather file specified. Provide weather_file or use download_weather_file first, "
+            "or set design_day=True."
+        )
 
     config = find_energyplus(path=energyplus_dir, version=energyplus_version)
 
@@ -86,7 +95,7 @@ def run_simulation(
             {"message": m.message, "details": list(m.details)} for m in errors.warnings[:10]
         ]
 
-    return {
+    return RunSimulationResult.model_validate({
         "success": result.success,
         "runtime_seconds": round(result.runtime_seconds, 2),
         "output_directory": str(result.run_dir),
@@ -97,11 +106,11 @@ def run_simulation(
         },
         "errors": error_detail,
         "simulation_complete": errors.simulation_complete,
-    }
+    })
 
 
 @safe_tool
-def get_results_summary() -> dict[str, Any]:
+def get_results_summary() -> GetResultsSummaryResult:
     """Get a summary of the last simulation results.
 
     Use this after run_simulation to review energy metrics, error counts, and key tables.
@@ -136,7 +145,7 @@ def get_results_summary() -> dict[str, Any]:
             table_info: dict[str, Any] = {
                 "title": table.title,
                 "report": table.report_name,
-                "for": table.for_string,
+                "for_string": table.for_string,
             }
             table_dict = table.to_dict()
             if table_dict:
@@ -144,11 +153,11 @@ def get_results_summary() -> dict[str, Any]:
             tables_summary.append(table_info)
         summary["tables"] = tables_summary
 
-    return summary
+    return GetResultsSummaryResult.model_validate(summary)
 
 
 @safe_tool
-def list_output_variables(search: str | None = None, limit: int = 50) -> dict[str, Any]:
+def list_output_variables(search: str | None = None, limit: int = 50) -> ListOutputVariablesResult:
     """List available output variables from the last simulation.
 
     Use this to discover what time series data is available for querying.
@@ -162,7 +171,7 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> dict[st
 
     variables = result.variables
     if variables is None:
-        return {"error": "No output variable index available. The simulation may not have produced .rdd/.mdd files."}
+        raise ToolError("No output variable index available. The simulation may not have produced .rdd/.mdd files.")
 
     from idfkit.simulation.parsers.rdd import OutputVariable
 
@@ -180,7 +189,11 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> dict[st
         serialized.append(entry)
 
     total = len(variables.variables) + len(variables.meters)
-    return {"total_available": total, "returned": len(serialized), "variables": serialized}
+    return ListOutputVariablesResult.model_validate({
+        "total_available": total,
+        "returned": len(serialized),
+        "variables": serialized,
+    })
 
 
 @safe_tool
@@ -190,7 +203,7 @@ def query_timeseries(
     frequency: ReportingFrequency | None = None,
     environment: Literal["sizing", "annual"] | None = None,
     limit: int = 24,
-) -> dict[str, Any]:
+) -> QueryTimeseriesResult:
     """Query time series data from the last simulation's SQL output.
 
     Use this for quick inspection of simulation output data inline.
@@ -208,7 +221,7 @@ def query_timeseries(
 
     sql = result.sql
     if sql is None:
-        return {"error": "No SQL output available. The simulation may not have produced an .sql file."}
+        raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
 
     ts = sql.get_timeseries(
         variable_name=variable_name,
@@ -221,7 +234,7 @@ def query_timeseries(
         {"timestamp": ts.timestamps[i].isoformat(), "value": ts.values[i]} for i in range(min(limit, len(ts.values)))
     ]
 
-    return {
+    return QueryTimeseriesResult.model_validate({
         "variable_name": ts.variable_name,
         "key_value": ts.key_value,
         "units": ts.units,
@@ -229,7 +242,7 @@ def query_timeseries(
         "total_points": len(ts.values),
         "returned": len(rows),
         "data": rows,
-    }
+    })
 
 
 @safe_tool
@@ -239,7 +252,7 @@ def export_timeseries(
     frequency: ReportingFrequency | None = None,
     environment: Literal["sizing", "annual"] | None = None,
     output_path: str | None = None,
-) -> dict[str, Any]:
+) -> ExportTimeseriesResult:
     """Export time series data from the last simulation to a CSV file.
 
     Use this to save full simulation output data for external analysis.
@@ -260,7 +273,7 @@ def export_timeseries(
 
     sql = result.sql
     if sql is None:
-        return {"error": "No SQL output available. The simulation may not have produced an .sql file."}
+        raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
 
     ts = sql.get_timeseries(
         variable_name=variable_name,
@@ -281,14 +294,14 @@ def export_timeseries(
         for i in range(len(ts.values)):
             writer.writerow([ts.timestamps[i].isoformat(), ts.values[i]])
 
-    return {
-        "path": str(csv_path),
-        "variable_name": ts.variable_name,
-        "key_value": ts.key_value,
-        "units": ts.units,
-        "frequency": ts.frequency,
-        "rows": len(ts.values),
-    }
+    return ExportTimeseriesResult(
+        path=str(csv_path),
+        variable_name=ts.variable_name,
+        key_value=ts.key_value,
+        units=ts.units,
+        frequency=ts.frequency,
+        rows=len(ts.values),
+    )
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
@@ -304,4 +317,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register simulation tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
+        mcp.tool(annotations=hints, structured_output=True)(func)

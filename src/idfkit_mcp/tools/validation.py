@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.errors import safe_tool
+from idfkit_mcp.models import CheckReferencesResult, ValidationResult
 from idfkit_mcp.serializers import serialize_validation_result
 from idfkit_mcp.state import get_state
 
@@ -15,7 +14,7 @@ _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempoten
 
 
 @safe_tool
-def validate_model(object_types: list[str] | None = None, check_references: bool = True) -> dict[str, Any]:
+def validate_model(object_types: list[str] | None = None, check_references: bool = True) -> ValidationResult:
     """Validate the loaded model against the EnergyPlus schema.
 
     Use this after making modifications to check for errors before simulation.
@@ -29,11 +28,12 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
     state = get_state()
     doc = state.require_model()
     result = validate_document(doc, check_references=check_references, object_types=object_types)
-    return serialize_validation_result(result)
+    data = serialize_validation_result(result)
+    return ValidationResult.model_validate(data)
 
 
 @safe_tool
-def check_references() -> dict[str, Any]:
+def check_references() -> CheckReferencesResult:
     """Check for dangling references in the loaded model.
 
     Use this to find references that point to non-existent objects.
@@ -56,7 +56,7 @@ def check_references() -> dict[str, Any]:
             "missing_target": target,
         })
 
-    return {"dangling_count": len(dangling), "dangling_references": dangling}
+    return CheckReferencesResult.model_validate({"dangling_count": len(dangling), "dangling_references": dangling})
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
@@ -69,4 +69,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register validation tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
+        mcp.tool(annotations=hints, structured_output=True)(func)

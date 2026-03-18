@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+from mcp.server.fastmcp.exceptions import ToolError
+
 from idfkit_mcp.state import ServerState
 
 
@@ -15,19 +18,19 @@ class TestValidateModel:
     def test_valid_model(self, state_with_model: ServerState) -> None:
         state_with_model.document.add("Zone", "TestZone")  # type: ignore[union-attr]
         result = _tool("validate_model").fn()
-        assert result["is_valid"] is True
+        assert result.is_valid is True
 
     def test_with_zones(self, state_with_zones: ServerState) -> None:
         result = _tool("validate_model").fn()
-        assert "is_valid" in result
+        assert result.is_valid is not None
 
     def test_filter_by_type(self, state_with_zones: ServerState) -> None:
         result = _tool("validate_model").fn(object_types=["Zone"])
-        assert "is_valid" in result
+        assert result.is_valid is not None
 
     def test_without_model(self) -> None:
-        result = _tool("validate_model").fn()
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("validate_model").fn()
 
 
 class TestCheckReferences:
@@ -35,8 +38,8 @@ class TestCheckReferences:
         result = _tool("check_references").fn()
         # The surface references "Office" zone which exists
         # construction_name is empty so it shouldn't count as dangling
-        assert "dangling_count" in result
+        assert result.dangling_count is not None
 
     def test_without_model(self) -> None:
-        result = _tool("check_references").fn()
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("check_references").fn()

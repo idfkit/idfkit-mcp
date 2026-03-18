@@ -9,7 +9,9 @@ import types
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from idfkit import new_document, write_idf
+from mcp.server.fastmcp.exceptions import ToolError
 
 from idfkit_mcp.state import ServerState, get_state
 
@@ -29,44 +31,44 @@ class TestLoadModel:
             path = f.name
 
         result = _tool("load_model").fn(file_path=path)
-        assert result["total_objects"] >= 1
-        assert result["zone_count"] == 1
+        assert result.total_objects >= 1
+        assert result.zone_count == 1
 
         state = get_state()
         assert state.document is not None
         assert state.file_path == Path(path)
 
     def test_load_nonexistent(self) -> None:
-        result = _tool("load_model").fn(file_path="/nonexistent/file.idf")
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("load_model").fn(file_path="/nonexistent/file.idf")
 
 
 class TestGetModelSummary:
     def test_without_model(self) -> None:
-        result = _tool("get_model_summary").fn()
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("get_model_summary").fn()
 
     def test_with_model(self, state_with_zones: ServerState) -> None:
         result = _tool("get_model_summary").fn()
-        assert result["zone_count"] == 2
-        assert result["total_objects"] >= 3  # 2 zones + 1 surface + defaults
+        assert result.zone_count == 2
+        assert result.total_objects >= 3  # 2 zones + 1 surface + defaults
 
 
 class TestListObjects:
     def test_without_model(self) -> None:
-        result = _tool("list_objects").fn(object_type="Zone")
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("list_objects").fn(object_type="Zone")
 
     def test_list_zones(self, state_with_zones: ServerState) -> None:
         result = _tool("list_objects").fn(object_type="Zone")
-        assert result["total"] == 2
-        names = [o["name"] for o in result["objects"]]
+        assert result.total == 2
+        names = [o["name"] for o in result.objects]
         assert "Office" in names
         assert "Corridor" in names
 
     def test_missing_type(self, state_with_zones: ServerState) -> None:
-        result = _tool("list_objects").fn(object_type="Material")
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("list_objects").fn(object_type="Material")
 
 
 class TestGetObject:
@@ -76,36 +78,36 @@ class TestGetObject:
         assert result["object_type"] == "Zone"
 
     def test_missing_object(self, state_with_zones: ServerState) -> None:
-        result = _tool("get_object").fn(object_type="Zone", name="Nonexistent")
-        assert "error" in result
+        with pytest.raises(ToolError):
+            _tool("get_object").fn(object_type="Zone", name="Nonexistent")
 
 
 class TestSearchObjects:
     def test_search_by_name(self, state_with_zones: ServerState) -> None:
         result = _tool("search_objects").fn(query="Office")
-        assert result["count"] >= 1
-        types = [m["object_type"] for m in result["matches"]]
+        assert result.count >= 1
+        types = [m.object_type for m in result.matches]
         assert "Zone" in types
 
     def test_search_by_type(self, state_with_zones: ServerState) -> None:
         result = _tool("search_objects").fn(query="Office", object_type="Zone")
-        assert result["count"] == 1
+        assert result.count == 1
 
     def test_no_results(self, state_with_zones: ServerState) -> None:
         result = _tool("search_objects").fn(query="xyznonexistent")
-        assert result["count"] == 0
+        assert result.count == 0
 
 
 class TestGetReferences:
     def test_referenced_zone(self, state_with_zones: ServerState) -> None:
         result = _tool("get_references").fn(name="Office")
-        assert result["referenced_by_count"] >= 1
-        ref_types = [r["object_type"] for r in result["referenced_by"]]
+        assert result.referenced_by_count >= 1
+        ref_types = [r.object_type for r in result.referenced_by]
         assert "BuildingSurface:Detailed" in ref_types
 
     def test_unreferenced(self, state_with_zones: ServerState) -> None:
         result = _tool("get_references").fn(name="Corridor")
-        assert result["referenced_by_count"] == 0
+        assert result.referenced_by_count == 0
 
 
 class TestConvertOsmToIdf:
@@ -122,25 +124,19 @@ class TestConvertOsmToIdf:
                 raise ImportError(msg)
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=_import):
-            result = _tool("convert_osm_to_idf").fn(
+        with patch("builtins.__import__", side_effect=_import), pytest.raises(ToolError, match="OpenStudio"):
+            _tool("convert_osm_to_idf").fn(
                 osm_path=str(osm_path),
                 output_path=str(output_path),
             )
 
-        assert "error" in result
-        assert "OpenStudio" in result["error"]
-        assert "suggestion" in result
-
     def test_missing_input_file(self, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
-        with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
-            result = _tool("convert_osm_to_idf").fn(
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}), pytest.raises(ToolError, match="not found"):
+            _tool("convert_osm_to_idf").fn(
                 osm_path=str(tmp_path / "missing.osm"),
                 output_path=str(tmp_path / "out.idf"),
             )
-        assert "error" in result
-        assert "not found" in result["error"]
 
     def test_invalid_extensions(self, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
@@ -149,18 +145,16 @@ class TestConvertOsmToIdf:
         good_input = tmp_path / "input.osm"
         good_input.write_text("osm")
         with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
-            bad_in = _tool("convert_osm_to_idf").fn(
-                osm_path=str(bad_input),
-                output_path=str(tmp_path / "out.idf"),
-            )
-            bad_out = _tool("convert_osm_to_idf").fn(
-                osm_path=str(good_input),
-                output_path=str(tmp_path / "out.txt"),
-            )
-        assert "error" in bad_in
-        assert ".osm" in bad_in["error"]
-        assert "error" in bad_out
-        assert ".idf" in bad_out["error"]
+            with pytest.raises(ToolError, match=r"\.osm"):
+                _tool("convert_osm_to_idf").fn(
+                    osm_path=str(bad_input),
+                    output_path=str(tmp_path / "out.idf"),
+                )
+            with pytest.raises(ToolError, match=r"\.idf"):
+                _tool("convert_osm_to_idf").fn(
+                    osm_path=str(good_input),
+                    output_path=str(tmp_path / "out.txt"),
+                )
 
     def test_output_exists_requires_overwrite(self, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
@@ -169,14 +163,12 @@ class TestConvertOsmToIdf:
         output_path = tmp_path / "out.idf"
         output_path.write_text("existing")
 
-        with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
-            result = _tool("convert_osm_to_idf").fn(
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}), pytest.raises(ToolError, match="overwrite=True"):
+            _tool("convert_osm_to_idf").fn(
                 osm_path=str(osm_path),
                 output_path=str(output_path),
                 overwrite=False,
             )
-        assert "error" in result
-        assert "overwrite=True" in result["error"]
 
     def test_successful_conversion_loads_state(self, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
@@ -195,14 +187,14 @@ class TestConvertOsmToIdf:
                 overwrite=False,
             )
 
-        assert result["status"] == "converted"
-        assert result["osm_path"] == str(osm_path)
-        assert result["output_path"] == str(output_path)
-        assert result["openstudio_version"] == "3.11.0"
-        assert "zone_count" in result
-        assert "total_objects" in result
-        assert "translator_warnings_count" in result
-        assert "translator_errors_count" in result
+        assert result.status == "converted"
+        assert result.osm_path == str(osm_path)
+        assert result.output_path == str(output_path)
+        assert result.openstudio_version == "3.11.0"
+        assert result.zone_count is not None
+        assert result.total_objects is not None
+        assert result.translator_warnings_count is not None
+        assert result.translator_errors_count is not None
 
         state = get_state()
         assert state.document is doc

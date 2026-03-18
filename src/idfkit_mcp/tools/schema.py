@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import safe_tool
+from idfkit_mcp.errors import safe_tool, tool_error
+from idfkit_mcp.models import (
+    AvailableReferencesResult,
+    DescribeObjectTypeResult,
+    GroupInfo,
+    ListObjectTypesResult,
+    SearchSchemaResult,
+)
 from idfkit_mcp.serializers import serialize_object_description
 from idfkit_mcp.state import get_state
 
@@ -26,7 +31,7 @@ def _parse_version(version: str | None) -> tuple[int, int, int] | None:
 
 
 @safe_tool
-def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> dict[str, Any]:
+def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> ListObjectTypesResult:
     """Discover available EnergyPlus object types, optionally filtered by group.
 
     Use this to browse what object types exist before creating objects.
@@ -56,19 +61,15 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
     truncated = total_types > limit
 
     if truncated:
-        groups_result = {g: {"count": len(types)} for g, types in sorted(groups.items())}
+        groups_result = {g: GroupInfo(count=len(types)) for g, types in sorted(groups.items())}
     else:
-        groups_result = {g: {"count": len(types), "types": types} for g, types in sorted(groups.items())}
+        groups_result = {g: GroupInfo(count=len(types), types=types) for g, types in sorted(groups.items())}
 
-    return {
-        "total_types": total_types,
-        "truncated": truncated,
-        "groups": groups_result,
-    }
+    return ListObjectTypesResult(total_types=total_types, truncated=truncated, groups=groups_result)
 
 
 @safe_tool
-def describe_object_type(object_type: str, version: str | None = None) -> dict[str, Any]:
+def describe_object_type(object_type: str, version: str | None = None) -> DescribeObjectTypeResult:
     """Get the full field schema for an EnergyPlus object type.
 
     Use this before creating or editing objects to learn valid fields and constraints.
@@ -83,11 +84,12 @@ def describe_object_type(object_type: str, version: str | None = None) -> dict[s
     state = get_state()
     schema = state.get_or_load_schema(_parse_version(version))
     desc = _describe(schema, object_type)
-    return serialize_object_description(desc)
+    data = serialize_object_description(desc)
+    return DescribeObjectTypeResult.model_validate(data)
 
 
 @safe_tool
-def search_schema(query: str, version: str | None = None, limit: int = 50) -> dict[str, Any]:
+def search_schema(query: str, version: str | None = None, limit: int = 50) -> SearchSchemaResult:
     """Search for EnergyPlus object types by name or description.
 
     Use this to find the right object type when you know a keyword but not the exact name.
@@ -101,24 +103,29 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> di
     schema = state.get_or_load_schema(_parse_version(version))
     query_lower = query.lower()
 
-    matches: list[dict[str, Any]] = []
+    matches: list[dict[str, str | None]] = []
     for obj_type in schema.object_types:
         memo = schema.get_object_memo(obj_type) or ""
         if query_lower in obj_type.lower() or query_lower in memo.lower():
-            group = schema.get_group(obj_type) or "Ungrouped"
+            obj_group = schema.get_group(obj_type) or "Ungrouped"
             matches.append({
                 "object_type": obj_type,
-                "group": group,
+                "group": obj_group,
                 "memo": memo[:200] if memo else None,
             })
             if len(matches) >= limit:
                 break
 
-    return {"query": query, "count": len(matches), "limit": limit, "matches": matches}
+    return SearchSchemaResult.model_validate({
+        "query": query,
+        "count": len(matches),
+        "limit": limit,
+        "matches": matches,
+    })
 
 
 @safe_tool
-def get_available_references(object_type: str, field_name: str) -> dict[str, Any]:
+def get_available_references(object_type: str, field_name: str) -> AvailableReferencesResult:
     """Get valid object names for a reference field from the loaded model.
 
     Use this to find valid values when setting reference fields like zone_name,
@@ -134,7 +141,7 @@ def get_available_references(object_type: str, field_name: str) -> dict[str, Any
 
     object_lists = schema.get_field_object_list(object_type, field_name)
     if not object_lists:
-        return {"error": f"Field '{field_name}' on '{object_type}' is not a reference field."}
+        raise tool_error(f"Field '{field_name}' on '{object_type}' is not a reference field.")
 
     available: dict[str, list[str]] = {}
     for list_name in object_lists:
@@ -149,12 +156,12 @@ def get_available_references(object_type: str, field_name: str) -> dict[str, Any
             available[list_name] = sorted(names)
 
     all_names = sorted({n for names in available.values() for n in names})
-    return {
-        "object_type": object_type,
-        "field_name": field_name,
-        "available_names": all_names,
-        "by_reference_list": available,
-    }
+    return AvailableReferencesResult(
+        object_type=object_type,
+        field_name=field_name,
+        available_names=all_names,
+        by_reference_list=available,
+    )
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
@@ -169,4 +176,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register schema tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
+        mcp.tool(annotations=hints, structured_output=True)(func)

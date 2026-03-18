@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.errors import safe_tool
+from idfkit_mcp.models import (
+    BatchAddResult,
+    NewModelResult,
+    RemoveObjectResult,
+    RenameObjectResult,
+    SaveModelResult,
+)
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 
@@ -17,7 +26,7 @@ _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 
 
 @safe_tool
-def new_model(version: str | None = None) -> dict[str, Any]:
+def new_model(version: str | None = None) -> NewModelResult:
     """Create a new empty EnergyPlus model.
 
     Use this to start building a model from scratch.
@@ -39,7 +48,7 @@ def new_model(version: str | None = None) -> dict[str, Any]:
     state.file_path = None
     state.simulation_result = None
 
-    return {"status": "created", "version": version_string(ver)}
+    return NewModelResult(status="created", version=version_string(ver))
 
 
 @safe_tool
@@ -62,7 +71,7 @@ def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None =
 
 
 @safe_tool
-def batch_add_objects(objects: list[dict[str, Any]]) -> dict[str, Any]:
+def batch_add_objects(objects: list[dict[str, Any]]) -> BatchAddResult:
     """Add multiple objects to the model in a single call.
 
     Use this when creating multiple objects at once for efficiency — building a zone
@@ -76,7 +85,7 @@ def batch_add_objects(objects: list[dict[str, Any]]) -> dict[str, Any]:
     state = get_state()
     doc = state.require_model()
 
-    results: list[dict[str, Any]] = []
+    results: list[dict[str, object]] = []
     success_count = 0
     error_count = 0
 
@@ -97,7 +106,7 @@ def batch_add_objects(objects: list[dict[str, Any]]) -> dict[str, Any]:
             results.append({"index": i, "error": str(e)})
             error_count += 1
 
-    return {"total": len(objects), "success": success_count, "errors": error_count, "results": results}
+    return BatchAddResult(total=len(objects), success=success_count, errors=error_count, results=results)
 
 
 @safe_tool
@@ -115,11 +124,11 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
     doc = state.require_model()
 
     if object_type not in doc:
-        return {"error": f"No objects of type '{object_type}' in the model."}
+        raise ToolError(f"No objects of type '{object_type}' in the model.")
 
     obj = doc.get_collection(object_type).get(name)
     if obj is None:
-        return {"error": f"Object '{name}' not found in '{object_type}'."}
+        raise ToolError(f"Object '{name}' not found in '{object_type}'.")
 
     for field_name, value in fields.items():
         setattr(obj, field_name, value)
@@ -128,7 +137,7 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
 
 
 @safe_tool
-def remove_object(object_type: str, name: str, force: bool = False) -> dict[str, Any]:
+def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObjectResult:
     """Remove an object from the model.
 
     Use this to delete an object. Refuses removal if other objects reference it
@@ -143,27 +152,26 @@ def remove_object(object_type: str, name: str, force: bool = False) -> dict[str,
     doc = state.require_model()
 
     if object_type not in doc:
-        return {"error": f"No objects of type '{object_type}' in the model."}
+        raise ToolError(f"No objects of type '{object_type}' in the model.")
 
     obj = doc.get_collection(object_type).get(name)
     if obj is None:
-        return {"error": f"Object '{name}' not found in '{object_type}'."}
+        raise ToolError(f"Object '{name}' not found in '{object_type}'.")
 
     if not force:
         referencing = doc.get_referencing(name)
         if referencing:
             refs = [{"object_type": r.obj_type, "name": r.name} for r in referencing]
-            return {
-                "error": "Object is referenced by other objects. Use force=True to remove anyway.",
-                "referenced_by": refs,
-            }
+            raise ToolError(
+                f"Object is referenced by other objects. Use force=True to remove anyway.\n{json.dumps(refs)}"
+            )
 
     doc.removeidfobject(obj)
-    return {"status": "removed", "object_type": object_type, "name": name}
+    return RemoveObjectResult(status="removed", object_type=object_type, name=name)
 
 
 @safe_tool
-def rename_object(object_type: str, old_name: str, new_name: str) -> dict[str, Any]:
+def rename_object(object_type: str, old_name: str, new_name: str) -> RenameObjectResult:
     """Rename an object and update all references to it.
 
     Use this to change an object's name while keeping the model consistent.
@@ -181,13 +189,13 @@ def rename_object(object_type: str, old_name: str, new_name: str) -> dict[str, A
 
     doc.rename(object_type, old_name, new_name)
 
-    return {
-        "status": "renamed",
-        "object_type": object_type,
-        "old_name": old_name,
-        "new_name": new_name,
-        "references_updated": ref_count,
-    }
+    return RenameObjectResult(
+        status="renamed",
+        object_type=object_type,
+        old_name=old_name,
+        new_name=new_name,
+        references_updated=ref_count,
+    )
 
 
 @safe_tool
@@ -209,7 +217,7 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
 
 
 @safe_tool
-def save_model(file_path: str | None = None, output_format: Literal["idf", "epjson"] = "idf") -> dict[str, Any]:
+def save_model(file_path: str | None = None, output_format: Literal["idf", "epjson"] = "idf") -> SaveModelResult:
     """Save the model to a file.
 
     Use this to persist changes to disk in IDF or epJSON format.
@@ -230,7 +238,7 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
     elif state.file_path is not None:
         path = state.file_path
     else:
-        return {"error": "No file path specified and no original path available."}
+        raise ToolError("No file path specified and no original path available.")
 
     if output_format == "epjson":
         write_epjson(doc, path)
@@ -238,23 +246,32 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
         write_idf(doc, path)
 
     state.file_path = path
-    return {"status": "saved", "file_path": str(path), "format": output_format}
+    return SaveModelResult(status="saved", file_path=str(path), format=output_format)
 
 
-# Annotations are defined after functions to avoid forward-reference errors.
-_TOOL_REGISTRY = [
+# ---------------------------------------------------------------------------
+# Tool registry - tools returning dynamic EnergyPlus objects stay
+# unstructured; all others get ``structured_output=True``.
+# ---------------------------------------------------------------------------
+
+_STRUCTURED_TOOLS = [
     (new_model, _MUTATE),
-    (add_object, _MUTATE),
     (batch_add_objects, _MUTATE),
-    (update_object, _MUTATE),
     (remove_object, _DESTRUCTIVE),
     (rename_object, _MUTATE),
-    (duplicate_object, _MUTATE),
     (save_model, _SAVE),
+]
+
+_UNSTRUCTURED_TOOLS = [
+    (add_object, _MUTATE),
+    (update_object, _MUTATE),
+    (duplicate_object, _MUTATE),
 ]
 
 
 def register(mcp: FastMCP) -> None:
     """Register write tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
+    for func, hints in _STRUCTURED_TOOLS:
+        mcp.tool(annotations=hints, structured_output=True)(func)
+    for func, hints in _UNSTRUCTURED_TOOLS:
+        mcp.tool(annotations=hints, structured_output=False)(func)
