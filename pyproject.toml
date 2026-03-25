@@ -1,6 +1,6 @@
 [project]
 name = "idfkit-mcp"
-version = "0.0.1"
+version = "0.1.0"
 description = "An MCP server exposing EnergyPlus model authoring, validation, and simulation via idfkit"
 authors = [{ name = "Samuel Letellier-Duchesne", email = "samuelduchesne@me.com" }]
 readme = "README.md"
