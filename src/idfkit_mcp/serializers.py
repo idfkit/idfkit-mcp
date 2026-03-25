@@ -70,9 +70,9 @@ def serialize_field_description(f: FieldDescription) -> dict[str, Any]:
     return result
 
 
-def serialize_validation_error(err: ValidationError) -> dict[str, Any]:
+def serialize_validation_error(err: ValidationError, version: tuple[int, int, int] | None = None) -> dict[str, Any]:
     """Convert a ValidationError to a dict."""
-    return {
+    result: dict[str, Any] = {
         "severity": err.severity.value,
         "object_type": err.obj_type,
         "object_name": err.obj_name,
@@ -80,17 +80,29 @@ def serialize_validation_error(err: ValidationError) -> dict[str, Any]:
         "message": err.message,
         "code": err.code,
     }
+    if version and err.obj_type:
+        try:
+            from idfkit.docs import docs_url_for_object
+
+            doc_url = docs_url_for_object(err.obj_type, version)
+        except Exception:
+            doc_url = None
+        if doc_url:
+            result["doc_url"] = doc_url.url
+    return result
 
 
-def serialize_validation_result(result: ValidationResult) -> dict[str, Any]:
+def serialize_validation_result(
+    result: ValidationResult, version: tuple[int, int, int] | None = None
+) -> dict[str, Any]:
     """Convert a ValidationResult to a dict."""
     return {
         "is_valid": result.is_valid,
         "error_count": len(result.errors),
         "warning_count": len(result.warnings),
         "info_count": len(result.info),
-        "errors": [serialize_validation_error(e) for e in result.errors],
-        "warnings": [serialize_validation_error(w) for w in result.warnings],
+        "errors": [serialize_validation_error(e, version) for e in result.errors],
+        "warnings": [serialize_validation_error(w, version) for w in result.warnings],
     }
 
 

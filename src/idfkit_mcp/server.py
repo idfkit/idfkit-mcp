@@ -9,7 +9,7 @@ from typing import Literal, get_args
 
 from mcp.server.fastmcp import FastMCP
 
-from idfkit_mcp.tools import read, schema, simulation, validation, weather, write
+from idfkit_mcp.tools import docs, read, schema, simulation, validation, weather, write
 
 Transport = Literal["stdio", "sse", "streamable-http"]
 
@@ -22,7 +22,10 @@ _INSTRUCTIONS = (
     "- Use batch_add_objects when creating multiple objects (minimizes round-trips)\n"
     "- Validate after modifications with validate_model\n"
     "- For reference fields, use get_available_references to see valid values\n"
-    "- Check references before removing objects (remove_object warns by default)"
+    "- Check references before removing objects (remove_object warns by default)\n"
+    "- Use lookup_documentation to get docs.idfkit.com URLs for any object type\n"
+    "- Use search_docs to find relevant EnergyPlus documentation sections\n"
+    "- Use get_doc_section to read the full content of a documentation section"
 )
 
 
@@ -36,6 +39,7 @@ def create_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
     validation.register(server)
     simulation.register(server)
     weather.register(server)
+    docs.register(server)
     return server
 
 

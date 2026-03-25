@@ -28,7 +28,7 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
     state = get_state()
     doc = state.require_model()
     result = validate_document(doc, check_references=check_references, object_types=object_types)
-    data = serialize_validation_result(result)
+    data = serialize_validation_result(result, version=doc.version)  # type: ignore[arg-type]
     return ValidationResult.model_validate(data)
 
 
