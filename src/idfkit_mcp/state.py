@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.request import urlopen
 
 from idfkit import LATEST_VERSION, get_schema
 
@@ -13,6 +14,9 @@ if TYPE_CHECKING:
     from idfkit.schema import EpJSONSchema
     from idfkit.simulation.result import SimulationResult
     from idfkit.weather.index import StationIndex
+
+
+DOCS_BASE_URL = "https://docs.idfkit.com"
 
 
 def _cache_base_dir() -> Path:
@@ -43,6 +47,41 @@ def _session_file_path() -> Path:
     cwd = str(Path.cwd().resolve())
     cwd_hash = hashlib.sha256(cwd.encode()).hexdigest()[:12]
     return _session_cache_dir() / f"{cwd_hash}.json"
+
+
+def _docs_cache_dir() -> Path:
+    """Return the platform-appropriate cache directory for documentation indexes."""
+    return _cache_base_dir() / "docs"
+
+
+def _download_search_index(version: str, cache_path: Path) -> dict[str, Any]:
+    """Download the search index from docs.idfkit.com and cache it locally."""
+    import json
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    url = f"{DOCS_BASE_URL}/v{version}/search.json"
+    logger.info("Downloading documentation index from %s", url)
+
+    try:
+        with urlopen(url, timeout=30) as resp:  # noqa: S310
+            raw = resp.read()
+    except Exception as e:
+        msg = (
+            f"Failed to download documentation index from {url}: {e}\n"
+            "Set IDFKIT_DOCS_DIR to a local idfkit-docs dist/ directory for offline use."
+        )
+        raise FileNotFoundError(msg) from e
+
+    data: dict[str, Any] = json.loads(raw)
+
+    # Cache for next time
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_bytes(raw)
+    logger.info("Cached documentation index to %s", cache_path)
+
+    return data
 
 
 def _read_session_file() -> dict[str, Any] | None:
@@ -87,6 +126,9 @@ class ServerState:
     simulation_result: SimulationResult | None = None
     weather_file: Path | None = None
     station_index: StationIndex | None = None
+    docs_index: list[dict[str, object]] | None = None
+    docs_version: str | None = None
+    docs_separator: str | None = None
 
     # Session persistence control
     persistence_enabled: bool = True
@@ -125,6 +167,75 @@ class ServerState:
 
             self.station_index = StationIndex.load()
         return self.station_index
+
+    def get_or_load_docs_index(self, version: str | None = None) -> tuple[list[dict[str, object]], str, str]:
+        """Return cached docs index, loading on first use or version change.
+
+        Resolution order:
+        1. ``IDFKIT_DOCS_DIR`` env var (local dist/ directory)
+        2. Local cache (``~/.cache/idfkit/docs/``)
+        3. Download from ``docs.idfkit.com`` and cache locally
+
+        Returns:
+            Tuple of (items list, separator regex string, resolved version string).
+
+        Raises:
+            FileNotFoundError: If the index cannot be loaded from any source.
+        """
+        resolved_version = version or self._resolve_latest_docs_version()
+
+        if self.docs_index is not None and self.docs_separator is not None and self.docs_version == resolved_version:
+            return self.docs_index, self.docs_separator, resolved_version
+
+        data = self._load_search_index(resolved_version)
+
+        items: list[dict[str, object]] = data["items"]
+        separator: str = data["config"]["separator"]
+        self.docs_index = items
+        self.docs_separator = separator
+        self.docs_version = resolved_version
+        return items, separator, resolved_version
+
+    def _load_search_index(self, version: str) -> dict[str, Any]:
+        """Load the search index from local dir, cache, or remote.
+
+        Tries sources in order:
+        1. ``IDFKIT_DOCS_DIR`` env var → ``{dir}/v{version}/search.json``
+        2. Local cache → ``{cache_dir}/v{version}/search.json`` (max 7 days)
+        3. Download from ``https://docs.idfkit.com/v{version}/search.json``
+        """
+        import json
+        import os
+        import time
+
+        cache_max_age = 7 * 24 * 3600  # 7 days
+
+        # 1. Explicit env var (development / Docker)
+        env_dir = os.environ.get("IDFKIT_DOCS_DIR")
+        if env_dir:
+            local_path = Path(env_dir) / f"v{version}" / "search.json"
+            if local_path.exists():
+                with open(local_path) as f:
+                    return json.load(f)  # type: ignore[no-any-return]
+
+        # 2. Local cache (within TTL)
+        cache_path = _docs_cache_dir() / f"v{version}" / "search.json"
+        if cache_path.exists():
+            age = time.time() - cache_path.stat().st_mtime
+            if age < cache_max_age:
+                with open(cache_path) as f:
+                    return json.load(f)  # type: ignore[no-any-return]
+
+        # 3. Download from docs.idfkit.com (also refreshes stale cache)
+        return _download_search_index(version, cache_path)
+
+    def _resolve_latest_docs_version(self) -> str:
+        """Determine the latest documented version.
+
+        Uses the idfkit-bundled LATEST_VERSION constant as the default,
+        which matches the latest version on docs.idfkit.com.
+        """
+        return f"{LATEST_VERSION[0]}.{LATEST_VERSION[1]}"
 
     def require_simulation_result(self) -> SimulationResult:
         """Return the simulation result, auto-restoring from session if needed."""
