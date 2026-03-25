@@ -436,6 +436,7 @@ wheels = [
 name = "griffelib"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/06/eccbd311c9e2b3ca45dbc063b93134c57a1ccc7607c5e545264ad092c4a9/griffelib-2.0.0.tar.gz", hash = "sha256:e504d637a089f5cab9b5daf18f7645970509bf4f53eda8d79ed71cce8bd97934", size = 166312, upload-time = "2026-03-23T21:06:55.954Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/51/c936033e16d12b627ea334aaaaf42229c37620d0f15593456ab69ab48161/griffelib-2.0.0-py3-none-any.whl", hash = "sha256:01284878c966508b6d6f1dbff9b6fa607bc062d8261c5c7253cb285b06422a7f", size = 142004, upload-time = "2026-02-09T19:09:40.561Z" },
 ]
@@ -497,11 +498,11 @@ wheels = [
 
 [[package]]
 name = "idfkit"
-version = "0.5.0"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/69/af/1505c851e8b7cf61711c7762c9ed6928a2a82d8f6b34a1db89d4e9a8c29a/idfkit-0.5.0.tar.gz", hash = "sha256:50750891b5305f31d68672c5621d80c7568c8c59d192db858e73be2cd99607eb", size = 13124291, upload-time = "2026-03-16T14:26:30.347Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/c3/e007d0b1b01ef6ef19ca2b5149808658f55e2de4a6bca422d913b3cb0ad9/idfkit-0.6.0.tar.gz", hash = "sha256:cebca501a2cbef19737fe92aeb543076ebe1d763f1184187ac5e70363a04d255", size = 13156099, upload-time = "2026-03-25T18:44:28.086Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/48/9f7fd6fb80581e3e1b5ae25bd7845c17d2b94c855066f7874b5dc53d6a95/idfkit-0.5.0-py3-none-any.whl", hash = "sha256:b2736cacaeb588ccf152bfba1a3eee2c3a18f5162e58d487804d6cae776ebd3e", size = 12513588, upload-time = "2026-03-16T14:26:27.451Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/9f/6015be2c43ddc1c0ea7f3ae8cc79bdc032ac100aa29fb28b982a5fcb37a1/idfkit-0.6.0-py3-none-any.whl", hash = "sha256:48950eb05e188d2c29535fef2136be628b6f2e69e9fb31101b9dbc80e0494aef", size = 12538954, upload-time = "2026-03-25T18:44:24.725Z" },
 ]
 
 [[package]]
@@ -530,7 +531,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "idfkit", specifier = ">=0.5.0" },
+    { name = "idfkit", specifier = ">=0.6.0" },
     { name = "mcp", specifier = ">=1.2.0" },
     { name = "openstudio", specifier = "==3.11.0" },
     { name = "pydantic", specifier = ">=2.0.0" },

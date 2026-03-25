@@ -54,13 +54,15 @@ class WeatherStationModel(BaseModel):
     """Weather station metadata."""
 
     wmo: str
-    name: str
+    city: str
     state: str
     country: str
     latitude: float
     longitude: float
+    timezone: float
     elevation: float
     source: str
+    url: str
 
 
 # ---------------------------------------------------------------------------
