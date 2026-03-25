@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sqlite3 import OperationalError
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -223,12 +224,19 @@ def query_timeseries(
     if sql is None:
         raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
 
-    ts = sql.get_timeseries(
-        variable_name=variable_name,
-        key_value=key_value,
-        frequency=frequency,
-        environment=environment,
-    )
+    try:
+        ts = sql.get_timeseries(
+            variable_name=variable_name,
+            key_value=key_value,
+            frequency=frequency,
+            environment=environment,
+        )
+    except OperationalError as e:
+        raise ToolError(
+            f"SQL query failed: {e}. "
+            "The simulation may not have completed successfully, or Output:SQLite was not configured in the model. "
+            "Check run_simulation results for errors."
+        ) from e
 
     rows = [
         {"timestamp": ts.timestamps[i].isoformat(), "value": ts.values[i]} for i in range(min(limit, len(ts.values)))
@@ -275,12 +283,19 @@ def export_timeseries(
     if sql is None:
         raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
 
-    ts = sql.get_timeseries(
-        variable_name=variable_name,
-        key_value=key_value,
-        frequency=frequency,
-        environment=environment,
-    )
+    try:
+        ts = sql.get_timeseries(
+            variable_name=variable_name,
+            key_value=key_value,
+            frequency=frequency,
+            environment=environment,
+        )
+    except OperationalError as e:
+        raise ToolError(
+            f"SQL query failed: {e}. "
+            "The simulation may not have completed successfully, or Output:SQLite was not configured in the model. "
+            "Check run_simulation results for errors."
+        ) from e
 
     if output_path is not None:
         csv_path = Path(output_path)
