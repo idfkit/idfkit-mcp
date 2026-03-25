@@ -38,12 +38,39 @@ Parameters:
 - `search`: optional regex
 - `limit`: default `50`
 
+## `query_timeseries`
+
+Query time series data from the last simulation's SQL output for quick inline inspection.
+
+Parameters:
+
+- `variable_name` (required): output variable name (e.g. `"Zone Mean Air Temperature"`)
+- `key_value`: zone or surface name, `"*"` for environment-level variables (default `"*"`)
+- `frequency`: reporting frequency filter (`"Timestep"`, `"Hourly"`, `"Daily"`, `"Monthly"`, `"RunPeriod"`, `"Annual"`)
+- `environment`: filter by environment type (`"sizing"` or `"annual"`)
+- `limit`: maximum data points to return (default `24`)
+
+Requires `Output:SQLite` in the model. Returns a descriptive error if the SQL file is missing or the query fails.
+
+## `export_timeseries`
+
+Export full time series data from the last simulation to a CSV file for external analysis.
+
+Parameters:
+
+- `variable_name` (required): output variable name (e.g. `"Zone Mean Air Temperature"`)
+- `key_value`: zone or surface name, `"*"` for environment-level variables (default `"*"`)
+- `frequency`: reporting frequency filter
+- `environment`: filter by environment type (`"sizing"` or `"annual"`)
+- `output_path`: output CSV file path (defaults to a file in the simulation output directory)
+
 ## Simulation Workflow
 
 1. `download_weather_file` or provide `weather_file`
 2. `run_simulation`
 3. `get_results_summary`
 4. `list_output_variables(search=...)`
+5. `query_timeseries(variable_name=...)` or `export_timeseries(...)`
 
 ## Common Guardrail
 

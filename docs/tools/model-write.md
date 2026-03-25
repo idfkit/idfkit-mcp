@@ -55,3 +55,9 @@ Writes current model to disk as:
 - `epjson`
 
 If `file_path` is omitted, uses the original loaded path when available.
+
+## `clear_session`
+
+Clears the persisted session file and resets all in-memory state (model, schema, simulation result, weather file).
+
+Use this to start fresh when restored state is stale or unwanted. Does not delete any model or simulation files on disk.

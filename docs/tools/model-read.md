@@ -11,6 +11,7 @@ Notes:
 - File type inferred from extension.
 - Optional `version` override (`X.Y.Z`) is supported.
 - Loading resets previous simulation result state.
+- Persists session state to disk for automatic recovery across server restarts.
 
 ## `convert_osm_to_idf`
 

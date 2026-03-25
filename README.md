@@ -5,9 +5,35 @@
 [![codecov](https://codecov.io/gh/idfkit/idfkit-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/idfkit/idfkit-mcp)
 [![License](https://img.shields.io/github/license/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/blob/main/LICENSE)
 
-An MCP server based on idfkit
+An [MCP](https://modelcontextprotocol.io/) server that lets AI assistants work directly with [EnergyPlus](https://energyplus.net/) building energy models. Connect it to Claude, ChatGPT, Cursor, Codex, or any MCP-compatible client and use natural language to:
+
+- **Build models from scratch** — describe a building and let the agent create zones, surfaces, constructions, schedules, and HVAC systems
+- **Edit existing models** — load an IDF or epJSON file, rename objects, swap materials, adjust setpoints, and validate as you go
+- **Run simulations** — pick a weather file, launch EnergyPlus, and query or export the results without leaving the conversation
+- **Explore the schema** — ask what fields a `ZoneHVAC:IdealLoadsAirSystem` accepts, what values are valid, and get links to the official EnergyPlus documentation
+- **Search the docs** — full-text search across the EnergyPlus I/O Reference, Engineering Reference, and other documentation sets hosted on [docs.idfkit.com](https://docs.idfkit.com)
+
+Built on [idfkit](https://github.com/idfkit/idfkit), it supports **EnergyPlus 8.9 through 25.2** (16 versions with bundled schemas). Schema exploration, model editing, and validation work out of the box with no external dependencies. Running simulations requires a local [EnergyPlus](https://energyplus.net/downloads) install — the server discovers it automatically via `PATH`, the `ENERGYPLUS_DIR` env var, or standard OS install locations. A Docker image with EnergyPlus bundled is also available.
 
 **[Documentation](https://mcp.idfkit.com/docs/)** | **[GitHub](https://github.com/idfkit/idfkit-mcp/)**
+
+## Tools
+
+The server exposes **32 tools** across seven categories:
+
+| Category | Tools | What they do |
+| --- | --- | --- |
+| **Schema** | 4 | Explore object types, fields, constraints, and valid references |
+| **Model Read** | 7 | Load IDF/epJSON/OSM files, inspect objects, search, and trace references |
+| **Model Write** | 9 | Create models, add/update/remove/rename/duplicate objects, save, and manage sessions |
+| **Validation** | 2 | Schema validation and dangling-reference detection |
+| **Simulation** | 5 | Run EnergyPlus, summarize results, query output variables, and export time series |
+| **Weather** | 2 | Search weather stations worldwide and download EPW/DDY files |
+| **Documentation** | 3 | Look up, search, and read EnergyPlus documentation from [docs.idfkit.com](https://docs.idfkit.com) |
+
+All tools return structured Pydantic models. Schema, validation, and search results include direct `doc_url` links to the relevant EnergyPlus documentation.
+
+Session state (loaded model, simulation results, weather file) is persisted to disk automatically, so clients that restart the server between turns (e.g. Codex) can resume where they left off.
 
 ## Installation
 
@@ -68,8 +94,6 @@ cd idfkit-mcp
 make install
 ```
 
-> **Note:** Run `git init -b main` first if you're starting from a cookiecutter template.
-
 ### Commands
 
 ```bash
@@ -84,51 +108,14 @@ make docker-build-sim DOCKER_PLATFORM=linux/amd64 ENERGYPLUS_TARBALL_URL=<linux-
 make docker-run    # Run Docker container
 ```
 
-### First-time setup for new projects
-
-If you just created this project from the cookiecutter template:
-
-1. Create a GitHub repository with the same name
-2. Push your code:
-
-   ```bash
-   git init -b main
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin git@github.com:idfkit/idfkit-mcp.git
-   git push -u origin main
-   ```
-
-3. Install dependencies: `make install`
-4. Fix formatting and commit:
-
-   ```bash
-   git add .
-   uv run pre-commit run -a
-   git add .
-   git commit -m "Apply formatting"
-   git push
-   ```
-
-For detailed setup instructions, see the [cookiecutter-gi tutorial](https://samuelduchesne.github.io/cookiecutter-gi/tutorial/).
-
-
 ## Releasing
 
 1. Bump the version: `uv version --bump <major|minor|patch>`
 2. Commit and push
 3. Create a [new release](https://github.com/idfkit/idfkit-mcp/releases/new) on GitHub with a tag matching the version (e.g., `1.0.0`)
 
-The GitHub Action will automatically publish to PyPI. See the [publishing guide](https://samuelduchesne.github.io/cookiecutter-gi/features/publishing/) for initial setup.
-
-> **First release?** After the workflow completes, enable GitHub Pages: go to
-> `Settings > Pages` and select the `gh-pages` branch.
-
+The GitHub Action will automatically publish to PyPI.
 
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-*Built with [cookiecutter-gi](https://github.com/samuelduchesne/cookiecutter-gi)*
