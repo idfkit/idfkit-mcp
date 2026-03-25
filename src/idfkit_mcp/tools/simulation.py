@@ -77,6 +77,7 @@ def run_simulation(
     )
 
     state.simulation_result = result
+    state.save_session()
 
     errors = result.errors
 

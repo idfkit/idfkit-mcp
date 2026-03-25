@@ -424,3 +424,14 @@ class DownloadWeatherFileResult(BaseModel):
     station: WeatherStationModel
     epw_path: str
     ddy_path: str
+
+
+# ---------------------------------------------------------------------------
+# Session management
+# ---------------------------------------------------------------------------
+
+
+class ClearSessionResult(BaseModel):
+    """Response from ``clear_session``."""
+
+    status: str
