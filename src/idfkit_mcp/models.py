@@ -41,6 +41,7 @@ class ValidationErrorModel(BaseModel):
     field: str | None
     message: str
     code: str | None
+    doc_url: str | None = None
 
 
 class ObjectBrief(BaseModel):
@@ -95,6 +96,7 @@ class DescribeObjectTypeResult(BaseModel):
     extensible_size: int | None
     required_fields: list[str]
     fields: list[FieldDescriptionModel]
+    doc_url: str | None = None
 
 
 class SchemaMatch(BaseModel):
@@ -103,6 +105,7 @@ class SchemaMatch(BaseModel):
     object_type: str
     group: str
     memo: str | None
+    doc_url: str | None = None
 
 
 class SearchSchemaResult(BaseModel):
@@ -112,6 +115,49 @@ class SearchSchemaResult(BaseModel):
     count: int
     limit: int
     matches: list[SchemaMatch]
+
+
+class LookupDocumentationResult(BaseModel):
+    """Response from ``lookup_documentation``."""
+
+    object_type: str
+    version: str
+    io_reference_url: str | None = None
+    engineering_reference_url: str | None = None
+    search_url: str | None = None
+
+
+class DocSearchHit(BaseModel):
+    """A single documentation search hit."""
+
+    location: str
+    title: str
+    path: list[str]
+    tags: list[str]
+    text: str
+    score: float
+    doc_url: str
+
+
+class SearchDocsResult(BaseModel):
+    """Response from ``search_docs``."""
+
+    query: str
+    version: str
+    count: int
+    results: list[DocSearchHit]
+
+
+class GetDocSectionResult(BaseModel):
+    """Response from ``get_doc_section``."""
+
+    location: str
+    title: str
+    path: list[str]
+    tags: list[str]
+    text: str
+    doc_url: str
+    version: str
 
 
 class AvailableReferencesResult(BaseModel):

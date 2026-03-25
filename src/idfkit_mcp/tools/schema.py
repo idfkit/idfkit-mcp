@@ -73,18 +73,24 @@ def describe_object_type(object_type: str, version: str | None = None) -> Descri
     """Get the full field schema for an EnergyPlus object type.
 
     Use this before creating or editing objects to learn valid fields and constraints.
-    Returns field names, types, constraints, defaults, references, and memo.
+    Returns field names, types, constraints, defaults, references, memo, and a
+    documentation URL for the object on docs.idfkit.com.
 
     Args:
         object_type: The object type name (e.g. "Zone", "Material").
         version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
     """
+    from idfkit.docs import docs_url_for_object
     from idfkit.introspection import describe_object_type as _describe
 
     state = get_state()
-    schema = state.get_or_load_schema(_parse_version(version))
+    ver_tuple = _parse_version(version)
+    schema = state.get_or_load_schema(ver_tuple)
     desc = _describe(schema, object_type)
     data = serialize_object_description(desc)
+
+    doc_url = _get_doc_url(object_type, ver_tuple, schema, docs_url_for_object)
+    data["doc_url"] = doc_url
     return DescribeObjectTypeResult.model_validate(data)
 
 
@@ -93,14 +99,18 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
     """Search for EnergyPlus object types by name or description.
 
     Use this to find the right object type when you know a keyword but not the exact name.
+    Each match includes a ``doc_url`` linking to the object's page on docs.idfkit.com.
 
     Args:
         query: Search string (case-insensitive substring match).
         version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
         limit: Maximum number of results to return (default 50).
     """
+    from idfkit.docs import docs_url_for_object
+
     state = get_state()
-    schema = state.get_or_load_schema(_parse_version(version))
+    ver_tuple = _parse_version(version)
+    schema = state.get_or_load_schema(ver_tuple)
     query_lower = query.lower()
 
     matches: list[dict[str, str | None]] = []
@@ -108,10 +118,12 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
         memo = schema.get_object_memo(obj_type) or ""
         if query_lower in obj_type.lower() or query_lower in memo.lower():
             obj_group = schema.get_group(obj_type) or "Ungrouped"
+            doc_url = _get_doc_url(obj_type, ver_tuple, schema, docs_url_for_object)
             matches.append({
                 "object_type": obj_type,
                 "group": obj_group,
                 "memo": memo[:200] if memo else None,
+                "doc_url": doc_url,
             })
             if len(matches) >= limit:
                 break
@@ -162,6 +174,23 @@ def get_available_references(object_type: str, field_name: str) -> AvailableRefe
         available_names=all_names,
         by_reference_list=available,
     )
+
+
+def _get_doc_url(
+    obj_type: str,
+    ver_tuple: tuple[int, int, int] | None,
+    schema: object,
+    docs_url_for_object: object,
+) -> str | None:
+    """Resolve a docs.idfkit.com URL for an object type, returning None on failure."""
+    from idfkit.versions import LATEST_VERSION
+
+    try:
+        result = docs_url_for_object(obj_type, ver_tuple or LATEST_VERSION, schema)  # type: ignore[operator]
+    except Exception:
+        return None
+    else:
+        return result.url if result else None  # type: ignore[union-attr]
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
