@@ -12,6 +12,7 @@ from mcp.types import ToolAnnotations
 from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.models import (
     BatchAddResult,
+    ClearSessionResult,
     NewModelResult,
     RemoveObjectResult,
     RenameObjectResult,
@@ -246,7 +247,20 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
         write_idf(doc, path)
 
     state.file_path = path
+    state.save_session()
     return SaveModelResult(status="saved", file_path=str(path), format=output_format)
+
+
+@safe_tool
+def clear_session() -> ClearSessionResult:
+    """Clear the persisted session and reset all state.
+
+    Use this to start fresh when the restored model or simulation results are
+    stale or unwanted.  Does not delete any model or simulation files on disk.
+    """
+    state = get_state()
+    state.clear_session()
+    return ClearSessionResult(status="cleared")
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +274,7 @@ _STRUCTURED_TOOLS = [
     (remove_object, _DESTRUCTIVE),
     (rename_object, _MUTATE),
     (save_model, _SAVE),
+    (clear_session, _DESTRUCTIVE),
 ]
 
 _UNSTRUCTURED_TOOLS = [

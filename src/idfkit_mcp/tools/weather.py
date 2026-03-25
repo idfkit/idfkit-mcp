@@ -144,6 +144,7 @@ def download_weather_file(
 
     server_state = get_state()
     server_state.weather_file = files.epw
+    server_state.save_session()
 
     return DownloadWeatherFileResult.model_validate({
         "status": "downloaded",

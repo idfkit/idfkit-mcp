@@ -55,6 +55,7 @@ def load_model(file_path: str, version: str | None = None) -> ModelSummary:
     state.schema = doc.schema
     state.file_path = path
     state.simulation_result = None
+    state.save_session()
 
     return _build_summary(doc, state)
 
@@ -137,6 +138,7 @@ def convert_osm_to_idf(
     state.schema = doc.schema
     state.file_path = out_path
     state.simulation_result = None
+    state.save_session()
 
     version_getter = getattr(openstudio, "openStudioVersion", None)
     openstudio_version = str(version_getter()) if callable(version_getter) else "unknown"
