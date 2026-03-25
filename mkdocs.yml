@@ -28,6 +28,7 @@ nav:
     - Validation Tools: tools/validation.md
     - Simulation Tools: tools/simulation.md
     - Weather Tools: tools/weather.md
+    - Documentation Tools: tools/docs.md
 
   - Concepts:
     - Server State: concepts/server-state.md
@@ -48,6 +49,7 @@ nav:
       - Validation: api/tools-validation.md
       - Simulation: api/tools-simulation.md
       - Weather: api/tools-weather.md
+      - Documentation: api/tools-docs.md
 
 plugins:
   - search
