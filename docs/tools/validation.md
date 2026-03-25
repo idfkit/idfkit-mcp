@@ -15,7 +15,7 @@ Response highlights:
 
 - `is_valid`
 - counts by severity
-- structured error and warning entries
+- structured error and warning entries (each may include a `doc_url` linking to the relevant object's documentation on docs.idfkit.com)
 
 ## `check_references`
 

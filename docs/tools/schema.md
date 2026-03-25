@@ -20,12 +20,13 @@ Returns detailed field metadata:
 - enums
 - min/max constraints
 - reference lists
+- documentation URL (link to the object's page on docs.idfkit.com)
 
 Use this before any `add_object` or `update_object` call.
 
 ## `search_schema`
 
-Find types by name or schema memo text.
+Find types by name or schema memo text. Each match includes a `doc_url` linking to the object's documentation page on docs.idfkit.com.
 
 Useful when the agent only has conceptual intent, such as "infiltration" or "internal gains".
 
