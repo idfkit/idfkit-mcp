@@ -106,19 +106,30 @@ def convert_osm_to_idf(
     if not out_path.parent.exists():
         raise ToolError(f"Output directory does not exist: '{out_path.parent}'.")
 
-    version_translator = openstudio.osversion.VersionTranslator()
-    version_translator.setAllowNewerVersions(allow_newer_versions)
-    optional_model = version_translator.loadModel(openstudio.path(str(input_path)))
-    if optional_model.empty():
-        raise ToolError(f"Failed to load OSM model: '{input_path}'.")
+    # OpenStudio's C++ ForwardTranslator writes warnings directly to fd 1
+    # (C-level stdout), which corrupts the MCP stdio JSON-RPC stream.
+    # Redirect fd 1 → fd 2 (stderr) during translation to keep the transport clean.
+    import os
 
-    model = optional_model.get()
-    forward_translator = openstudio.energyplus.ForwardTranslator()
-    workspace = forward_translator.translateModel(model)
+    saved_fd = os.dup(1)
+    os.dup2(2, 1)
+    try:
+        version_translator = openstudio.osversion.VersionTranslator()
+        version_translator.setAllowNewerVersions(allow_newer_versions)
+        optional_model = version_translator.loadModel(openstudio.path(str(input_path)))
+        if optional_model.empty():
+            raise ToolError(f"Failed to load OSM model: '{input_path}'.")
 
-    saved = workspace.save(openstudio.path(str(out_path)), overwrite)
-    if not saved:
-        raise ToolError(f"Failed to save translated IDF to '{out_path}'.")
+        model = optional_model.get()
+        forward_translator = openstudio.energyplus.ForwardTranslator()
+        workspace = forward_translator.translateModel(model)
+
+        saved = workspace.save(openstudio.path(str(out_path)), overwrite)
+        if not saved:
+            raise ToolError(f"Failed to save translated IDF to '{out_path}'.")
+    finally:
+        os.dup2(saved_fd, 1)
+        os.close(saved_fd)
 
     doc = load_idf(str(out_path))
     state = get_state()
