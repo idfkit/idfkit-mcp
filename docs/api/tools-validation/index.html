@@ -1614,17 +1614,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#idfkit_mcp.tools.validation.register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        register
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#idfkit_mcp.tools.validation.validate_model" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1793,17 +1782,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#idfkit_mcp.tools.validation.register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        register
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#idfkit_mcp.tools.validation.validate_model" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1943,35 +1921,6 @@
 </span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="p">})</span>
 </span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58"></a>
 </span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="k">return</span> <span class="n">CheckReferencesResult</span><span class="o">.</span><span class="n">model_validate</span><span class="p">({</span><span class="s2">&quot;dangling_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">dangling</span><span class="p">),</span> <span class="s2">&quot;dangling_references&quot;</span><span class="p">:</span> <span class="n">dangling</span><span class="p">})</span>
-</span></code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h2 id="idfkit_mcp.tools.validation.register" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">register</span><span class="p">(</span><span class="n">mcp</span><span class="p">)</span></code>
-
-<a href="#idfkit_mcp.tools.validation.register" class="headerlink" title="Permanent link">&para;</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Register validation tools on the MCP server.</p>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>src/idfkit_mcp/tools/validation.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="n">mcp</span><span class="p">:</span> <span class="n">FastMCP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-70"><a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Register validation tools on the MCP server.&quot;&quot;&quot;</span>
-</span><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="k">for</span> <span class="n">func</span><span class="p">,</span> <span class="n">hints</span> <span class="ow">in</span> <span class="n">_TOOL_REGISTRY</span><span class="p">:</span>
-</span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="n">mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">structured_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)(</span><span class="n">func</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

@@ -1630,17 +1630,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#idfkit_mcp.tools.write.register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        register
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#idfkit_mcp.tools.write.remove_object" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1907,17 +1896,6 @@
     <span class="md-ellipsis">
       
         new_model
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#idfkit_mcp.tools.write.register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        register
       
     </span>
   </a>
@@ -2536,39 +2514,6 @@ stale or unwanted.  Does not delete any model or simulation files on disk.</p>
 </span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">state</span><span class="o">.</span><span class="n">simulation_result</span> <span class="o">=</span> <span class="kc">None</span>
 </span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a>
 </span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="k">return</span> <span class="n">NewModelResult</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;created&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="n">version_string</span><span class="p">(</span><span class="n">ver</span><span class="p">))</span>
-</span></code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h2 id="idfkit_mcp.tools.write.register" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">register</span><span class="p">(</span><span class="n">mcp</span><span class="p">)</span></code>
-
-<a href="#idfkit_mcp.tools.write.register" class="headerlink" title="Permanent link">&para;</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Register write tools on the MCP server.</p>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>src/idfkit_mcp/tools/write.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-287">287</a></span>
-<span class="normal"><a href="#__codelineno-0-288">288</a></span>
-<span class="normal"><a href="#__codelineno-0-289">289</a></span>
-<span class="normal"><a href="#__codelineno-0-290">290</a></span>
-<span class="normal"><a href="#__codelineno-0-291">291</a></span>
-<span class="normal"><a href="#__codelineno-0-292">292</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="n">mcp</span><span class="p">:</span> <span class="n">FastMCP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Register write tools on the MCP server.&quot;&quot;&quot;</span>
-</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a>    <span class="k">for</span> <span class="n">func</span><span class="p">,</span> <span class="n">hints</span> <span class="ow">in</span> <span class="n">_STRUCTURED_TOOLS</span><span class="p">:</span>
-</span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="n">mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">structured_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)(</span><span class="n">func</span><span class="p">)</span>
-</span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a>    <span class="k">for</span> <span class="n">func</span><span class="p">,</span> <span class="n">hints</span> <span class="ow">in</span> <span class="n">_UNSTRUCTURED_TOOLS</span><span class="p">:</span>
-</span><span id="__span-0-292"><a id="__codelineno-0-292" name="__codelineno-0-292"></a>        <span class="n">mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">structured_output</span><span class="o">=</span><span class="kc">False</span><span class="p">)(</span><span class="n">func</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

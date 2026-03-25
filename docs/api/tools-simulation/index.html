@@ -1675,17 +1675,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#idfkit_mcp.tools.simulation.register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        register
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#idfkit_mcp.tools.simulation.run_simulation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1852,17 +1841,6 @@
     <span class="md-ellipsis">
       
         query_timeseries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#idfkit_mcp.tools.simulation.register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        register
       
     </span>
   </a>
@@ -2665,35 +2643,6 @@ Returns the first <code>limit</code> data points.</p>
 </span><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a>        <span class="s2">&quot;returned&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span>
 </span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a>        <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">rows</span><span class="p">,</span>
 </span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="p">})</span>
-</span></code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h2 id="idfkit_mcp.tools.simulation.register" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">register</span><span class="p">(</span><span class="n">mcp</span><span class="p">)</span></code>
-
-<a href="#idfkit_mcp.tools.simulation.register" class="headerlink" title="Permanent link">&para;</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Register simulation tools on the MCP server.</p>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>src/idfkit_mcp/tools/simulation.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-333">333</a></span>
-<span class="normal"><a href="#__codelineno-0-334">334</a></span>
-<span class="normal"><a href="#__codelineno-0-335">335</a></span>
-<span class="normal"><a href="#__codelineno-0-336">336</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-333"><a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="n">mcp</span><span class="p">:</span> <span class="n">FastMCP</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-334"><a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Register simulation tools on the MCP server.&quot;&quot;&quot;</span>
-</span><span id="__span-0-335"><a id="__codelineno-0-335" name="__codelineno-0-335"></a>    <span class="k">for</span> <span class="n">func</span><span class="p">,</span> <span class="n">hints</span> <span class="ow">in</span> <span class="n">_TOOL_REGISTRY</span><span class="p">:</span>
-</span><span id="__span-0-336"><a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="n">mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">structured_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)(</span><span class="n">func</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
