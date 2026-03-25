@@ -59,6 +59,10 @@ plugins:
           paths: ["src"]
           inventories:
             - https://docs.python.org/3/objects.inv
+          options:
+            filters:
+              - "!^_"
+              - "!^register$"
 
 theme:
   name: material
