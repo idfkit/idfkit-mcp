@@ -43,6 +43,9 @@
         <loc>https://mcp.idfkit.com/docs/tools/weather/</loc>
       </url>
       <url>
+        <loc>https://mcp.idfkit.com/docs/tools/docs/</loc>
+      </url>
+      <url>
         <loc>https://mcp.idfkit.com/docs/concepts/server-state/</loc>
       </url>
       <url>
@@ -80,5 +83,8 @@
       </url>
       <url>
         <loc>https://mcp.idfkit.com/docs/api/tools-weather/</loc>
+      </url>
+      <url>
+        <loc>https://mcp.idfkit.com/docs/api/tools-docs/</loc>
       </url>
 </urlset>

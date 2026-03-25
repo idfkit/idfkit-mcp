@@ -734,6 +734,8 @@
       
         
       
+        
+      
     
     
     
@@ -1049,6 +1051,34 @@
     
   
     Weather Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Tools
   
 
     
@@ -1461,6 +1491,8 @@
       
         
       
+        
+      
     
     
     
@@ -1674,6 +1706,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1819,10 +1879,11 @@
 <li>enums</li>
 <li>min/max constraints</li>
 <li>reference lists</li>
+<li>documentation URL (link to the object's page on docs.idfkit.com)</li>
 </ul>
 <p>Use this before any <code>add_object</code> or <code>update_object</code> call.</p>
 <h2 id="search_schema"><code>search_schema</code><a class="headerlink" href="#search_schema" title="Permanent link">&para;</a></h2>
-<p>Find types by name or schema memo text.</p>
+<p>Find types by name or schema memo text. Each match includes a <code>doc_url</code> linking to the object's documentation page on docs.idfkit.com.</p>
 <p>Useful when the agent only has conceptual intent, such as "infiltration" or "internal gains".</p>
 <h2 id="get_available_references"><code>get_available_references</code><a class="headerlink" href="#get_available_references" title="Permanent link">&para;</a></h2>
 <p>Given an object type and reference field, returns valid names from current model state.</p>

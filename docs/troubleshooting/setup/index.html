@@ -732,6 +732,8 @@
       
         
       
+        
+      
     
     
     
@@ -941,6 +943,34 @@
     
   
     Weather Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Tools
   
 
     
@@ -1358,6 +1388,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#openstudio-sdk-not-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenStudio SDK not available
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenStudio SDK not available">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cause_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#schema-version-errors" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1381,7 +1450,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
+  <a href="#fix_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fix
@@ -1577,6 +1646,8 @@
   
     
     
+      
+        
       
         
       
@@ -1803,6 +1874,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1991,6 +2090,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#openstudio-sdk-not-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenStudio SDK not available
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenStudio SDK not available">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cause_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#schema-version-errors" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2014,7 +2152,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
+  <a href="#fix_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fix
@@ -2096,10 +2234,18 @@
 <li><code>load_model(file_path=...)</code></li>
 <li><code>new_model()</code></li>
 </ul>
+<h2 id="openstudio-sdk-not-available"><code>OpenStudio SDK not available</code><a class="headerlink" href="#openstudio-sdk-not-available" title="Permanent link">&para;</a></h2>
+<h3 id="cause_2">Cause<a class="headerlink" href="#cause_2" title="Permanent link">&para;</a></h3>
+<p><code>convert_osm_to_idf</code> was called in an environment without OpenStudio Python bindings.</p>
+<h3 id="fix_3">Fix<a class="headerlink" href="#fix_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Reinstall <code>idfkit-mcp</code> in the active environment so required dependencies are present.</li>
+<li>Or use the Docker image where dependencies are preinstalled.</li>
+</ol>
 <h2 id="schema-version-errors">Schema Version Errors<a class="headerlink" href="#schema-version-errors" title="Permanent link">&para;</a></h2>
 <h3 id="symptom_1">Symptom<a class="headerlink" href="#symptom_1" title="Permanent link">&para;</a></h3>
 <p><code>Version must be in 'X.Y.Z' format</code> or schema not found.</p>
-<h3 id="fix_3">Fix<a class="headerlink" href="#fix_3" title="Permanent link">&para;</a></h3>
+<h3 id="fix_4">Fix<a class="headerlink" href="#fix_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Use strict semantic format, e.g. <code>24.1.0</code>.</li>
 <li>Use a supported version provided by installed <code>idfkit</code>.</li>

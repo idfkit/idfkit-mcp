@@ -734,6 +734,8 @@
       
         
       
+        
+      
     
     
     
@@ -946,6 +948,34 @@
     
   
     Weather Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Tools
   
 
     
@@ -1358,6 +1388,8 @@
       
         
       
+        
+      
     
     
     
@@ -1571,6 +1603,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tools-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1678,15 +1738,16 @@
 
 
 <h1 id="tool-reference-overview">Tool Reference Overview<a class="headerlink" href="#tool-reference-overview" title="Permanent link">&para;</a></h1>
-<p><code>idfkit-mcp</code> exposes <strong>25 tools</strong> in six categories.</p>
+<p><code>idfkit-mcp</code> exposes <strong>32 tools</strong> in seven categories.</p>
 <h2 id="categories">Categories<a class="headerlink" href="#categories" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Schema exploration: 4 tools</li>
-<li>Model read: 6 tools</li>
-<li>Model write: 8 tools</li>
+<li>Model read: 7 tools</li>
+<li>Model write: 9 tools</li>
 <li>Validation: 2 tools</li>
-<li>Simulation: 3 tools</li>
+<li>Simulation: 5 tools</li>
 <li>Weather: 2 tools</li>
+<li>Documentation: 3 tools</li>
 </ul>
 <h2 id="tool-catalog">Tool Catalog<a class="headerlink" href="#tool-catalog" title="Permanent link">&para;</a></h2>
 <table>
@@ -1722,6 +1783,11 @@
 <td>Read</td>
 <td><code>load_model</code></td>
 <td>Load IDF/epJSON into active server state</td>
+</tr>
+<tr>
+<td>Read</td>
+<td><code>convert_osm_to_idf</code></td>
+<td>Convert OSM to IDF and load into active server state</td>
 </tr>
 <tr>
 <td>Read</td>
@@ -1789,6 +1855,11 @@
 <td>Save IDF/epJSON</td>
 </tr>
 <tr>
+<td>Write</td>
+<td><code>clear_session</code></td>
+<td>Clear persisted session and reset state</td>
+</tr>
+<tr>
 <td>Validation</td>
 <td><code>validate_model</code></td>
 <td>Full schema validation</td>
@@ -1814,6 +1885,16 @@
 <td>Enumerate meters/variables</td>
 </tr>
 <tr>
+<td>Simulation</td>
+<td><code>query_timeseries</code></td>
+<td>Query time series data from SQL output</td>
+</tr>
+<tr>
+<td>Simulation</td>
+<td><code>export_timeseries</code></td>
+<td>Export time series data to CSV</td>
+</tr>
+<tr>
 <td>Weather</td>
 <td><code>search_weather_stations</code></td>
 <td>Find weather stations</td>
@@ -1822,6 +1903,21 @@
 <td>Weather</td>
 <td><code>download_weather_file</code></td>
 <td>Download EPW/DDY and cache path</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td><code>lookup_documentation</code></td>
+<td>Get docs.idfkit.com URLs for an object type</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td><code>search_docs</code></td>
+<td>Full-text search across EnergyPlus documentation</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td><code>get_doc_section</code></td>
+<td>Retrieve full content of a documentation section</td>
 </tr>
 </tbody>
 </table>

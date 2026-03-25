@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://mcp.idfkit.com/docs/concepts/server-state/">
       
       
-        <link rel="prev" href="../../tools/weather/">
+        <link rel="prev" href="../../tools/docs/">
       
       
         <link rel="next" href="../error-semantics/">
@@ -732,6 +732,8 @@
       
         
       
+        
+      
     
     
     
@@ -954,6 +956,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1118,6 +1148,17 @@
     <span class="md-ellipsis">
       
         Required Preconditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Persistence
       
     </span>
   </a>
@@ -1450,6 +1491,8 @@
       
         
       
+        
+      
     
     
     
@@ -1663,6 +1706,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1739,6 +1810,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#session-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Persistence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#session-strategy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1789,6 +1871,9 @@
 <li><code>file_path</code>: current model path</li>
 <li><code>simulation_result</code>: last run result</li>
 <li><code>weather_file</code>: last downloaded EPW path</li>
+<li><code>docs_index</code>: cached documentation search index (loaded on first <code>search_docs</code> / <code>get_doc_section</code> call)</li>
+<li><code>docs_version</code>: version of the cached docs index</li>
+<li><code>docs_separator</code>: tokenization regex from the docs index config</li>
 </ul>
 <h2 id="implications-for-agent-design">Implications for Agent Design<a class="headerlink" href="#implications-for-agent-design" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1808,10 +1893,25 @@
 <li><code>No model loaded. Use load_model or new_model first.</code></li>
 <li><code>No simulation results available. Use run_simulation first.</code></li>
 </ul>
+<h2 id="session-persistence">Session Persistence<a class="headerlink" href="#session-persistence" title="Permanent link">&para;</a></h2>
+<p>Server state is automatically persisted to a JSON file on disk so that clients that restart the server between turns (e.g. Codex) can resume transparently.</p>
+<p>Saved state:</p>
+<ul>
+<li><code>file_path</code> — reloaded via <code>load_model</code> on restore</li>
+<li><code>simulation_run_dir</code> — simulation result rebuilt from output directory</li>
+<li><code>weather_file</code> — weather file path restored</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>Auto-saved after <code>load_model</code>, <code>convert_osm_to_idf</code>, <code>save_model</code>, <code>run_simulation</code>, and <code>download_weather_file</code>.</li>
+<li>Auto-restored lazily on the first call that requires state (e.g. <code>require_model()</code>).</li>
+<li>Session file is keyed by working directory (SHA-256 hash) and stored in <code>~/.cache/idfkit/sessions/</code> (Linux) or <code>~/Library/Caches/idfkit/sessions/</code> (macOS).</li>
+<li>Use <code>clear_session</code> to delete the session file and reset all state.</li>
+</ul>
 <h2 id="session-strategy">Session Strategy<a class="headerlink" href="#session-strategy" title="Permanent link">&para;</a></h2>
 <p>For deterministic automation:</p>
 <ol>
-<li>start with explicit <code>load_model</code> or <code>new_model</code></li>
+<li>start with <code>load_model</code> or <code>new_model</code> (or let session persistence restore a previous model)</li>
 <li>complete one workflow at a time</li>
 <li>persist artifacts with <code>save_model</code></li>
 </ol>
@@ -1852,7 +1952,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../tools/weather/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Weather Tools">
+          <a href="../../tools/docs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Documentation Tools">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1862,7 +1962,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Weather Tools
+                Documentation Tools
               </div>
             </div>
           </a>

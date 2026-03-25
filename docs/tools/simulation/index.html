@@ -734,6 +734,8 @@
       
         
       
+        
+      
     
     
     
@@ -1004,6 +1006,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#query_timeseries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        query_timeseries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export_timeseries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_timeseries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#simulation-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1049,6 +1073,34 @@
     
   
     Weather Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Tools
   
 
     
@@ -1461,6 +1513,8 @@
       
         
       
+        
+      
     
     
     
@@ -1674,6 +1728,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1743,6 +1825,28 @@
     <span class="md-ellipsis">
       
         list_output_variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#query_timeseries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        query_timeseries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export_timeseries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_timeseries
       
     </span>
   </a>
@@ -1836,12 +1940,34 @@
 <li><code>search</code>: optional regex</li>
 <li><code>limit</code>: default <code>50</code></li>
 </ul>
+<h2 id="query_timeseries"><code>query_timeseries</code><a class="headerlink" href="#query_timeseries" title="Permanent link">&para;</a></h2>
+<p>Query time series data from the last simulation's SQL output for quick inline inspection.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>variable_name</code> (required): output variable name (e.g. <code>"Zone Mean Air Temperature"</code>)</li>
+<li><code>key_value</code>: zone or surface name, <code>"*"</code> for environment-level variables (default <code>"*"</code>)</li>
+<li><code>frequency</code>: reporting frequency filter (<code>"Timestep"</code>, <code>"Hourly"</code>, <code>"Daily"</code>, <code>"Monthly"</code>, <code>"RunPeriod"</code>, <code>"Annual"</code>)</li>
+<li><code>environment</code>: filter by environment type (<code>"sizing"</code> or <code>"annual"</code>)</li>
+<li><code>limit</code>: maximum data points to return (default <code>24</code>)</li>
+</ul>
+<p>Requires <code>Output:SQLite</code> in the model. Returns a descriptive error if the SQL file is missing or the query fails.</p>
+<h2 id="export_timeseries"><code>export_timeseries</code><a class="headerlink" href="#export_timeseries" title="Permanent link">&para;</a></h2>
+<p>Export full time series data from the last simulation to a CSV file for external analysis.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>variable_name</code> (required): output variable name (e.g. <code>"Zone Mean Air Temperature"</code>)</li>
+<li><code>key_value</code>: zone or surface name, <code>"*"</code> for environment-level variables (default <code>"*"</code>)</li>
+<li><code>frequency</code>: reporting frequency filter</li>
+<li><code>environment</code>: filter by environment type (<code>"sizing"</code> or <code>"annual"</code>)</li>
+<li><code>output_path</code>: output CSV file path (defaults to a file in the simulation output directory)</li>
+</ul>
 <h2 id="simulation-workflow">Simulation Workflow<a class="headerlink" href="#simulation-workflow" title="Permanent link">&para;</a></h2>
 <ol>
 <li><code>download_weather_file</code> or provide <code>weather_file</code></li>
 <li><code>run_simulation</code></li>
 <li><code>get_results_summary</code></li>
 <li><code>list_output_variables(search=...)</code></li>
+<li><code>query_timeseries(variable_name=...)</code> or <code>export_timeseries(...)</code></li>
 </ol>
 <h2 id="common-guardrail">Common Guardrail<a class="headerlink" href="#common-guardrail" title="Permanent link">&para;</a></h2>
 <p>If <code>run_simulation</code> reports missing weather, either:</p>

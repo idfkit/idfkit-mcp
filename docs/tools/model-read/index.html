@@ -734,6 +734,8 @@
       
         
       
+        
+      
     
     
     
@@ -891,6 +893,17 @@
     <span class="md-ellipsis">
       
         load_model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convert_osm_to_idf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        convert_osm_to_idf
       
     </span>
   </a>
@@ -1060,6 +1073,34 @@
     
   
     Weather Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Tools
   
 
     
@@ -1472,6 +1513,8 @@
       
         
       
+        
+      
     
     
     
@@ -1685,6 +1728,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1732,6 +1803,17 @@
     <span class="md-ellipsis">
       
         load_model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convert_osm_to_idf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        convert_osm_to_idf
       
     </span>
   </a>
@@ -1833,6 +1915,24 @@
 <li>File type inferred from extension.</li>
 <li>Optional <code>version</code> override (<code>X.Y.Z</code>) is supported.</li>
 <li>Loading resets previous simulation result state.</li>
+<li>Persists session state to disk for automatic recovery across server restarts.</li>
+</ul>
+<h2 id="convert_osm_to_idf"><code>convert_osm_to_idf</code><a class="headerlink" href="#convert_osm_to_idf" title="Permanent link">&para;</a></h2>
+<p>Converts an OpenStudio <code>.osm</code> model to <code>.idf</code> using OpenStudio SDK and loads the
+resulting IDF into active server state.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>osm_path</code> (required): source <code>.osm</code> file path</li>
+<li><code>output_path</code> (required): output <code>.idf</code> file path</li>
+<li><code>allow_newer_versions</code> (default <code>true</code>)</li>
+<li><code>overwrite</code> (default <code>false</code>)</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>Validates input/output extensions and file existence.</li>
+<li>Fails safely if OpenStudio SDK is unavailable.</li>
+<li>Writes IDF, then loads it with the same state semantics as <code>load_model</code>.</li>
+<li>Returns conversion metadata plus standard model summary fields.</li>
 </ul>
 <h2 id="get_model_summary"><code>get_model_summary</code><a class="headerlink" href="#get_model_summary" title="Permanent link">&para;</a></h2>
 <p>Returns:</p>
