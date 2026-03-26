@@ -6,17 +6,16 @@ from typing import Any
 
 import pytest
 
-from idfkit_mcp.server import _parse_args, create_server
+from idfkit_mcp.server import _parse_args, mcp
+from tests.tool_helpers import list_tools_sync
 
 
 class TestCreateServer:
     def test_returns_fastmcp_instance(self) -> None:
-        server = create_server()
-        assert server.name == "idfkit"
+        assert mcp.name == "idfkit"
 
     def test_registers_all_tool_groups(self) -> None:
-        server = create_server()
-        tool_names = set(server._tool_manager._tools)
+        tool_names = set(list_tools_sync(mcp))
         expected = {
             "list_object_types",
             "describe_object_type",
@@ -49,11 +48,6 @@ class TestCreateServer:
         }
         assert expected.issubset(tool_names)
 
-    def test_custom_host_and_port(self) -> None:
-        server = create_server(host="0.0.0.0", port=9090)
-        assert server.settings.host == "0.0.0.0"
-        assert server.settings.port == 9090
-
 
 class TestParseArgs:
     def test_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,7 +64,7 @@ class TestParseArgs:
     def test_cli_overrides(self) -> None:
         args = _parse_args([
             "--transport",
-            "streamable-http",
+            "http",
             "--host",
             "0.0.0.0",
             "--port",
@@ -78,7 +72,7 @@ class TestParseArgs:
             "--mount-path",
             "/mcp",
         ])
-        assert args.transport == "streamable-http"
+        assert args.transport == "http"
         assert args.host == "0.0.0.0"
         assert args.port == 9090
         assert args.mount_path == "/mcp"
@@ -96,8 +90,12 @@ class TestParseArgs:
 
     def test_cli_overrides_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("IDFKIT_MCP_TRANSPORT", "sse")
+        args = _parse_args(["--transport", "http"])
+        assert args.transport == "http"
+
+    def test_streamable_http_is_mapped_to_http(self) -> None:
         args = _parse_args(["--transport", "streamable-http"])
-        assert args.transport == "streamable-http"
+        assert args.transport == "http"
 
     def test_invalid_transport_rejected(self) -> None:
         with pytest.raises(SystemExit):
@@ -109,8 +107,7 @@ class TestToolSchemas:
 
     @pytest.fixture()
     def tools(self) -> dict[str, Any]:
-        server = create_server()
-        return server._tool_manager._tools
+        return list_tools_sync(mcp)
 
     def test_all_tools_have_properties_key(self, tools: dict[str, Any]) -> None:
         """Every tool's inputSchema must include a 'properties' key.
@@ -159,10 +156,8 @@ class TestToolSchemas:
 
         for name, tool in tools.items():
             if name in unstructured_tools:
-                assert tool.fn_metadata.output_schema is None, (
-                    f"Tool '{name}' should be unstructured but has an output schema"
-                )
+                assert tool.output_schema is None, f"Tool '{name}' should be unstructured but has an output schema"
             else:
-                assert tool.fn_metadata.output_schema is not None, (
+                assert tool.output_schema is not None, (
                     f"Tool '{name}' is missing an output schema — add a Pydantic return type"
                 )

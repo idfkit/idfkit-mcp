@@ -5,15 +5,16 @@ from __future__ import annotations
 import tempfile
 
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ToolError
 
 from idfkit_mcp.state import ServerState, get_state
+from tests.tool_helpers import get_tool_sync
 
 
 def _tool(name: str):
     from idfkit_mcp.server import mcp
 
-    return mcp._tool_manager._tools[name]
+    return get_tool_sync(mcp, name)
 
 
 class TestNewModel:

@@ -15,7 +15,7 @@ FROM python:3.12-slim AS runtime-base
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    IDFKIT_MCP_TRANSPORT=streamable-http \
+    IDFKIT_MCP_TRANSPORT=http \
     IDFKIT_MCP_HOST=0.0.0.0 \
     IDFKIT_MCP_PORT=8000
 

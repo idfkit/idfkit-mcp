@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 import logging
 import time
-import typing
-from collections.abc import Callable
-from functools import wraps
-from typing import Any, TypeVar
+from collections.abc import Mapping
+from typing import Any, cast
 
-from mcp.server.fastmcp import Context
-from mcp.server.fastmcp.exceptions import ToolError
-
-_T = TypeVar("_T")
+from fastmcp.exceptions import ToolError
+from fastmcp.server.middleware import Middleware, MiddlewareContext
 
 logger = logging.getLogger("idfkit_mcp")
 
@@ -45,108 +40,74 @@ def _summarize_result(result: object) -> str:
     return s if len(s) <= _PAYLOAD_MAX_LEN else s[:_PAYLOAD_MAX_LEN] + "…"
 
 
-# ---------------------------------------------------------------------------
-# Tool decorator
-# ---------------------------------------------------------------------------
+def _summarize_tool_result(result: object) -> str:
+    """Summarize a FastMCP tool result for logging."""
+    structured = getattr(result, "structured_content", None)
+    if structured is not None:
+        return _summarize_result(structured)
+    content = getattr(result, "content", None)
+    if content is not None:
+        return _summarize_result(content)
+    return _summarize_result(result)
 
 
-def safe_tool(func: Callable[..., _T]) -> Callable[..., _T]:
-    """Decorator for MCP tool functions.
+class ToolExecutionMiddleware(Middleware):
+    """Bind session state, normalize errors, and log tool execution."""
 
-    Wraps each tool invocation with:
+    async def on_call_tool(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
+        from idfkit_mcp.state import session_scope_from_context
 
-    1. **Per-session state** — extracts the MCP session ID from an
-       auto-injected ``Context`` and sets the ``contextvars`` token so
-       that :func:`~idfkit_mcp.state.get_state` returns the correct
-       per-session :class:`~idfkit_mcp.state.ServerState`.
-    2. **Error handling** — catches all exceptions and re-raises them as
-       ``ToolError`` with a human-readable message.
-    3. **Logging** — emits structured log lines for every call with tool
-       name, session ID, wall-clock timing (ms), and truncated payloads.
-    """
-
-    @wraps(func)
-    def wrapper(*args: object, **kwargs: object) -> _T:
-        # Pop the Context injected by FastMCP (not visible to clients).
-        ctx = kwargs.pop("ctx", None)
-        if ctx is not None:
-            from idfkit_mcp.state import set_session_from_context
-
-            session_id = set_session_from_context(ctx)
+        fastmcp_context = context.fastmcp_context
+        tool_name = context.message.name
+        raw_tool_args = context.message.arguments
+        if isinstance(raw_tool_args, Mapping):
+            typed_tool_args = cast(Mapping[object, Any], raw_tool_args)
+            tool_args: dict[str, Any] = {str(key): value for key, value in typed_tool_args.items()}
         else:
-            session_id = "local"
+            tool_args = {}
 
-        tool_name = func.__name__
-        logger.debug(
-            "CALL %s | session=%s | %s",
-            tool_name,
-            session_id,
-            _summarize_kwargs(dict(kwargs)),  # type: ignore[arg-type]
-        )
-
-        start = time.monotonic()
-        try:
-            result = func(*args, **kwargs)
-        except ToolError:
-            elapsed_ms = (time.monotonic() - start) * 1000
-            logger.warning(
-                "FAIL %s | session=%s | %.1fms",
+        with session_scope_from_context(fastmcp_context) as session_id:
+            logger.debug(
+                "CALL %s | session=%s | %s",
                 tool_name,
                 session_id,
-                elapsed_ms,
-                exc_info=True,
+                _summarize_kwargs(tool_args),
             )
-            raise
-        except Exception as e:
-            elapsed_ms = (time.monotonic() - start) * 1000
-            error_msg = format_error(e)
-            logger.exception(
-                "ERR  %s | session=%s | %.1fms | %s",
-                tool_name,
-                session_id,
-                elapsed_ms,
-                error_msg,
-            )
-            raise ToolError(error_msg) from e
-        else:
+
+            start = time.monotonic()
+            try:
+                result = await call_next(context)
+            except ToolError:
+                elapsed_ms = (time.monotonic() - start) * 1000
+                logger.warning(
+                    "FAIL %s | session=%s | %.1fms",
+                    tool_name,
+                    session_id,
+                    elapsed_ms,
+                    exc_info=True,
+                )
+                raise
+            except Exception as e:
+                elapsed_ms = (time.monotonic() - start) * 1000
+                error_msg = format_error(e)
+                logger.exception(
+                    "ERR  %s | session=%s | %.1fms | %s",
+                    tool_name,
+                    session_id,
+                    elapsed_ms,
+                    error_msg,
+                )
+                raise ToolError(error_msg) from e
+
             elapsed_ms = (time.monotonic() - start) * 1000
             logger.debug(
                 "OK   %s | session=%s | %.1fms | %s",
                 tool_name,
                 session_id,
                 elapsed_ms,
-                _summarize_result(result),
+                _summarize_tool_result(result),
             )
             return result
-
-    # Build a fully-resolved signature for the wrapper that includes a
-    # ``ctx: Context`` parameter.  We must resolve string annotations
-    # (from ``from __future__ import annotations``) using the ORIGINAL
-    # function's module globals — the wrapper lives in errors.py which
-    # does not have the tool-specific return types in scope.
-    try:
-        hints = typing.get_type_hints(func)
-    except Exception:
-        hints = {}
-
-    sig = inspect.signature(func)
-    resolved_params = [
-        param.replace(annotation=hints.get(name, param.annotation)) for name, param in sig.parameters.items()
-    ]
-    resolved_params.append(inspect.Parameter("ctx", inspect.Parameter.KEYWORD_ONLY, annotation=Context))
-
-    # Expose ctx in __annotations__ so typing.get_type_hints(wrapper) includes
-    # it.  FastMCP's find_context_parameter() uses get_type_hints — without this
-    # it resolves through __wrapped__ to the original (which lacks ctx), causing
-    # ctx to appear as a required client-visible parameter in the tool schema.
-    wrapper.__annotations__ = {**hints, "ctx": Context}
-
-    wrapper.__signature__ = inspect.Signature(  # type: ignore[attr-defined]
-        parameters=resolved_params,
-        return_annotation=hints.get("return", sig.return_annotation),
-    )
-
-    return wrapper  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------

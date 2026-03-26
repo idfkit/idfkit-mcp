@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import safe_tool, tool_error
+from idfkit_mcp.errors import tool_error
 from idfkit_mcp.models import (
     AvailableReferencesResult,
     DescribeObjectTypeResult,
@@ -34,7 +34,6 @@ def _parse_version(version: str | None) -> tuple[int, int, int] | None:
     return (int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-@safe_tool
 def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> ListObjectTypesResult:
     """Discover available EnergyPlus object types, optionally filtered by group.
 
@@ -75,7 +74,6 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
     return ListObjectTypesResult(total_types=total_types, truncated=truncated, groups=groups_result)
 
 
-@safe_tool
 def describe_object_type(object_type: str, version: str | None = None) -> DescribeObjectTypeResult:
     """Get the full field schema for an EnergyPlus object type.
 
@@ -102,7 +100,6 @@ def describe_object_type(object_type: str, version: str | None = None) -> Descri
     return DescribeObjectTypeResult.model_validate(data)
 
 
-@safe_tool
 def search_schema(query: str, version: str | None = None, limit: int = 50) -> SearchSchemaResult:
     """Search for EnergyPlus object types by name or description.
 
@@ -147,7 +144,6 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
     })
 
 
-@safe_tool
 def get_available_references(object_type: str, field_name: str) -> AvailableReferencesResult:
     """Get valid object names for a reference field from the loaded model.
 
@@ -217,4 +213,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register schema tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints, structured_output=True)(func)
+        mcp.tool(annotations=hints)(func)

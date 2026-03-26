@@ -12,6 +12,8 @@ import contextvars
 import dataclasses
 import logging
 from collections import OrderedDict
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.request import urlopen
@@ -400,15 +402,15 @@ def _extract_session_id(ctx: Any) -> str:
     return "stdio"
 
 
-def set_session_from_context(ctx: Any) -> str:
-    """Set the current session from a FastMCP ``Context``.
-
-    Called by the ``safe_tool`` decorator before each tool invocation.
-    Returns the resolved session ID.
-    """
-    session_id = _extract_session_id(ctx)
-    _current_session_id.set(session_id)
-    return session_id
+@contextmanager
+def session_scope_from_context(ctx: Any) -> Iterator[str]:
+    """Temporarily bind the current session ID from a FastMCP context."""
+    session_id = _extract_session_id(ctx) if ctx is not None else "local"
+    token = _current_session_id.set(session_id)
+    try:
+        yield session_id
+    finally:
+        _current_session_id.reset(token)
 
 
 def get_state() -> ServerState:

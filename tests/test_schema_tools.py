@@ -3,16 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ToolError
 
-from idfkit_mcp.tools.schema import _parse_version, register
-
-
-def _make_server() -> FastMCP:
-    mcp = FastMCP("test")
-    register(mcp)
-    return mcp
+from idfkit_mcp.tools.schema import _parse_version
+from tests.tool_helpers import get_tool_sync
 
 
 class TestParseVersion:
@@ -31,7 +25,7 @@ class TestListObjectTypes:
     def test_returns_groups(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["list_object_types"]
+        tool = get_tool_sync(mcp, "list_object_types")
         result = tool.fn()
         assert result.total_types > 0
         assert result.groups
@@ -39,7 +33,7 @@ class TestListObjectTypes:
     def test_filter_by_group(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["list_object_types"]
+        tool = get_tool_sync(mcp, "list_object_types")
         result = tool.fn(group="Thermal Zones and Surfaces")
         assert result.total_types > 0
         # All returned items should be in the filtered group
@@ -48,14 +42,14 @@ class TestListObjectTypes:
     def test_returns_error_for_bad_version(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["list_object_types"]
+        tool = get_tool_sync(mcp, "list_object_types")
         with pytest.raises(ToolError):
             tool.fn(version="1.0.0")
 
     def test_truncated_when_over_limit(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["list_object_types"]
+        tool = get_tool_sync(mcp, "list_object_types")
         result = tool.fn()
         assert result.truncated is True
         # Truncated response should have counts but no type lists
@@ -66,7 +60,7 @@ class TestListObjectTypes:
     def test_not_truncated_with_group_filter(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["list_object_types"]
+        tool = get_tool_sync(mcp, "list_object_types")
         result = tool.fn(group="Thermal Zones and Surfaces")
         # A single group should fit within the default limit
         assert result.truncated is False
@@ -76,7 +70,7 @@ class TestListObjectTypes:
     def test_high_limit_is_capped(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["list_object_types"]
+        tool = get_tool_sync(mcp, "list_object_types")
         # limit is hard-capped to 100 regardless of caller request
         result = tool.fn(limit=10000)
         assert result.total_types > 100
@@ -87,7 +81,7 @@ class TestDescribeObjectType:
     def test_zone(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["describe_object_type"]
+        tool = get_tool_sync(mcp, "describe_object_type")
         result = tool.fn(object_type="Zone")
         assert result.object_type == "Zone"
         assert result.has_name is True
@@ -98,7 +92,7 @@ class TestDescribeObjectType:
     def test_unknown_type(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["describe_object_type"]
+        tool = get_tool_sync(mcp, "describe_object_type")
         with pytest.raises(ToolError):
             tool.fn(object_type="NonExistent")
 
@@ -107,7 +101,7 @@ class TestSearchSchema:
     def test_search_zone(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["search_schema"]
+        tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="Zone")
         assert result.count > 0
         types = [m.object_type for m in result.matches]
@@ -116,14 +110,14 @@ class TestSearchSchema:
     def test_search_no_results(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["search_schema"]
+        tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="xyznonexistent123")
         assert result.count == 0
 
     def test_limit_caps_results(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["search_schema"]
+        tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="Zone", limit=5)
         assert result.count <= 5
         assert len(result.matches) <= 5
@@ -132,7 +126,7 @@ class TestSearchSchema:
     def test_default_limit_in_response(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["search_schema"]
+        tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="Zone")
         assert result.limit == 50
 
@@ -141,14 +135,14 @@ class TestGetAvailableReferences:
     def test_without_model(self) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["get_available_references"]
+        tool = get_tool_sync(mcp, "get_available_references")
         with pytest.raises(ToolError):
             tool.fn(object_type="BuildingSurface:Detailed", field_name="zone_name")
 
     def test_with_model(self, state_with_zones: object) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["get_available_references"]
+        tool = get_tool_sync(mcp, "get_available_references")
         result = tool.fn(object_type="BuildingSurface:Detailed", field_name="zone_name")
         assert "Office" in result.available_names
         assert "Corridor" in result.available_names
@@ -156,6 +150,6 @@ class TestGetAvailableReferences:
     def test_non_reference_field(self, state_with_model: object) -> None:
         from idfkit_mcp.server import mcp
 
-        tool = mcp._tool_manager._tools["get_available_references"]
+        tool = get_tool_sync(mcp, "get_available_references")
         with pytest.raises(ToolError):
             tool.fn(object_type="Zone", field_name="x_origin")

@@ -5,37 +5,44 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ToolError
 
 from idfkit_mcp.state import ServerState
+from tests.tool_helpers import get_tool_async, get_tool_sync
 
 
 def _tool(name: str):
     from idfkit_mcp.server import mcp
 
-    return mcp._tool_manager._tools[name]
+    return get_tool_sync(mcp, name)
+
+
+async def _async_tool(name: str):
+    from idfkit_mcp.server import mcp
+
+    return await get_tool_async(mcp, name)
 
 
 class TestRunSimulation:
-    def test_no_model(self) -> None:
+    async def test_no_model(self) -> None:
         with pytest.raises(ToolError):
-            _tool("run_simulation").fn()
+            await (await _async_tool("run_simulation")).fn()
 
-    def test_no_weather(self, state_with_model: ServerState) -> None:
+    async def test_no_weather(self, state_with_model: ServerState) -> None:
         with pytest.raises(ToolError):
-            _tool("run_simulation").fn()
+            await (await _async_tool("run_simulation")).fn()
 
-    def test_output_directory_accepted(self, state_with_model: ServerState) -> None:
+    async def test_output_directory_accepted(self, state_with_model: ServerState) -> None:
         """output_directory param is accepted (fails for other reasons, not TypeError)."""
         with pytest.raises(ToolError, match=r"weather|No weather"):
-            _tool("run_simulation").fn(output_directory="/tmp/test_out")  # noqa: S108
+            await (await _async_tool("run_simulation")).fn(output_directory="/tmp/test_out")  # noqa: S108
 
-    def test_defaults_to_latest_energyplus(self, state_with_model: ServerState) -> None:
+    async def test_defaults_to_latest_energyplus(self, state_with_model: ServerState) -> None:
         """run_simulation lets find_energyplus pick the best version when not specified."""
         with patch("idfkit.simulation.config.find_energyplus") as mock_find:
             mock_find.side_effect = RuntimeError("test stop")
             with pytest.raises(ToolError):
-                _tool("run_simulation").fn(design_day=True)
+                await (await _async_tool("run_simulation")).fn(design_day=True)
             mock_find.assert_called_once_with(path=None, version=None)
 
 
