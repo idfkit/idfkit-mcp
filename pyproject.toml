@@ -8,6 +8,7 @@ keywords = ["energyplus", "mcp", "idfkit", "building-energy"]
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "idfkit>=0.6.2",
+    "fastmcp>=3.1.0",
     "mcp>=1.2.0",
     "openstudio==3.11.0",
     "pydantic>=2.0.0",
@@ -34,6 +35,7 @@ Documentation = "https://mcp.idfkit.com/docs/"
 [dependency-groups]
 dev = [
     "pytest>=7.2.0",
+    "pytest-asyncio>=0.23.0",
     "pre-commit>=2.20.0",
     "tox-uv>=1.11.3",
     "deptry>=0.23.0",
@@ -61,6 +63,7 @@ include = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 target-version = "py310"

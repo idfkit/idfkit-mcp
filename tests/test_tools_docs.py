@@ -9,15 +9,16 @@ from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ToolError
 
 from idfkit_mcp.server import mcp
 from idfkit_mcp.state import ServerState, get_state
+from tests.tool_helpers import get_tool_sync
 
 
 class TestLookupDocumentation:
     def test_known_object_type(self) -> None:
-        tool = mcp._tool_manager._tools["lookup_documentation"]
+        tool = get_tool_sync(mcp, "lookup_documentation")
         result = tool.fn(object_type="Zone")
         assert result.object_type == "Zone"
         assert result.io_reference_url is not None
@@ -28,7 +29,7 @@ class TestLookupDocumentation:
         assert result.version  # should be set
 
     def test_unknown_object_type(self) -> None:
-        tool = mcp._tool_manager._tools["lookup_documentation"]
+        tool = get_tool_sync(mcp, "lookup_documentation")
         result = tool.fn(object_type="NotARealType")
         assert result.object_type == "NotARealType"
         assert result.io_reference_url is None
@@ -36,7 +37,7 @@ class TestLookupDocumentation:
         assert result.search_url is not None
 
     def test_with_explicit_version(self) -> None:
-        tool = mcp._tool_manager._tools["lookup_documentation"]
+        tool = get_tool_sync(mcp, "lookup_documentation")
         result = tool.fn(object_type="Zone", version="24.1.0")
         assert result.version == "24.1.0"
         assert result.io_reference_url is not None
@@ -45,14 +46,14 @@ class TestLookupDocumentation:
 
 class TestDescribeObjectTypeDocUrl:
     def test_doc_url_present(self) -> None:
-        tool = mcp._tool_manager._tools["describe_object_type"]
+        tool = get_tool_sync(mcp, "describe_object_type")
         result = tool.fn(object_type="Zone")
         assert result.doc_url is not None
         assert "docs.idfkit.com" in result.doc_url
         assert "#zone" in result.doc_url
 
     def test_doc_url_for_material(self) -> None:
-        tool = mcp._tool_manager._tools["describe_object_type"]
+        tool = get_tool_sync(mcp, "describe_object_type")
         result = tool.fn(object_type="Material")
         assert result.doc_url is not None
         assert "#material" in result.doc_url
@@ -60,7 +61,7 @@ class TestDescribeObjectTypeDocUrl:
 
 class TestSearchSchemaDocUrl:
     def test_doc_url_in_matches(self) -> None:
-        tool = mcp._tool_manager._tools["search_schema"]
+        tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="Material", limit=10)
         assert result.count > 0
         # All matches should have doc_url populated
@@ -71,14 +72,14 @@ class TestSearchSchemaDocUrl:
 
 class TestSearchDocs:
     def test_basic_search(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="zone")
         assert result.count > 0
         assert result.version
         assert all(hit.score > 0 for hit in result.results)
 
     def test_results_have_doc_url(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="zone")
         assert result.count > 0
         for hit in result.results:
@@ -86,18 +87,18 @@ class TestSearchDocs:
             assert hit.doc_url.startswith("https://")
 
     def test_tag_filter(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="zone", tags="Input Output Reference")
         assert result.count > 0
         assert all("Input Output Reference" in hit.tags for hit in result.results)
 
     def test_limit(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="material", limit=3)
         assert len(result.results) <= 3
 
     def test_html_stripped(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="zone")
         assert result.count > 0
         for hit in result.results:
@@ -106,20 +107,20 @@ class TestSearchDocs:
             assert "<ul>" not in hit.text
 
     def test_empty_query(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="")
         assert result.count == 0
         assert result.results == []
 
     def test_text_truncated(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         result = tool.fn(query="zone", limit=20)
         for hit in result.results:
             # Truncated text should be at most 500 chars + "..."
             assert len(hit.text) <= 503
 
     def test_index_cached(self) -> None:
-        tool = mcp._tool_manager._tools["search_docs"]
+        tool = get_tool_sync(mcp, "search_docs")
         tool.fn(query="zone")
         state = get_state()
         cached = state.docs_index
@@ -130,8 +131,8 @@ class TestSearchDocs:
 
 class TestGetDocSection:
     def test_known_location(self) -> None:
-        search_tool = mcp._tool_manager._tools["search_docs"]
-        section_tool = mcp._tool_manager._tools["get_doc_section"]
+        search_tool = get_tool_sync(mcp, "search_docs")
+        section_tool = get_tool_sync(mcp, "get_doc_section")
 
         search_result = search_tool.fn(query="zone heat balance")
         assert search_result.count > 0
@@ -144,14 +145,14 @@ class TestGetDocSection:
         assert result.version
 
     def test_unknown_location(self) -> None:
-        section_tool = mcp._tool_manager._tools["get_doc_section"]
+        section_tool = get_tool_sync(mcp, "get_doc_section")
         with pytest.raises(ToolError, match="not found"):
             section_tool.fn(location="nonexistent/path/#nothing")
 
     def test_full_text_not_truncated(self) -> None:
         """get_doc_section should return full text, unlike search_docs which truncates."""
-        search_tool = mcp._tool_manager._tools["search_docs"]
-        section_tool = mcp._tool_manager._tools["get_doc_section"]
+        search_tool = get_tool_sync(mcp, "search_docs")
+        section_tool = get_tool_sync(mcp, "get_doc_section")
 
         # Search for something likely to have long text
         search_result = search_tool.fn(query="zone heat balance", limit=10)
@@ -170,8 +171,8 @@ class TestGetDocSection:
         assert len(result.text) >= 0
 
     def test_html_stripped(self) -> None:
-        search_tool = mcp._tool_manager._tools["search_docs"]
-        section_tool = mcp._tool_manager._tools["get_doc_section"]
+        search_tool = get_tool_sync(mcp, "search_docs")
+        section_tool = get_tool_sync(mcp, "get_doc_section")
 
         search_result = search_tool.fn(query="zone")
         loc = search_result.results[0].location

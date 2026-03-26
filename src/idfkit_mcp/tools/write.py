@@ -6,11 +6,10 @@ import json
 import logging
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.models import (
     BatchAddResult,
     ClearSessionResult,
@@ -30,7 +29,6 @@ _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempot
 _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-@safe_tool
 def new_model(version: str | None = None) -> NewModelResult:
     """Create a new empty EnergyPlus model.
 
@@ -57,7 +55,6 @@ def new_model(version: str | None = None) -> NewModelResult:
     return NewModelResult(status="created", version=version_string(ver))
 
 
-@safe_tool
 def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None = None) -> dict[str, Any]:
     """Add a new object to the model.
 
@@ -78,7 +75,6 @@ def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None =
     return serialize_object(obj)
 
 
-@safe_tool
 def batch_add_objects(objects: list[dict[str, Any]]) -> BatchAddResult:
     """Add multiple objects to the model in a single call.
 
@@ -120,7 +116,6 @@ def batch_add_objects(objects: list[dict[str, Any]]) -> BatchAddResult:
     return BatchAddResult(total=len(objects), success=success_count, errors=error_count, results=results)
 
 
-@safe_tool
 def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[str, Any]:
     """Update fields on an existing object.
 
@@ -143,7 +138,6 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
     return serialize_object(obj)
 
 
-@safe_tool
 def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObjectResult:
     """Remove an object from the model.
 
@@ -173,7 +167,6 @@ def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObj
     return RemoveObjectResult(status="removed", object_type=object_type, name=obj.name)
 
 
-@safe_tool
 def rename_object(object_type: str, old_name: str, new_name: str) -> RenameObjectResult:
     """Rename an object and update all references to it.
 
@@ -202,7 +195,6 @@ def rename_object(object_type: str, old_name: str, new_name: str) -> RenameObjec
     )
 
 
-@safe_tool
 def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, Any]:
     """Duplicate an existing object with a new name.
 
@@ -222,7 +214,6 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
     return serialize_object(obj)
 
 
-@safe_tool
 def save_model(file_path: str | None = None, output_format: Literal["idf", "epjson"] = "idf") -> SaveModelResult:
     """Save the model to a file.
 
@@ -260,7 +251,6 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
     return SaveModelResult(status="saved", file_path=str(path), format=output_format)
 
 
-@safe_tool
 def clear_session() -> ClearSessionResult:
     """Clear the persisted session and reset all state.
 
@@ -296,6 +286,6 @@ _UNSTRUCTURED_TOOLS = [
 def register(mcp: FastMCP) -> None:
     """Register write tools on the MCP server."""
     for func, hints in _STRUCTURED_TOOLS:
-        mcp.tool(annotations=hints, structured_output=True)(func)
+        mcp.tool(annotations=hints)(func)
     for func, hints in _UNSTRUCTURED_TOOLS:
-        mcp.tool(annotations=hints, structured_output=False)(func)
+        mcp.tool(annotations=hints, output_schema=None)(func)

@@ -6,11 +6,10 @@ import logging
 import re
 from html.parser import HTMLParser
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.models import (
     DocSearchHit,
     GetDocSectionResult,
@@ -105,7 +104,6 @@ def _score_item(item: dict[str, object], query_tokens: list[str], separator: str
 # ---------------------------------------------------------------------------
 
 
-@safe_tool
 def lookup_documentation(object_type: str, version: str | None = None) -> LookupDocumentationResult:
     """Get documentation URLs for an EnergyPlus object type on docs.idfkit.com.
 
@@ -138,7 +136,6 @@ def lookup_documentation(object_type: str, version: str | None = None) -> Lookup
     )
 
 
-@safe_tool
 def search_docs(
     query: str,
     version: str | None = None,
@@ -210,7 +207,6 @@ def search_docs(
     )
 
 
-@safe_tool
 def get_doc_section(location: str, version: str | None = None, max_length: int = 8000) -> GetDocSectionResult:
     """Retrieve the full content of a documentation section by location.
 
@@ -258,4 +254,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register documentation tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints, structured_output=True)(func)
+        mcp.tool(annotations=hints)(func)
