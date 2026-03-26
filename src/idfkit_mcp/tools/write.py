@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -21,6 +22,8 @@ from idfkit_mcp.models import (
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools import resolve_object
+
+logger = logging.getLogger(__name__)
 
 _MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -50,6 +53,7 @@ def new_model(version: str | None = None) -> NewModelResult:
     state.file_path = None
     state.simulation_result = None
 
+    logger.info("Created new model (version=%s)", version_string(ver))
     return NewModelResult(status="created", version=version_string(ver))
 
 
@@ -69,6 +73,8 @@ def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None =
     doc = state.require_model()
     kwargs = fields or {}
     obj = doc.add(object_type, name, **kwargs)
+    logger.info("Added %s %r", object_type, name)
+    logger.debug("add_object fields: %s", kwargs)
     return serialize_object(obj)
 
 
@@ -108,6 +114,9 @@ def batch_add_objects(objects: list[dict[str, Any]]) -> BatchAddResult:
             results.append({"index": i, "error": str(e)})
             error_count += 1
 
+    logger.info("Batch add: %d total, %d success, %d errors", len(objects), success_count, error_count)
+    if error_count:
+        logger.warning("batch_add_objects: %d/%d objects failed", error_count, len(objects))
     return BatchAddResult(total=len(objects), success=success_count, errors=error_count, results=results)
 
 
@@ -129,6 +138,8 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
     for field_name, value in fields.items():
         setattr(obj, field_name, value)
 
+    logger.info("Updated %s %r (%d fields)", object_type, name, len(fields))
+    logger.debug("update_object fields: %s", fields)
     return serialize_object(obj)
 
 
@@ -158,6 +169,7 @@ def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObj
             )
 
     doc.removeidfobject(obj)
+    logger.info("Removed %s %r", object_type, obj.name)
     return RemoveObjectResult(status="removed", object_type=object_type, name=obj.name)
 
 
@@ -179,6 +191,7 @@ def rename_object(object_type: str, old_name: str, new_name: str) -> RenameObjec
     ref_count = len(referencing_before)
 
     doc.rename(object_type, old_name, new_name)
+    logger.info("Renamed %s %r -> %r (%d references updated)", object_type, old_name, new_name, ref_count)
 
     return RenameObjectResult(
         status="renamed",
@@ -205,6 +218,7 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
     source = resolve_object(doc, object_type, name)
 
     obj = doc.copyidfobject(source, new_name=new_name)
+    logger.info("Duplicated %s %r as %r", object_type, name, new_name)
     return serialize_object(obj)
 
 
@@ -232,6 +246,9 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
     else:
         raise ToolError("No file path specified and no original path available.")
 
+    if path.exists():
+        logger.warning("Overwriting existing file: %s", path)
+
     if output_format == "epjson":
         write_epjson(doc, path)
     else:
@@ -239,6 +256,7 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
 
     state.file_path = path
     state.save_session()
+    logger.info("Saved model to %s (format=%s)", path, output_format)
     return SaveModelResult(status="saved", file_path=str(path), format=output_format)
 
 

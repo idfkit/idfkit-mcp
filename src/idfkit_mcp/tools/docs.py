@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from html.parser import HTMLParser
 
@@ -17,6 +18,8 @@ from idfkit_mcp.models import (
     SearchDocsResult,
 )
 from idfkit_mcp.state import DOCS_BASE_URL, get_state
+
+logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
@@ -196,6 +199,7 @@ def search_docs(
             )
         )
 
+    logger.debug("search_docs: query=%r version=%s matched=%d", query, docs_version, len(results))
     return SearchDocsResult(
         query=query,
         version=docs_version,
@@ -219,6 +223,7 @@ def get_doc_section(location: str, version: str | None = None) -> GetDocSectionR
     state = get_state()
     items, _separator, docs_version = state.get_or_load_docs_index(version)
 
+    logger.debug("get_doc_section: location=%r version=%s", location, version)
     for item in items:
         if item.get("location") == location:
             return GetDocSectionResult(

@@ -1,5 +1,23 @@
 # Setup & Configuration
 
+## Enable Debug Logging
+
+When troubleshooting any issue, start by enabling debug output:
+
+```bash
+idfkit-mcp --log-level DEBUG
+```
+
+Or via environment variable:
+
+```bash
+IDFKIT_MCP_LOG_LEVEL=DEBUG idfkit-mcp
+```
+
+This reveals per-tool CALL/OK traces with timing, idfkit core library details
+(parsing, schema loading, validation), and query parameters — making it much
+easier to pinpoint failures.
+
 ## Server Does Not Start
 
 ### Symptom
