@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
@@ -9,6 +11,8 @@ from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.models import CheckReferencesResult, ValidationResult
 from idfkit_mcp.serializers import serialize_validation_result
 from idfkit_mcp.state import get_state
+
+logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
@@ -27,8 +31,15 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
 
     state = get_state()
     doc = state.require_model()
+    if not list(doc.all_objects):
+        logger.warning("validate_model: model has no objects")
     result = validate_document(doc, check_references=check_references, object_types=object_types)
     data = serialize_validation_result(result, version=doc.version)  # type: ignore[arg-type]
+    logger.info(
+        "Validation complete: %d errors, %d warnings",
+        data.get("error_count", 0),
+        data.get("warning_count", 0),
+    )
     return ValidationResult.model_validate(data)
 
 
@@ -56,6 +67,10 @@ def check_references() -> CheckReferencesResult:
             "missing_target": target,
         })
 
+    if dangling:
+        logger.warning("Found %d dangling reference(s)", len(dangling))
+    else:
+        logger.info("No dangling references found")
     return CheckReferencesResult.model_validate({"dangling_count": len(dangling), "dangling_references": dangling})
 
 

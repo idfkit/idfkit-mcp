@@ -77,7 +77,7 @@ def safe_tool(func: Callable[..., _T]) -> Callable[..., _T]:
             session_id = "local"
 
         tool_name = func.__name__
-        logger.info(
+        logger.debug(
             "CALL %s | session=%s | %s",
             tool_name,
             session_id,
@@ -110,7 +110,7 @@ def safe_tool(func: Callable[..., _T]) -> Callable[..., _T]:
             raise ToolError(error_msg) from e
         else:
             elapsed_ms = (time.monotonic() - start) * 1000
-            logger.info(
+            logger.debug(
                 "OK   %s | session=%s | %.1fms | %s",
                 tool_name,
                 session_id,

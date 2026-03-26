@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from sqlite3 import OperationalError
 from typing import Any, Literal
 
@@ -18,6 +19,8 @@ from idfkit_mcp.models import (
     RunSimulationResult,
 )
 from idfkit_mcp.state import get_state
+
+logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True)
@@ -69,6 +72,13 @@ def run_simulation(
         )
 
     config = find_energyplus(path=energyplus_dir, version=energyplus_version)
+    logger.info(
+        "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
+        ".".join(str(p) for p in config.version),
+        epw_path,
+        design_day,
+        annual,
+    )
 
     output_dir = Path(output_directory) if output_directory is not None else None
     weather = epw_path if epw_path is not None else ""
@@ -78,6 +88,11 @@ def run_simulation(
 
     state.simulation_result = result
     state.save_session()
+
+    if result.success:
+        logger.info("Simulation completed in %.1fs", result.runtime_seconds)
+    else:
+        logger.warning("Simulation failed after %.1fs", result.runtime_seconds)
 
     errors = result.errors
 
@@ -243,6 +258,14 @@ def query_timeseries(
         {"timestamp": ts.timestamps[i].isoformat(), "value": ts.values[i]} for i in range(min(limit, len(ts.values)))
     ]
 
+    logger.debug(
+        "query_timeseries: %s key=%s freq=%s total=%d returned=%d",
+        variable_name,
+        key_value,
+        frequency,
+        len(ts.values),
+        len(rows),
+    )
     return QueryTimeseriesResult.model_validate({
         "variable_name": ts.variable_name,
         "key_value": ts.key_value,
@@ -310,6 +333,7 @@ def export_timeseries(
         for i in range(len(ts.values)):
             writer.writerow([ts.timestamps[i].isoformat(), ts.values[i]])
 
+    logger.info("Exported timeseries %r to %s (%d rows)", variable_name, csv_path, len(ts.values))
     return ExportTimeseriesResult(
         path=str(csv_path),
         variable_name=ts.variable_name,
