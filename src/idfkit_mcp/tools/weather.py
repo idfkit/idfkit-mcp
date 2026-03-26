@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app import mcp
 from idfkit_mcp.models import DownloadWeatherFileResult, SearchWeatherStationsResult
 from idfkit_mcp.serializers import serialize_station
 from idfkit_mcp.state import get_state
@@ -19,6 +19,7 @@ _READ_ONLY_OPEN = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idem
 _DOWNLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 
 
+@mcp.tool(annotations=_READ_ONLY_OPEN)
 def search_weather_stations(
     query: str | None = None,
     latitude: float | None = None,
@@ -96,6 +97,7 @@ def _matches_filters(station: Any, country: str | None, state: str | None) -> bo
     return not (state and station.state.upper() != state.upper())
 
 
+@mcp.tool(annotations=_DOWNLOAD)
 def download_weather_file(
     wmo: str | None = None,
     query: str | None = None,
@@ -161,13 +163,3 @@ def download_weather_file(
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
-_TOOL_REGISTRY = [
-    (search_weather_stations, _READ_ONLY_OPEN),
-    (download_weather_file, _DOWNLOAD),
-]
-
-
-def register(mcp: FastMCP) -> None:
-    """Register weather tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
