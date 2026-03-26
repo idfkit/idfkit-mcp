@@ -6,10 +6,10 @@ import logging
 import re
 from html.parser import HTMLParser
 
-from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
     DocSearchHit,
     GetDocSectionResult,
@@ -104,6 +104,7 @@ def _score_item(item: dict[str, object], query_tokens: list[str], separator: str
 # ---------------------------------------------------------------------------
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def lookup_documentation(object_type: str, version: str | None = None) -> LookupDocumentationResult:
     """Get documentation URLs for an EnergyPlus object type on docs.idfkit.com.
 
@@ -136,6 +137,7 @@ def lookup_documentation(object_type: str, version: str | None = None) -> Lookup
     )
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def search_docs(
     query: str,
     version: str | None = None,
@@ -207,6 +209,7 @@ def search_docs(
     )
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def get_doc_section(location: str, version: str | None = None, max_length: int = 8000) -> GetDocSectionResult:
     """Retrieve the full content of a documentation section by location.
 
@@ -242,16 +245,3 @@ def get_doc_section(location: str, version: str | None = None, max_length: int =
 
     msg = f"Documentation section not found: '{location}'. Use search_docs to find valid locations."
     raise ToolError(msg)
-
-
-_TOOL_REGISTRY = [
-    (lookup_documentation, _READ_ONLY),
-    (search_docs, _READ_ONLY),
-    (get_doc_section, _READ_ONLY),
-]
-
-
-def register(mcp: FastMCP) -> None:
-    """Register documentation tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)

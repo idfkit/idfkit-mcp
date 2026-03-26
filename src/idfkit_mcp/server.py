@@ -9,11 +9,18 @@ from typing import Literal
 
 from fastmcp import FastMCP
 
-from idfkit_mcp.errors import ToolExecutionMiddleware
-from idfkit_mcp.tools import docs, read, schema, simulation, validation, weather, write
+from idfkit_mcp.app import mcp
+from idfkit_mcp.tools import docs as _docs
+from idfkit_mcp.tools import read as _read
+from idfkit_mcp.tools import schema as _schema
+from idfkit_mcp.tools import simulation as _simulation
+from idfkit_mcp.tools import validation as _validation
+from idfkit_mcp.tools import weather as _weather
+from idfkit_mcp.tools import write as _write
 
 Transport = Literal["stdio", "sse", "http"]
 _TRANSPORT_CHOICES = ("stdio", "sse", "http", "streamable-http")
+_REGISTERED_MODULES = (_docs, _read, _schema, _simulation, _validation, _weather, _write)
 
 _INSTRUCTIONS = (
     "EnergyPlus model editor powered by idfkit. "
@@ -32,22 +39,8 @@ _INSTRUCTIONS = (
 
 
 def create_server() -> FastMCP:
-    """Create a configured FastMCP instance and register all tools."""
-    server = FastMCP("idfkit", instructions=_INSTRUCTIONS)
-    server.add_middleware(ToolExecutionMiddleware())
-
-    schema.register(server)
-    read.register(server)
-    write.register(server)
-    validation.register(server)
-    simulation.register(server)
-    weather.register(server)
-    docs.register(server)
-    return server
-
-
-# Module-level instance used by tests to introspect registered tools.
-mcp = create_server()
+    """Return the configured FastMCP instance."""
+    return mcp
 
 
 _LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
