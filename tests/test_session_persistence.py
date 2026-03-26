@@ -9,12 +9,13 @@ import pytest
 from idfkit import new_document, write_idf
 
 from idfkit_mcp.state import get_state
+from tests.tool_helpers import get_tool_sync
 
 
 def _tool(name: str):
     from idfkit_mcp.server import mcp
 
-    return mcp._tool_manager._tools[name]
+    return get_tool_sync(mcp, name)
 
 
 @pytest.fixture()

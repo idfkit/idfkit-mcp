@@ -6,11 +6,10 @@ import logging
 from sqlite3 import OperationalError
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp import Context, FastMCP
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.models import (
     ExportTimeseriesResult,
     GetResultsSummaryResult,
@@ -30,72 +29,24 @@ _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentH
 ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPeriod", "Annual"]
 
 
-@safe_tool
-def run_simulation(
-    weather_file: str | None = None,
-    design_day: bool = False,
-    annual: bool = False,
-    energyplus_dir: str | None = None,
-    energyplus_version: str | None = None,
-    output_directory: str | None = None,
-) -> RunSimulationResult:
-    """Execute an EnergyPlus simulation on the loaded model.
-
-    Use this to run the simulation after building or modifying a model.
-
-    Args:
-        weather_file: Path to EPW weather file. Uses previously downloaded file if None.
-        design_day: Run design-day-only simulation.
-        annual: Run annual simulation.
-        energyplus_dir: Optional explicit EnergyPlus installation directory or executable path.
-        energyplus_version: Optional EnergyPlus version filter (e.g. "25.1.0").
-        output_directory: Optional explicit output directory for simulation results.
-    """
+def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | None:
+    """Resolve the weather path from arguments or saved session state."""
     from pathlib import Path
 
-    from idfkit.simulation.config import find_energyplus
-    from idfkit.simulation.runner import simulate
-
     state = get_state()
-    doc = state.require_model()
-
-    epw_path: Path | None = None
     if weather_file is not None:
-        epw_path = Path(weather_file)
-    elif state.weather_file is not None:
-        epw_path = state.weather_file
-
-    if epw_path is None and not design_day:
-        raise ToolError(
-            "No weather file specified. Provide weather_file or use download_weather_file first, "
-            "or set design_day=True."
-        )
-
-    config = find_energyplus(path=energyplus_dir, version=energyplus_version)
-    logger.info(
-        "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
-        ".".join(str(p) for p in config.version),
-        epw_path,
-        design_day,
-        annual,
+        return str(Path(weather_file))
+    if state.weather_file is not None:
+        return str(state.weather_file)
+    if design_day:
+        return None
+    raise ToolError(
+        "No weather file specified. Provide weather_file or use download_weather_file first, or set design_day=True."
     )
 
-    output_dir = Path(output_directory) if output_directory is not None else None
-    weather = epw_path if epw_path is not None else ""
-    result = simulate(
-        doc, weather=weather, design_day=design_day, annual=annual, energyplus=config, output_dir=output_dir
-    )
 
-    state.simulation_result = result
-    state.save_session()
-
-    if result.success:
-        logger.info("Simulation completed in %.1fs", result.runtime_seconds)
-    else:
-        logger.warning("Simulation failed after %.1fs", result.runtime_seconds)
-
-    errors = result.errors
-
+def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
+    """Serialize simulation error counts and representative messages."""
     error_detail: dict[str, Any] = {
         "fatal": errors.fatal_count,
         "severe": errors.severe_count,
@@ -111,6 +62,72 @@ def run_simulation(
         error_detail["warning_messages"] = [
             {"message": m.message, "details": list(m.details)} for m in errors.warnings[:10]
         ]
+    return error_detail
+
+
+async def run_simulation(
+    weather_file: str | None = None,
+    design_day: bool = False,
+    annual: bool = False,
+    energyplus_dir: str | None = None,
+    energyplus_version: str | None = None,
+    output_directory: str | None = None,
+    ctx: Context | None = None,
+) -> RunSimulationResult:
+    """Execute an EnergyPlus simulation on the loaded model.
+
+    Use this to run the simulation after building or modifying a model.
+
+    Args:
+        weather_file: Path to EPW weather file. Uses previously downloaded file if None.
+        design_day: Run design-day-only simulation.
+        annual: Run annual simulation.
+        energyplus_dir: Optional explicit EnergyPlus installation directory or executable path.
+        energyplus_version: Optional EnergyPlus version filter (e.g. "25.1.0").
+        output_directory: Optional explicit output directory for simulation results.
+    """
+    from idfkit.simulation import async_simulate
+    from idfkit.simulation.config import find_energyplus
+    from idfkit.simulation.progress import SimulationProgress
+
+    state = get_state()
+    doc = state.require_model()
+    weather = _resolve_weather_path(weather_file, design_day)
+
+    config = find_energyplus(path=energyplus_dir, version=energyplus_version)
+    logger.info(
+        "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
+        ".".join(str(p) for p in config.version),
+        weather,
+        design_day,
+        annual,
+    )
+
+    async def on_progress(event: SimulationProgress) -> None:
+        if ctx is not None and event.percent is not None:
+            await ctx.report_progress(progress=event.percent, total=100.0)
+        if ctx is not None:
+            await ctx.info(f"[{event.phase}] {event.message!s}")
+
+    result = await async_simulate(
+        doc,
+        weather="" if weather is None else weather,
+        design_day=design_day,
+        annual=annual,
+        energyplus=config,
+        output_dir=output_directory,
+        on_progress=on_progress,
+    )
+
+    state.simulation_result = result
+    state.save_session()
+
+    if result.success:
+        logger.info("Simulation completed in %.1fs", result.runtime_seconds)
+    else:
+        logger.warning("Simulation failed after %.1fs", result.runtime_seconds)
+
+    errors = result.errors
 
     return RunSimulationResult.model_validate({
         "success": result.success,
@@ -121,12 +138,11 @@ def run_simulation(
             "install_dir": str(config.install_dir),
             "executable": str(config.executable),
         },
-        "errors": error_detail,
+        "errors": _serialize_simulation_errors(errors),
         "simulation_complete": errors.simulation_complete,
     })
 
 
-@safe_tool
 def get_results_summary() -> GetResultsSummaryResult:
     """Get a summary of the last simulation results.
 
@@ -175,7 +191,6 @@ def get_results_summary() -> GetResultsSummaryResult:
     return GetResultsSummaryResult.model_validate(summary)
 
 
-@safe_tool
 def list_output_variables(search: str | None = None, limit: int = 50) -> ListOutputVariablesResult:
     """List available output variables from the last simulation.
 
@@ -217,7 +232,6 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> ListOut
     })
 
 
-@safe_tool
 def query_timeseries(
     variable_name: str,
     key_value: str = "*",
@@ -283,7 +297,6 @@ def query_timeseries(
     })
 
 
-@safe_tool
 def export_timeseries(
     variable_name: str,
     key_value: str = "*",
@@ -363,4 +376,4 @@ _TOOL_REGISTRY = [
 def register(mcp: FastMCP) -> None:
     """Register simulation tools on the MCP server."""
     for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints, structured_output=True)(func)
+        mcp.tool(annotations=hints)(func)

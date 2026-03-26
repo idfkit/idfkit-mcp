@@ -10,16 +10,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 from idfkit import new_document, write_idf
-from mcp.server.fastmcp.exceptions import ToolError
 
 from idfkit_mcp.state import ServerState, get_state
+from tests.tool_helpers import get_tool_sync
 
 
 def _tool(name: str):
     from idfkit_mcp.server import mcp
 
-    return mcp._tool_manager._tools[name]
+    return get_tool_sync(mcp, name)
 
 
 class TestLoadModel:

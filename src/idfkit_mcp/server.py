@@ -5,13 +5,15 @@ from __future__ import annotations
 import argparse
 import os
 from collections.abc import Sequence
-from typing import Literal, get_args
+from typing import Literal
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
+from idfkit_mcp.errors import ToolExecutionMiddleware
 from idfkit_mcp.tools import docs, read, schema, simulation, validation, weather, write
 
-Transport = Literal["stdio", "sse", "streamable-http"]
+Transport = Literal["stdio", "sse", "http"]
+_TRANSPORT_CHOICES = ("stdio", "sse", "http", "streamable-http")
 
 _INSTRUCTIONS = (
     "EnergyPlus model editor powered by idfkit. "
@@ -29,9 +31,10 @@ _INSTRUCTIONS = (
 )
 
 
-def create_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
+def create_server() -> FastMCP:
     """Create a configured FastMCP instance and register all tools."""
-    server = FastMCP("idfkit", instructions=_INSTRUCTIONS, host=host, port=port)
+    server = FastMCP("idfkit", instructions=_INSTRUCTIONS)
+    server.add_middleware(ToolExecutionMiddleware())
 
     schema.register(server)
     read.register(server)
@@ -54,7 +57,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the idfkit MCP server.")
     parser.add_argument(
         "--transport",
-        choices=get_args(Transport),
+        choices=_TRANSPORT_CHOICES,
         default=os.getenv("IDFKIT_MCP_TRANSPORT", "stdio"),
         help="MCP transport to run.",
     )
@@ -80,7 +83,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=os.getenv("IDFKIT_MCP_MOUNT_PATH"),
         help="Optional mount path for SSE transport.",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.transport == "streamable-http":
+        args.transport = "http"
+    return args
 
 
 def main() -> None:
@@ -100,13 +106,16 @@ def main() -> None:
     # The library installs a NullHandler by default; setting a level here lets
     # its messages propagate through to the root handler configured above.
     logging.getLogger("idfkit").setLevel(level)
-    server = create_server(host=args.host, port=args.port)
+    server = create_server()
 
-    run_kwargs: dict[str, str | None] = {"transport": args.transport}
-    if args.transport != "stdio" and args.mount_path is not None:
-        run_kwargs["mount_path"] = args.mount_path
-
-    server.run(**run_kwargs)  # type: ignore[arg-type]
+    transport: Transport = args.transport
+    if transport == "stdio":
+        server.run(transport=transport)
+        return
+    if args.mount_path is None:
+        server.run(transport=transport, host=args.host, port=args.port)
+        return
+    server.run(transport=transport, host=args.host, port=args.port, mount_path=args.mount_path)
 
 
 if __name__ == "__main__":
