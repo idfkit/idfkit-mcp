@@ -76,6 +76,14 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main() -> None:
     """Run the MCP server with configurable transport."""
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     args = _parse_args()
     server = create_server(host=args.host, port=args.port)
 

@@ -5,24 +5,15 @@ from __future__ import annotations
 import pytest
 from idfkit import new_document
 
-from idfkit_mcp.state import ServerState, get_state
+from idfkit_mcp.state import ServerState, get_state, reset_sessions
 
 
 @pytest.fixture(autouse=True)
 def _reset_state() -> None:
-    """Reset the module-level server state before each test."""
+    """Reset the session registry before each test."""
+    reset_sessions()
     state = get_state()
-    state.document = None
-    state.schema = None
-    state.file_path = None
-    state.simulation_result = None
-    state.weather_file = None
-    state.station_index = None
-    state.docs_index = None
-    state.docs_version = None
-    state.docs_separator = None
     state.persistence_enabled = False
-    state._session_restored = False
 
 
 @pytest.fixture()
