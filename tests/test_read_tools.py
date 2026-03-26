@@ -82,6 +82,23 @@ class TestGetObject:
             _tool("get_object").fn(object_type="Zone", name="Nonexistent")
 
 
+class TestGetObjectSingleton:
+    """Singleton types (no name field) should be retrievable."""
+
+    def test_get_singleton_with_empty_name(self, state_with_singletons: ServerState) -> None:
+        result = _tool("get_object").fn(object_type="SimulationControl", name="")
+        assert result["object_type"] == "SimulationControl"
+
+    def test_get_singleton_with_any_name(self, state_with_singletons: ServerState) -> None:
+        # AI clients often pass the type name as the name — should still work
+        result = _tool("get_object").fn(object_type="SimulationControl", name="SimulationControl")
+        assert result["object_type"] == "SimulationControl"
+
+    def test_get_singleton_global_geometry_rules(self, state_with_singletons: ServerState) -> None:
+        result = _tool("get_object").fn(object_type="GlobalGeometryRules", name="")
+        assert result["object_type"] == "GlobalGeometryRules"
+
+
 class TestSearchObjects:
     def test_search_by_name(self, state_with_zones: ServerState) -> None:
         result = _tool("search_objects").fn(query="Office")

@@ -117,6 +117,24 @@ class TestDuplicateObject:
         assert result["name"] == "OfficeClone"
 
 
+class TestUpdateObjectSingleton:
+    """Singleton types should be updatable."""
+
+    def test_update_singleton(self, state_with_singletons: ServerState) -> None:
+        result = _tool("update_object").fn(
+            object_type="SimulationControl", name="", fields={"do_zone_sizing_calculation": "No"}
+        )
+        assert result["object_type"] == "SimulationControl"
+
+
+class TestRemoveObjectSingleton:
+    """Singleton types should be removable."""
+
+    def test_remove_singleton(self, state_with_singletons: ServerState) -> None:
+        result = _tool("remove_object").fn(object_type="GlobalGeometryRules", name="", force=True)
+        assert result.status == "removed"
+
+
 class TestSaveModel:
     def test_save_idf(self, state_with_zones: ServerState) -> None:
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
