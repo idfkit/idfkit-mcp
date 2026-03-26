@@ -135,6 +135,12 @@ def safe_tool(func: Callable[..., _T]) -> Callable[..., _T]:
     ]
     resolved_params.append(inspect.Parameter("ctx", inspect.Parameter.KEYWORD_ONLY, annotation=Context))
 
+    # Expose ctx in __annotations__ so typing.get_type_hints(wrapper) includes
+    # it.  FastMCP's find_context_parameter() uses get_type_hints — without this
+    # it resolves through __wrapped__ to the original (which lacks ctx), causing
+    # ctx to appear as a required client-visible parameter in the tool schema.
+    wrapper.__annotations__ = {**hints, "ctx": Context}
+
     wrapper.__signature__ = inspect.Signature(  # type: ignore[attr-defined]
         parameters=resolved_params,
         return_annotation=hints.get("return", sig.return_annotation),
