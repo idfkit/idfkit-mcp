@@ -73,14 +73,14 @@ class TestListObjectTypes:
         for group_data in result.groups.values():
             assert group_data.types is not None
 
-    def test_high_limit_includes_types(self) -> None:
+    def test_high_limit_is_capped(self) -> None:
         from idfkit_mcp.server import mcp
 
         tool = mcp._tool_manager._tools["list_object_types"]
+        # limit is hard-capped to 100 regardless of caller request
         result = tool.fn(limit=10000)
-        assert result.truncated is False
-        for group_data in result.groups.values():
-            assert group_data.types is not None
+        assert result.total_types > 100
+        assert result.truncated is True
 
 
 class TestDescribeObjectType:
