@@ -7,8 +7,6 @@ import os
 from collections.abc import Sequence
 from typing import Literal
 
-from fastmcp import FastMCP
-
 from idfkit_mcp.app import mcp
 from idfkit_mcp.tools import docs as _docs
 from idfkit_mcp.tools import read as _read
@@ -36,11 +34,6 @@ _INSTRUCTIONS = (
     "- Use search_docs to find relevant EnergyPlus documentation sections\n"
     "- Use get_doc_section to read the full content of a documentation section"
 )
-
-
-def create_server() -> FastMCP:
-    """Return the configured FastMCP instance."""
-    return mcp
 
 
 _LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
@@ -99,16 +92,14 @@ def main() -> None:
     # The library installs a NullHandler by default; setting a level here lets
     # its messages propagate through to the root handler configured above.
     logging.getLogger("idfkit").setLevel(level)
-    server = create_server()
-
     transport: Transport = args.transport
     if transport == "stdio":
-        server.run(transport=transport)
+        mcp.run(transport=transport)
         return
     if args.mount_path is None:
-        server.run(transport=transport, host=args.host, port=args.port)
+        mcp.run(transport=transport, host=args.host, port=args.port)
         return
-    server.run(transport=transport, host=args.host, port=args.port, mount_path=args.mount_path)
+    mcp.run(transport=transport, host=args.host, port=args.port, mount_path=args.mount_path)
 
 
 if __name__ == "__main__":
