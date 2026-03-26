@@ -57,3 +57,17 @@ def state_with_zones() -> ServerState:
         validate=False,
     )
     return state
+
+
+@pytest.fixture()
+def state_with_singletons() -> ServerState:
+    """Return server state with a model containing singleton objects.
+
+    ``new_document()`` already creates default singletons (SimulationControl,
+    GlobalGeometryRules, etc.), so we just use those.
+    """
+    state = get_state()
+    doc = new_document()
+    state.document = doc
+    state.schema = doc.schema
+    return state
