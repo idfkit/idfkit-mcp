@@ -1243,6 +1243,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#enable-debug-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable Debug Logging
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#server-does-not-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1945,6 +1956,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#enable-debug-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable Debug Logging
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#server-does-not-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2199,6 +2221,16 @@
 
 
 <h1 id="setup-configuration">Setup &amp; Configuration<a class="headerlink" href="#setup-configuration" title="Permanent link">&para;</a></h1>
+<h2 id="enable-debug-logging">Enable Debug Logging<a class="headerlink" href="#enable-debug-logging" title="Permanent link">&para;</a></h2>
+<p>When troubleshooting any issue, start by enabling debug output:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>idfkit-mcp<span class="w"> </span>--log-level<span class="w"> </span>DEBUG
+</span></code></pre></div>
+<p>Or via environment variable:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
+</span></code></pre></div>
+<p>This reveals per-tool CALL/OK traces with timing, idfkit core library details
+(parsing, schema loading, validation), and query parameters — making it much
+easier to pinpoint failures.</p>
 <h2 id="server-does-not-start">Server Does Not Start<a class="headerlink" href="#server-does-not-start" title="Permanent link">&para;</a></h2>
 <h3 id="symptom">Symptom<a class="headerlink" href="#symptom" title="Permanent link">&para;</a></h3>
 <p>Client reports command not found for <code>idfkit-mcp</code>.</p>
@@ -2212,7 +2244,7 @@
 <ol>
 <li>Confirm JSON config is valid (no comments).</li>
 <li>Confirm command runs in terminal:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span>idfkit-mcp<span class="w"> </span>idfkit-mcp
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span>idfkit-mcp<span class="w"> </span>idfkit-mcp
 </span></code></pre></div></li>
 <li>Restart client after config changes.</li>
 </ol>
