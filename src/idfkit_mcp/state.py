@@ -1,8 +1,17 @@
-"""Server state management for the idfkit MCP server."""
+"""Server state management for the idfkit MCP server.
+
+State is keyed per MCP session so that concurrent ``streamable-http``
+connections each get their own model, simulation result, etc.  For
+``stdio`` transport (single client) a fixed ``"stdio"`` session ID is
+used, behaving identically to the previous singleton approach.
+"""
 
 from __future__ import annotations
 
+import contextvars
 import dataclasses
+import logging
+from collections import OrderedDict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.request import urlopen
@@ -15,8 +24,20 @@ if TYPE_CHECKING:
     from idfkit.simulation.result import SimulationResult
     from idfkit.weather.index import StationIndex
 
+logger = logging.getLogger("idfkit_mcp")
 
 DOCS_BASE_URL = "https://docs.idfkit.com"
+
+# ---------------------------------------------------------------------------
+# Per-session state registry
+# ---------------------------------------------------------------------------
+
+_current_session_id: contextvars.ContextVar[str] = contextvars.ContextVar("current_session_id", default="stdio")
+
+_sessions: OrderedDict[str, ServerState] = OrderedDict()
+
+_MAX_SESSIONS = 20
+"""Maximum number of concurrent sessions before LRU eviction."""
 
 
 def _cache_base_dir() -> Path:
@@ -106,18 +127,19 @@ def _read_session_file() -> dict[str, Any] | None:
 
 @dataclasses.dataclass
 class ServerState:
-    """Holds the active document, schema, and simulation result.
+    """Holds the active document, schema, and simulation result for one session.
 
-    MCP stdio transport is single-threaded, so a module-level instance is safe.
+    Instances are created and managed by :func:`get_state`, which keys them
+    by MCP session ID.  For ``stdio`` transport a fixed ``"stdio"`` key is
+    used (single-client, equivalent to the old singleton).  For
+    ``streamable-http`` each connection gets an isolated instance keyed by
+    the ``Mcp-Session-Id`` header.
 
     Session state (file_path, simulation run dir, weather file) is persisted
     to a JSON file on disk so that clients that restart the server between
     turns (e.g. Codex) can transparently resume where they left off.
-
-    WARNING: For streamable-http or SSE transports with multiple concurrent
-    clients, this singleton will cause cross-session state contamination.
-    A future improvement should key state by session/connection ID using
-    FastMCP's ``context.session`` or a similar mechanism.
+    Persistence is disabled for HTTP sessions since they receive a new
+    session ID on every connection.
     """
 
     document: IDFDocument | None = None
@@ -130,9 +152,12 @@ class ServerState:
     docs_version: str | None = None
     docs_separator: str | None = None
 
-    # Session persistence control
+    # Session persistence control (disabled for HTTP sessions)
     persistence_enabled: bool = True
     _session_restored: bool = dataclasses.field(default=False, repr=False)
+
+    # Informational — set when the session is created via get_state()
+    session_id: str = dataclasses.field(default="stdio", repr=False)
 
     def require_model(self) -> IDFDocument:
         """Return the active document, auto-restoring from session if needed."""
@@ -358,10 +383,64 @@ class ServerState:
         self._session_restored = False
 
 
-# Module-level singleton
-_state = ServerState()
+def _extract_session_id(ctx: Any) -> str:
+    """Extract the MCP session ID from a FastMCP ``Context``.
+
+    Falls back to ``"stdio"`` when no session header is present (e.g. stdio
+    transport or direct function calls in tests).
+    """
+    try:
+        request = ctx.request_context.request
+        if request is not None and hasattr(request, "headers"):
+            sid = request.headers.get("mcp-session-id")
+            if sid:
+                return sid
+    except Exception:
+        logger.debug("Could not extract session ID from context", exc_info=True)
+    return "stdio"
+
+
+def set_session_from_context(ctx: Any) -> str:
+    """Set the current session from a FastMCP ``Context``.
+
+    Called by the ``safe_tool`` decorator before each tool invocation.
+    Returns the resolved session ID.
+    """
+    session_id = _extract_session_id(ctx)
+    _current_session_id.set(session_id)
+    return session_id
 
 
 def get_state() -> ServerState:
-    """Return the module-level server state."""
-    return _state
+    """Return the ``ServerState`` for the current MCP session.
+
+    Creates a new state on first access for a given session ID and evicts
+    the least-recently-used session when the registry is full.
+    """
+    session_id = _current_session_id.get()
+
+    if session_id in _sessions:
+        _sessions.move_to_end(session_id)
+        return _sessions[session_id]
+
+    # Evict oldest sessions when at capacity
+    while len(_sessions) >= _MAX_SESSIONS:
+        evicted_id, _ = _sessions.popitem(last=False)
+        logger.info("Evicted session %s (capacity %d)", evicted_id, _MAX_SESSIONS)
+
+    state = ServerState(session_id=session_id)
+    # HTTP sessions are ephemeral — no point persisting to disk
+    if session_id != "stdio":
+        state.persistence_enabled = False
+    _sessions[session_id] = state
+    logger.debug("Created session %s", session_id)
+    return state
+
+
+def reset_sessions() -> None:
+    """Clear all sessions and reset to the default ``"stdio"`` session.
+
+    Intended for test fixtures only.
+    """
+    _sessions.clear()
+    _current_session_id.set("stdio")
