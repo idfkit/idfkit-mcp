@@ -51,6 +51,8 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
     Returns:
         Groups with their object type names (or counts only when truncated).
     """
+    limit = min(limit, 100)
+
     state = get_state()
     schema = state.get_or_load_schema(_parse_version(version))
 
@@ -113,6 +115,8 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
         limit: Maximum number of results to return (default 50).
     """
     from idfkit.docs import docs_url_for_object
+
+    limit = min(limit, 50)
 
     state = get_state()
     ver_tuple = _parse_version(version)

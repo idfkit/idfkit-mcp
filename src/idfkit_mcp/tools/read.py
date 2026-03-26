@@ -185,6 +185,8 @@ def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
         object_type: The EnergyPlus object type (e.g. "Zone").
         limit: Maximum number of objects to return (default 50).
     """
+    limit = min(limit, 200)
+
     state = get_state()
     doc = state.require_model()
 
@@ -226,6 +228,8 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
         object_type: Optionally restrict search to a specific type.
         limit: Maximum results to return (default 20).
     """
+    limit = min(limit, 100)
+
     state = get_state()
     doc = state.require_model()
     query_lower = query.lower()

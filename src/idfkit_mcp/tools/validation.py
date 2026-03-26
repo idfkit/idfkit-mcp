@@ -44,10 +44,13 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
 
 
 @safe_tool
-def check_references() -> CheckReferencesResult:
+def check_references(limit: int = 100) -> CheckReferencesResult:
     """Check for dangling references in the loaded model.
 
     Use this to find references that point to non-existent objects.
+
+    Args:
+        limit: Maximum number of dangling references to return (default 100).
     """
     state = get_state()
     doc = state.require_model()
@@ -67,11 +70,17 @@ def check_references() -> CheckReferencesResult:
             "missing_target": target,
         })
 
-    if dangling:
-        logger.warning("Found %d dangling reference(s)", len(dangling))
+    total = len(dangling)
+    if total:
+        logger.warning("Found %d dangling reference(s)", total)
     else:
         logger.info("No dangling references found")
-    return CheckReferencesResult.model_validate({"dangling_count": len(dangling), "dangling_references": dangling})
+    limited = dangling[:limit]
+    return CheckReferencesResult.model_validate({
+        "dangling_count": total,
+        "returned": len(limited),
+        "dangling_references": limited,
+    })
 
 
 # Annotations are defined after functions to avoid forward-reference errors.

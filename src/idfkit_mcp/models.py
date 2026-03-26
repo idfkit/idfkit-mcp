@@ -158,6 +158,7 @@ class GetDocSectionResult(BaseModel):
     text: str
     doc_url: str
     version: str
+    truncated: bool = False
 
 
 class AvailableReferencesResult(BaseModel):
@@ -298,6 +299,8 @@ class ValidationResult(BaseModel):
     info_count: int
     errors: list[ValidationErrorModel]
     warnings: list[ValidationErrorModel]
+    errors_truncated: bool = False
+    warnings_truncated: bool = False
 
 
 class DanglingReference(BaseModel):
@@ -313,6 +316,7 @@ class CheckReferencesResult(BaseModel):
     """Response from ``check_references``."""
 
     dangling_count: int
+    returned: int
     dangling_references: list[DanglingReference]
 
 
@@ -375,6 +379,7 @@ class TableSummary(BaseModel):
     # ``for`` is a Python keyword so we use an alias.
     for_string: str
     data: dict[str, object] | None = None
+    truncated: bool = False
 
 
 class GetResultsSummaryResult(BaseModel):
