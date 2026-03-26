@@ -19,6 +19,7 @@ from idfkit_mcp.models import (
 )
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
+from idfkit_mcp.tools import resolve_object
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -204,15 +205,7 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
     """
     state = get_state()
     doc = state.require_model()
-
-    if object_type not in doc:
-        raise ToolError(f"No objects of type '{object_type}' in the model.")
-
-    collection = doc.get_collection(object_type)
-    obj = collection.get(name)
-    if obj is None:
-        raise ToolError(f"Object '{name}' not found in '{object_type}'.")
-
+    obj = resolve_object(doc, object_type, name)
     return serialize_object(obj)
 
 

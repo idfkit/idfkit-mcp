@@ -20,6 +20,7 @@ from idfkit_mcp.models import (
 )
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
+from idfkit_mcp.tools import resolve_object
 
 _MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -123,13 +124,7 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
     """
     state = get_state()
     doc = state.require_model()
-
-    if object_type not in doc:
-        raise ToolError(f"No objects of type '{object_type}' in the model.")
-
-    obj = doc.get_collection(object_type).get(name)
-    if obj is None:
-        raise ToolError(f"Object '{name}' not found in '{object_type}'.")
+    obj = resolve_object(doc, object_type, name)
 
     for field_name, value in fields.items():
         setattr(obj, field_name, value)
@@ -151,16 +146,11 @@ def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObj
     """
     state = get_state()
     doc = state.require_model()
-
-    if object_type not in doc:
-        raise ToolError(f"No objects of type '{object_type}' in the model.")
-
-    obj = doc.get_collection(object_type).get(name)
-    if obj is None:
-        raise ToolError(f"Object '{name}' not found in '{object_type}'.")
+    obj = resolve_object(doc, object_type, name)
 
     if not force:
-        referencing = doc.get_referencing(name)
+        ref_name = obj.name or name
+        referencing = doc.get_referencing(ref_name)
         if referencing:
             refs = [{"object_type": r.obj_type, "name": r.name} for r in referencing]
             raise ToolError(
@@ -168,7 +158,7 @@ def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObj
             )
 
     doc.removeidfobject(obj)
-    return RemoveObjectResult(status="removed", object_type=object_type, name=name)
+    return RemoveObjectResult(status="removed", object_type=object_type, name=obj.name)
 
 
 @safe_tool
@@ -212,8 +202,9 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
     """
     state = get_state()
     doc = state.require_model()
+    source = resolve_object(doc, object_type, name)
 
-    obj = doc.copyidfobject(doc.get_collection(object_type)[name], new_name=new_name)
+    obj = doc.copyidfobject(source, new_name=new_name)
     return serialize_object(obj)
 
 
