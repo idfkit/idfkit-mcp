@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any, cast
 
-from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
     ConvertOsmResult,
     GroupSummary,
@@ -27,6 +27,7 @@ _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempoten
 _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
+@mcp.tool(annotations=_LOAD)
 def load_model(file_path: str, version: str | None = None) -> ModelSummary:
     """Open an existing IDF or epJSON file as the active model.
 
@@ -63,6 +64,7 @@ def load_model(file_path: str, version: str | None = None) -> ModelSummary:
     return _build_summary(doc, state)
 
 
+@mcp.tool(annotations=_LOAD)
 def convert_osm_to_idf(
     osm_path: str,
     output_path: str,
@@ -159,6 +161,7 @@ def convert_osm_to_idf(
     )
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def get_model_summary() -> ModelSummary:
     """Get a summary of the currently loaded model.
 
@@ -170,6 +173,7 @@ def get_model_summary() -> ModelSummary:
     return _build_summary(doc, state)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
     """List objects of a given type from the loaded model.
 
@@ -196,6 +200,7 @@ def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
     return ListObjectsResult(object_type=object_type, total=total, returned=len(objects), objects=objects)
 
 
+@mcp.tool(annotations=_READ_ONLY, output_schema=None)
 def get_object(object_type: str, name: str) -> dict[str, Any]:
     """Get all field values for a specific object.
 
@@ -211,6 +216,7 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
     return serialize_object(obj)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def search_objects(query: str, object_type: str | None = None, limit: int = 20) -> SearchObjectsResult:
     """Search for objects by name or field values.
 
@@ -240,6 +246,7 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
     return SearchObjectsResult.model_validate({"query": query, "count": len(matches), "matches": matches})
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def get_references(name: str) -> ReferencesResult:
     """Get bidirectional references for an object name.
 
@@ -270,34 +277,6 @@ def get_references(name: str) -> ReferencesResult:
         "references": references,
         "references_count": len(references),
     })
-
-
-# ---------------------------------------------------------------------------
-# Tool registry - ``structured_output`` is enabled for tools whose return
-# type is a Pydantic model.  ``get_object`` returns a dynamic dict and
-# therefore stays unstructured.
-# ---------------------------------------------------------------------------
-
-_STRUCTURED_TOOLS = [
-    (load_model, _LOAD),
-    (convert_osm_to_idf, _LOAD),
-    (get_model_summary, _READ_ONLY),
-    (list_objects, _READ_ONLY),
-    (search_objects, _READ_ONLY),
-    (get_references, _READ_ONLY),
-]
-
-_UNSTRUCTURED_TOOLS = [
-    (get_object, _READ_ONLY),
-]
-
-
-def register(mcp: FastMCP) -> None:
-    """Register read tools on the MCP server."""
-    for func, hints in _STRUCTURED_TOOLS:
-        mcp.tool(annotations=hints)(func)
-    for func, hints in _UNSTRUCTURED_TOOLS:
-        mcp.tool(annotations=hints, output_schema=None)(func)
 
 
 def _build_summary(doc: Any, state: Any) -> ModelSummary:

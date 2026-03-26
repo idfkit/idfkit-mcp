@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app import mcp
 from idfkit_mcp.models import CheckReferencesResult, ValidationResult
 from idfkit_mcp.serializers import serialize_validation_result
 from idfkit_mcp.state import get_state
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def validate_model(object_types: list[str] | None = None, check_references: bool = True) -> ValidationResult:
     """Validate the loaded model against the EnergyPlus schema.
 
@@ -41,6 +42,7 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
     return ValidationResult.model_validate(data)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def check_references(limit: int = 100) -> CheckReferencesResult:
     """Check for dangling references in the loaded model.
 
@@ -78,16 +80,3 @@ def check_references(limit: int = 100) -> CheckReferencesResult:
         "returned": len(limited),
         "dangling_references": limited,
     })
-
-
-# Annotations are defined after functions to avoid forward-reference errors.
-_TOOL_REGISTRY = [
-    (validate_model, _READ_ONLY),
-    (check_references, _READ_ONLY),
-]
-
-
-def register(mcp: FastMCP) -> None:
-    """Register validation tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)

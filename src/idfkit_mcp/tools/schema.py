@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app import mcp
 from idfkit_mcp.errors import tool_error
 from idfkit_mcp.models import (
     AvailableReferencesResult,
@@ -34,6 +34,7 @@ def _parse_version(version: str | None) -> tuple[int, int, int] | None:
     return (int(parts[0]), int(parts[1]), int(parts[2]))
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> ListObjectTypesResult:
     """Discover available EnergyPlus object types, optionally filtered by group.
 
@@ -74,6 +75,7 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
     return ListObjectTypesResult(total_types=total_types, truncated=truncated, groups=groups_result)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def describe_object_type(object_type: str, version: str | None = None) -> DescribeObjectTypeResult:
     """Get the full field schema for an EnergyPlus object type.
 
@@ -100,6 +102,7 @@ def describe_object_type(object_type: str, version: str | None = None) -> Descri
     return DescribeObjectTypeResult.model_validate(data)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def search_schema(query: str, version: str | None = None, limit: int = 50) -> SearchSchemaResult:
     """Search for EnergyPlus object types by name or description.
 
@@ -144,6 +147,7 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
     })
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def get_available_references(object_type: str, field_name: str) -> AvailableReferencesResult:
     """Get valid object names for a reference field from the loaded model.
 
@@ -202,15 +206,3 @@ def _get_doc_url(
 
 
 # Annotations are defined after functions to avoid forward-reference errors.
-_TOOL_REGISTRY = [
-    (list_object_types, _READ_ONLY),
-    (describe_object_type, _READ_ONLY),
-    (search_schema, _READ_ONLY),
-    (get_available_references, _READ_ONLY),
-]
-
-
-def register(mcp: FastMCP) -> None:
-    """Register schema tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)

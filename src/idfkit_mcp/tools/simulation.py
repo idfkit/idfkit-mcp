@@ -6,10 +6,11 @@ import logging
 from sqlite3 import OperationalError
 from typing import Any, Literal
 
-from fastmcp import Context, FastMCP
+from fastmcp import Context
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
     ExportTimeseriesResult,
     GetResultsSummaryResult,
@@ -30,7 +31,7 @@ ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPerio
 
 
 def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | None:
-    """Resolve the weather path from arguments or saved session state."""
+    """Resolve the weather file path from arguments or saved session state."""
     from pathlib import Path
 
     state = get_state()
@@ -65,6 +66,20 @@ def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
     return error_detail
 
 
+def _build_progress_handler(ctx: Context | None) -> Any:
+    """Build an async progress callback for FastMCP context reporting."""
+    from idfkit.simulation.progress import SimulationProgress
+
+    async def on_progress(event: SimulationProgress) -> None:
+        if ctx is not None and event.percent is not None:
+            await ctx.report_progress(progress=event.percent, total=100.0)
+        if ctx is not None:
+            await ctx.info(f"[{event.phase}] {event.message}")
+
+    return on_progress
+
+
+@mcp.tool(annotations=_RUN)
 async def run_simulation(
     weather_file: str | None = None,
     design_day: bool = False,
@@ -88,7 +103,6 @@ async def run_simulation(
     """
     from idfkit.simulation import async_simulate
     from idfkit.simulation.config import find_energyplus
-    from idfkit.simulation.progress import SimulationProgress
 
     state = get_state()
     doc = state.require_model()
@@ -103,12 +117,6 @@ async def run_simulation(
         annual,
     )
 
-    async def on_progress(event: SimulationProgress) -> None:
-        if ctx is not None and event.percent is not None:
-            await ctx.report_progress(progress=event.percent, total=100.0)
-        if ctx is not None:
-            await ctx.info(f"[{event.phase}] {event.message!s}")
-
     result = await async_simulate(
         doc,
         weather="" if weather is None else weather,
@@ -116,7 +124,7 @@ async def run_simulation(
         annual=annual,
         energyplus=config,
         output_dir=output_directory,
-        on_progress=on_progress,
+        on_progress=_build_progress_handler(ctx),
     )
 
     state.simulation_result = result
@@ -143,6 +151,7 @@ async def run_simulation(
     })
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def get_results_summary() -> GetResultsSummaryResult:
     """Get a summary of the last simulation results.
 
@@ -191,6 +200,7 @@ def get_results_summary() -> GetResultsSummaryResult:
     return GetResultsSummaryResult.model_validate(summary)
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def list_output_variables(search: str | None = None, limit: int = 50) -> ListOutputVariablesResult:
     """List available output variables from the last simulation.
 
@@ -232,6 +242,7 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> ListOut
     })
 
 
+@mcp.tool(annotations=_READ_ONLY)
 def query_timeseries(
     variable_name: str,
     key_value: str = "*",
@@ -297,6 +308,7 @@ def query_timeseries(
     })
 
 
+@mcp.tool(annotations=_EXPORT)
 def export_timeseries(
     variable_name: str,
     key_value: str = "*",
@@ -361,19 +373,3 @@ def export_timeseries(
         frequency=ts.frequency,
         rows=len(ts.values),
     )
-
-
-# Annotations are defined after functions to avoid forward-reference errors.
-_TOOL_REGISTRY = [
-    (run_simulation, _RUN),
-    (get_results_summary, _READ_ONLY),
-    (list_output_variables, _READ_ONLY),
-    (query_timeseries, _READ_ONLY),
-    (export_timeseries, _EXPORT),
-]
-
-
-def register(mcp: FastMCP) -> None:
-    """Register simulation tools on the MCP server."""
-    for func, hints in _TOOL_REGISTRY:
-        mcp.tool(annotations=hints)(func)
