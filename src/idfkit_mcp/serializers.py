@@ -93,16 +93,23 @@ def serialize_validation_error(err: ValidationError, version: tuple[int, int, in
 
 
 def serialize_validation_result(
-    result: ValidationResult, version: tuple[int, int, int] | None = None
+    result: ValidationResult,
+    version: tuple[int, int, int] | None = None,
+    max_errors: int = 50,
+    max_warnings: int = 50,
 ) -> dict[str, Any]:
     """Convert a ValidationResult to a dict."""
+    errors = result.errors[:max_errors]
+    warnings = result.warnings[:max_warnings]
     return {
         "is_valid": result.is_valid,
         "error_count": len(result.errors),
         "warning_count": len(result.warnings),
         "info_count": len(result.info),
-        "errors": [serialize_validation_error(e, version) for e in result.errors],
-        "warnings": [serialize_validation_error(w, version) for w in result.warnings],
+        "errors": [serialize_validation_error(e, version) for e in errors],
+        "warnings": [serialize_validation_error(w, version) for w in warnings],
+        "errors_truncated": len(result.errors) > max_errors,
+        "warnings_truncated": len(result.warnings) > max_warnings,
     }
 
 

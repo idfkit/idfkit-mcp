@@ -160,6 +160,8 @@ def search_docs(
     state = get_state()
     items, separator, docs_version = state.get_or_load_docs_index(version)
 
+    limit = min(limit, 20)
+
     if not query.strip():
         return SearchDocsResult(query=query, version=docs_version, count=0, results=[])
 
@@ -209,7 +211,7 @@ def search_docs(
 
 
 @safe_tool
-def get_doc_section(location: str, version: str | None = None) -> GetDocSectionResult:
+def get_doc_section(location: str, version: str | None = None, max_length: int = 8000) -> GetDocSectionResult:
     """Retrieve the full content of a documentation section by location.
 
     Use after search_docs to read a specific section in depth. The location
@@ -219,6 +221,7 @@ def get_doc_section(location: str, version: str | None = None) -> GetDocSectionR
     Args:
         location: The section location key (from search_docs results).
         version: EnergyPlus version as "X.Y" (default: latest).
+        max_length: Maximum characters of text to return (default 8000).
     """
     state = get_state()
     items, _separator, docs_version = state.get_or_load_docs_index(version)
@@ -226,14 +229,19 @@ def get_doc_section(location: str, version: str | None = None) -> GetDocSectionR
     logger.debug("get_doc_section: location=%r version=%s", location, version)
     for item in items:
         if item.get("location") == location:
+            text = _strip_html(str(item.get("text", "")))
+            truncated = len(text) > max_length
+            if truncated:
+                text = text[:max_length] + "..."
             return GetDocSectionResult(
                 location=str(item.get("location", "")),
                 title=str(item.get("title", "")),
                 path=item.get("path", []),  # type: ignore[arg-type]
                 tags=item.get("tags", []),  # type: ignore[arg-type]
-                text=_strip_html(str(item.get("text", ""))),
+                text=text,
                 doc_url=_build_doc_url(docs_version, str(item.get("location", ""))),
                 version=docs_version,
+                truncated=truncated,
             )
 
     msg = f"Documentation section not found: '{location}'. Use search_docs to find valid locations."

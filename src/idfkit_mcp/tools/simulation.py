@@ -158,15 +158,17 @@ def get_results_summary() -> GetResultsSummaryResult:
     html = result.html
     if html is not None:
         tables_summary: list[dict[str, Any]] = []
-        for table in html.tables[:20]:
+        for table in html.tables[:10]:
             table_info: dict[str, Any] = {
                 "title": table.title,
                 "report": table.report_name,
                 "for_string": table.for_string,
             }
             table_dict = table.to_dict()
-            if table_dict:
+            if table_dict and len(table_dict) <= 100:
                 table_info["data"] = table_dict
+            elif table_dict:
+                table_info["truncated"] = True
             tables_summary.append(table_info)
         summary["tables"] = tables_summary
 
@@ -185,6 +187,8 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> ListOut
     """
     state = get_state()
     result = state.require_simulation_result()
+
+    limit = min(limit, 200)
 
     variables = result.variables
     if variables is None:
@@ -233,6 +237,8 @@ def query_timeseries(
         environment: Filter by environment type: "sizing" or "annual".
         limit: Maximum number of data points to return (default 24).
     """
+    limit = min(limit, 500)
+
     state = get_state()
     result = state.require_simulation_result()
 
