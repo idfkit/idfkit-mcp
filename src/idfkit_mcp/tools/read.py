@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
@@ -20,6 +21,8 @@ from idfkit_mcp.models import (
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools import resolve_object
+
+logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -58,6 +61,7 @@ def load_model(file_path: str, version: str | None = None) -> ModelSummary:
     state.simulation_result = None
     state.save_session()
 
+    logger.info("Loaded model %s (version=%s, objects=%d)", path, doc.version, len(list(doc.all_objects)))
     return _build_summary(doc, state)
 
 
@@ -140,6 +144,7 @@ def convert_osm_to_idf(
     state.file_path = out_path
     state.simulation_result = None
     state.save_session()
+    logger.info("Converted OSM %s -> %s", input_path, out_path)
 
     version_getter = getattr(openstudio, "openStudioVersion", None)
     openstudio_version = str(version_getter()) if callable(version_getter) else "unknown"
@@ -190,6 +195,7 @@ def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
     total = len(collection)
     objects = [serialize_object(obj, schema=state.schema, brief=True) for obj in list(collection)[:limit]]
 
+    logger.debug("list_objects: type=%s total=%d returned=%d", object_type, total, len(objects))
     return ListObjectsResult(object_type=object_type, total=total, returned=len(objects), objects=objects)
 
 
@@ -233,6 +239,7 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
             if len(matches) >= limit:
                 break
 
+    logger.debug("search_objects: query=%r type=%s matched=%d", query, object_type, len(matches))
     return SearchObjectsResult.model_validate({"query": query, "count": len(matches), "matches": matches})
 
 

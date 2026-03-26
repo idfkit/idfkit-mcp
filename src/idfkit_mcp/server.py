@@ -47,6 +47,9 @@ def create_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
 mcp = create_server()
 
 
+_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
+
+
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the idfkit MCP server.")
     parser.add_argument(
@@ -54,6 +57,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         choices=get_args(Transport),
         default=os.getenv("IDFKIT_MCP_TRANSPORT", "stdio"),
         help="MCP transport to run.",
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=_LOG_LEVELS,
+        default=os.getenv("IDFKIT_MCP_LOG_LEVEL", "INFO"),
+        help="Log verbosity (default: INFO, env: IDFKIT_MCP_LOG_LEVEL).",
     )
     parser.add_argument(
         "--host",
@@ -78,13 +87,19 @@ def main() -> None:
     """Run the MCP server with configurable transport."""
     import logging
 
+    args = _parse_args()
+    level = getattr(logging, args.log_level)
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=level,
         format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",
         datefmt="%H:%M:%S",
     )
 
-    args = _parse_args()
+    # Capture idfkit core library logs (parser, schema, validation, geometry).
+    # The library installs a NullHandler by default; setting a level here lets
+    # its messages propagate through to the root handler configured above.
+    logging.getLogger("idfkit").setLevel(level)
     server = create_server(host=args.host, port=args.port)
 
     run_kwargs: dict[str, str | None] = {"transport": args.transport}

@@ -109,6 +109,25 @@ idfkit-mcp --transport streamable-http --host 127.0.0.1 --port 8000
 IDFKIT_MCP_TRANSPORT=streamable-http IDFKIT_MCP_HOST=0.0.0.0 IDFKIT_MCP_PORT=8000 idfkit-mcp
 ```
 
+## Log Verbosity
+
+Control log output with `--log-level` (or the `IDFKIT_MCP_LOG_LEVEL` environment variable).
+The default level is `INFO`.
+
+```bash
+idfkit-mcp --log-level DEBUG
+```
+
+Available levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`.
+
+At `DEBUG` level the server emits per-tool CALL/OK traces, idfkit core parsing
+details (schema loading, IDF/epJSON parsing, validation internals), and
+query/search parameters for every tool invocation.
+
+At `INFO` (default) the server logs significant operations — model loads, saves,
+simulation start/completion, object mutations, and weather downloads — without
+the high-frequency per-call noise.
+
 ## EnergyPlus Discovery
 
 Simulation tools rely on `idfkit`'s EnergyPlus discovery chain:

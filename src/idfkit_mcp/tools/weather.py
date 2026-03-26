@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -12,6 +13,8 @@ from idfkit_mcp.errors import safe_tool
 from idfkit_mcp.models import DownloadWeatherFileResult, SearchWeatherStationsResult
 from idfkit_mcp.serializers import serialize_station
 from idfkit_mcp.state import get_state
+
+logger = logging.getLogger(__name__)
 
 _READ_ONLY_OPEN = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 _DOWNLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
@@ -55,6 +58,9 @@ def search_weather_stations(
                 **serialize_station(r.station),
                 "distance_km": round(r.distance_km, 1),
             })
+        logger.debug(
+            "search_weather_stations: spatial lat=%s lon=%s found=%d", latitude, longitude, len(spatial_stations)
+        )
         return SearchWeatherStationsResult(
             search_type="spatial",
             count=len(spatial_stations),
@@ -74,6 +80,7 @@ def search_weather_stations(
             })
             if len(text_stations) >= limit:
                 break
+        logger.debug("search_weather_stations: query=%r found=%d", query, len(text_stations))
         return SearchWeatherStationsResult(
             search_type="text",
             query=query,
@@ -139,12 +146,14 @@ def download_weather_file(
     else:
         raise ToolError("Provide either 'wmo' or 'query' to identify the weather station.")
 
+    logger.info("Downloading weather file for station %s (%s)", station.wmo, station.city)
     downloader = WeatherDownloader()
     files = downloader.download(station)
 
     server_state = get_state()
     server_state.weather_file = files.epw
     server_state.save_session()
+    logger.info("Downloaded weather file to %s", files.epw)
 
     return DownloadWeatherFileResult.model_validate({
         "status": "downloaded",

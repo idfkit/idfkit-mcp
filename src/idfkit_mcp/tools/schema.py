@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
@@ -15,6 +17,8 @@ from idfkit_mcp.models import (
 )
 from idfkit_mcp.serializers import serialize_object_description
 from idfkit_mcp.state import get_state
+
+logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
@@ -59,6 +63,7 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
 
     total_types = sum(len(v) for v in groups.values())
     truncated = total_types > limit
+    logger.debug("list_object_types: group=%s total=%d truncated=%s", group, total_types, truncated)
 
     if truncated:
         groups_result = {g: GroupInfo(count=len(types)) for g, types in sorted(groups.items())}
@@ -87,6 +92,7 @@ def describe_object_type(object_type: str, version: str | None = None) -> Descri
     ver_tuple = _parse_version(version)
     schema = state.get_or_load_schema(ver_tuple)
     desc = _describe(schema, object_type)
+    logger.debug("describe_object_type: %s version=%s", object_type, version)
     data = serialize_object_description(desc)
 
     doc_url = _get_doc_url(object_type, ver_tuple, schema, docs_url_for_object)
@@ -128,6 +134,7 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
             if len(matches) >= limit:
                 break
 
+    logger.debug("search_schema: query=%r matched=%d/%d", query, len(matches), limit)
     return SearchSchemaResult.model_validate({
         "query": query,
         "count": len(matches),
@@ -168,6 +175,7 @@ def get_available_references(object_type: str, field_name: str) -> AvailableRefe
             available[list_name] = sorted(names)
 
     all_names = sorted({n for names in available.values() for n in names})
+    logger.debug("get_available_references: %s.%s found %d names", object_type, field_name, len(all_names))
     return AvailableReferencesResult(
         object_type=object_type,
         field_name=field_name,
