@@ -20,7 +20,6 @@ from idfkit_mcp.models import (
 )
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
-from idfkit_mcp.tools import resolve_object
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ def load_model(
     file_path: Annotated[str, Field(description="Path to the IDF or epJSON file.")],
     version: Annotated[str | None, Field(description='Version override as "X.Y.Z".')] = None,
 ) -> ModelSummary:
-    """Open an existing IDF or epJSON file. Auto-detects format by extension (.idf or .epjson/.json)."""
+    """Open an IDF or epJSON file as the active model."""
     from pathlib import Path
 
     from idfkit import load_epjson, load_idf
@@ -62,12 +61,12 @@ def load_model(
 
 @mcp.tool(annotations=_LOAD)
 def convert_osm_to_idf(
-    osm_path: Annotated[str, Field(description="Path to the source .osm file.")],
-    output_path: Annotated[str, Field(description="Path where the translated .idf will be written.")],
-    allow_newer_versions: Annotated[bool, Field(description="Allow loading OSM files with newer versions.")] = True,
-    overwrite: Annotated[bool, Field(description="Overwrite an existing output file.")] = False,
+    osm_path: Annotated[str, Field(description="Source .osm path.")],
+    output_path: Annotated[str, Field(description="Output .idf path.")],
+    allow_newer_versions: Annotated[bool, Field(description="Allow newer OSM versions.")] = True,
+    overwrite: Annotated[bool, Field(description="Overwrite existing output.")] = False,
 ) -> ConvertOsmResult:
-    """Convert an OpenStudio OSM model to IDF and load it as the active model."""
+    """Convert an OSM model to IDF and load it."""
     from pathlib import Path
 
     from idfkit import load_idf
@@ -149,19 +148,11 @@ def convert_osm_to_idf(
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def get_model_summary() -> ModelSummary:
-    """Get version, total objects, zone count, and counts by group/type for the loaded model."""
-    state = get_state()
-    doc = state.require_model()
-    return build_model_summary(doc, state)
-
-
-@mcp.tool(annotations=_READ_ONLY)
 def list_objects(
     object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone").')],
     limit: Annotated[int, Field(description="Maximum objects to return.")] = 50,
 ) -> ListObjectsResult:
-    """List objects of a given type with names and required fields in brief format."""
+    """List objects of a type with names and required fields."""
     limit = min(limit, 200)
 
     state = get_state()
@@ -178,25 +169,13 @@ def list_objects(
     return ListObjectsResult(object_type=object_type, total=total, returned=len(objects), objects=objects)
 
 
-@mcp.tool(annotations=_READ_ONLY, output_schema=None)
-def get_object(
-    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
-    name: Annotated[str, Field(description="Object name.")],
-) -> dict[str, Any]:
-    """Get all field values for a specific object."""
-    state = get_state()
-    doc = state.require_model()
-    obj = resolve_object(doc, object_type, name)
-    return serialize_object(obj, schema=state.schema)
-
-
 @mcp.tool(annotations=_READ_ONLY)
 def search_objects(
     query: Annotated[str, Field(description="Case-insensitive substring match on name and string fields.")],
     object_type: Annotated[str | None, Field(description="Restrict search to a specific type.")] = None,
     limit: Annotated[int, Field(description="Maximum results to return.")] = 20,
 ) -> SearchObjectsResult:
-    """Search for objects by name or field values."""
+    """Find objects by name or field value substring match."""
     limit = min(limit, 100)
 
     state = get_state()
@@ -216,19 +195,11 @@ def search_objects(
     return SearchObjectsResult.model_validate({"query": query, "count": len(matches), "matches": matches})
 
 
-@mcp.tool(annotations=_READ_ONLY)
-def get_references(
-    name: Annotated[str, Field(description="Object name to check references for.")],
-) -> ReferencesResult:
-    """Get bidirectional references: objects that reference this name, and names this object references."""
-    state = get_state()
-    doc = state.require_model()
-
-    # Objects that reference this name
+def build_references(doc: Any, name: str) -> ReferencesResult:
+    """Build a bidirectional references result for a given object name."""
     referencing = doc.get_referencing(name)
     referenced_by = [{"object_type": obj.obj_type, "name": obj.name} for obj in referencing]
 
-    # Find the object and get what it references
     references: list[str] = []
     target_obj = _find_object_by_name(doc, name)
     if target_obj is not None:
@@ -279,8 +250,14 @@ def _matches_query(obj: Any, query_lower: str) -> bool:
 
 
 def _find_object_by_name(doc: Any, name: str) -> Any:
-    """Find any object by name across all types."""
-    for obj in doc.all_objects:
-        if obj.name.upper() == name.upper():
+    """Find any object by name across all types using collection index."""
+    name_upper = name.upper()
+    for collection in doc.collections.values():
+        obj = collection.get(name)
+        if obj is not None:
             return obj
+        # Fallback: case-insensitive scan within this collection only
+        for obj in collection:
+            if obj.name.upper() == name_upper:
+                return obj
     return None

@@ -12,19 +12,14 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from idfkit_mcp.app import mcp
-from idfkit_mcp.models import (
-    DocSearchHit,
-    GetDocSectionResult,
-    LookupDocumentationResult,
-    SearchDocsResult,
-)
+from idfkit_mcp.models import DocSearchHit, GetDocSectionResult, LookupDocumentationResult, SearchDocsResult
 from idfkit_mcp.state import DOCS_BASE_URL, get_state
 
 logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
-_MAX_SEARCH_TEXT = 250
+_MAX_SEARCH_TEXT = 150
 
 
 # ---------------------------------------------------------------------------
@@ -106,12 +101,8 @@ def _score_item(item: dict[str, object], query_tokens: list[str], separator: str
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(annotations=_READ_ONLY)
-def lookup_documentation(
-    object_type: Annotated[str, Field(description='Object type name (e.g. "Zone", "Material").')],
-    version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
-) -> LookupDocumentationResult:
-    """Get I/O Reference, Engineering Reference, and search URLs for an object type on docs.idfkit.com."""
+def build_documentation_urls(object_type: str, version: str | None = None) -> LookupDocumentationResult:
+    """Build documentation URLs for an object type."""
     from idfkit.docs import engineering_reference_url, io_reference_url, search_url
     from idfkit.versions import LATEST_VERSION
 
@@ -141,7 +132,7 @@ def search_docs(
     tags: Annotated[str | None, Field(description='Filter by doc set (e.g. "Input Output Reference").')] = None,
     limit: Annotated[int, Field(description="Maximum results.")] = 5,
 ) -> SearchDocsResult:
-    """Search EnergyPlus documentation by keyword. Use get_doc_section to read full content."""
+    """Search EnergyPlus docs by keyword."""
     state = get_state()
     items, separator, docs_version = state.get_or_load_docs_index(version)
 
@@ -201,7 +192,7 @@ def get_doc_section(
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y".')] = None,
     max_length: Annotated[int, Field(description="Maximum characters of text to return.")] = 8000,
 ) -> GetDocSectionResult:
-    """Read the full content of a documentation section by location."""
+    """Read full content of a doc section from search_docs results."""
     state = get_state()
     items, _separator, docs_version = state.get_or_load_docs_index(version)
 

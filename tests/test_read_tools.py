@@ -13,9 +13,9 @@ import pytest
 from fastmcp.exceptions import ToolError
 from idfkit import new_document, write_idf
 
-from idfkit_mcp.models import ConvertOsmResult, ListObjectsResult, ModelSummary, ReferencesResult, SearchObjectsResult
+from idfkit_mcp.models import ConvertOsmResult, ListObjectsResult, ModelSummary, SearchObjectsResult
 from idfkit_mcp.state import ServerState, get_state
-from tests.conftest import call_tool
+from tests.conftest import call_tool, read_resource_json
 
 
 class TestLoadModel:
@@ -39,15 +39,33 @@ class TestLoadModel:
             await call_tool(client, "load_model", {"file_path": "/nonexistent/file.idf"})
 
 
-class TestGetModelSummary:
-    async def test_without_model(self, client: object) -> None:
-        with pytest.raises(ToolError):
-            await call_tool(client, "get_model_summary")
-
+class TestModelSummaryResource:
     async def test_with_model(self, client: object, state_with_zones: ServerState) -> None:
-        result = await call_tool(client, "get_model_summary", model=ModelSummary)
-        assert result.zone_count == 2
-        assert result.total_objects >= 3
+        payload = await read_resource_json(client, "idfkit://model/summary")
+        assert payload["zone_count"] == 2
+        assert payload["total_objects"] >= 3
+
+
+class TestObjectDataResource:
+    async def test_get_zone(self, client: object, state_with_zones: ServerState) -> None:
+        payload = await read_resource_json(client, "idfkit://model/objects/Zone/Office")
+        assert payload["name"] == "Office"
+        assert payload["object_type"] == "Zone"
+        assert "x_origin" in payload
+
+    async def test_get_singleton(self, client: object, state_with_singletons: ServerState) -> None:
+        payload = await read_resource_json(client, "idfkit://schema/SimulationControl")
+        assert payload["object_type"] == "SimulationControl"
+
+
+class TestObjectReferencesResource:
+    async def test_referenced_zone(self, client: object, state_with_zones: ServerState) -> None:
+        payload = await read_resource_json(client, "idfkit://model/references/Office")
+        assert payload["referenced_by_count"] >= 1
+
+    async def test_unreferenced(self, client: object, state_with_zones: ServerState) -> None:
+        payload = await read_resource_json(client, "idfkit://model/references/Corridor")
+        assert payload["referenced_by_count"] == 0
 
 
 class TestListObjects:
@@ -67,41 +85,6 @@ class TestListObjects:
             await call_tool(client, "list_objects", {"object_type": "Material"})
 
 
-class TestGetObject:
-    async def test_get_zone(self, client: object, state_with_zones: ServerState) -> None:
-        result = await call_tool(client, "get_object", {"object_type": "Zone", "name": "Office"})
-        assert result["name"] == "Office"
-        assert result["object_type"] == "Zone"
-        assert "x_origin" in result
-        assert "y_origin" in result
-        assert "z_origin" in result
-        assert result["x_origin"] is None
-
-    async def test_missing_object(self, client: object, state_with_zones: ServerState) -> None:
-        with pytest.raises(ToolError):
-            await call_tool(client, "get_object", {"object_type": "Zone", "name": "Nonexistent"})
-
-
-class TestGetObjectSingleton:
-    """Singleton types (no name field) should be retrievable."""
-
-    async def test_get_singleton_with_empty_name(self, client: object, state_with_singletons: ServerState) -> None:
-        result = await call_tool(client, "get_object", {"object_type": "SimulationControl", "name": ""})
-        assert result["object_type"] == "SimulationControl"
-
-    async def test_get_singleton_with_any_name(self, client: object, state_with_singletons: ServerState) -> None:
-        result = await call_tool(
-            client, "get_object", {"object_type": "SimulationControl", "name": "SimulationControl"}
-        )
-        assert result["object_type"] == "SimulationControl"
-
-    async def test_get_singleton_global_geometry_rules(
-        self, client: object, state_with_singletons: ServerState
-    ) -> None:
-        result = await call_tool(client, "get_object", {"object_type": "GlobalGeometryRules", "name": ""})
-        assert result["object_type"] == "GlobalGeometryRules"
-
-
 class TestSearchObjects:
     async def test_search_by_name(self, client: object, state_with_zones: ServerState) -> None:
         result = await call_tool(client, "search_objects", {"query": "Office"}, SearchObjectsResult)
@@ -118,18 +101,6 @@ class TestSearchObjects:
     async def test_no_results(self, client: object, state_with_zones: ServerState) -> None:
         result = await call_tool(client, "search_objects", {"query": "xyznonexistent"}, SearchObjectsResult)
         assert result.count == 0
-
-
-class TestGetReferences:
-    async def test_referenced_zone(self, client: object, state_with_zones: ServerState) -> None:
-        result = await call_tool(client, "get_references", {"name": "Office"}, ReferencesResult)
-        assert result.referenced_by_count >= 1
-        ref_types = [r.object_type for r in result.referenced_by]
-        assert "BuildingSurface:Detailed" in ref_types
-
-    async def test_unreferenced(self, client: object, state_with_zones: ServerState) -> None:
-        result = await call_tool(client, "get_references", {"name": "Corridor"}, ReferencesResult)
-        assert result.referenced_by_count == 0
 
 
 class TestConvertOsmToIdf:

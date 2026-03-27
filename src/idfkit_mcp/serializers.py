@@ -63,7 +63,11 @@ def serialize_object_description(desc: ObjectDescription) -> dict[str, Any]:
 
 
 def serialize_field_description(f: FieldDescription) -> dict[str, Any]:
-    """Convert a FieldDescription to a dict."""
+    """Convert a FieldDescription to a dict.
+
+    Omits ``note`` to reduce token overhead — use search_docs / get_doc_section
+    for detailed field documentation when needed.
+    """
     result: dict[str, Any] = {"name": f.name, "field_type": f.field_type, "required": f.required}
     if f.default is not None:
         result["default"] = f.default
@@ -79,8 +83,6 @@ def serialize_field_description(f: FieldDescription) -> dict[str, Any]:
         result["exclusive_minimum"] = f.exclusive_minimum
     if f.exclusive_maximum is not None:
         result["exclusive_maximum"] = f.exclusive_maximum
-    if f.note is not None:
-        result["note"] = f.note
     if f.is_reference:
         result["is_reference"] = True
         result["object_list"] = f.object_list
@@ -88,8 +90,12 @@ def serialize_field_description(f: FieldDescription) -> dict[str, Any]:
 
 
 def serialize_validation_error(err: ValidationError, version: tuple[int, int, int] | None = None) -> dict[str, Any]:
-    """Convert a ValidationError to a dict."""
-    result: dict[str, Any] = {
+    """Convert a ValidationError to a dict.
+
+    Doc URLs are omitted to reduce token overhead — use the
+    ``idfkit://docs/{object_type}`` resource for documentation links.
+    """
+    return {
         "severity": err.severity.value,
         "object_type": err.obj_type,
         "object_name": err.obj_name,
@@ -97,16 +103,6 @@ def serialize_validation_error(err: ValidationError, version: tuple[int, int, in
         "message": err.message,
         "code": err.code,
     }
-    if version and err.obj_type:
-        try:
-            from idfkit.docs import docs_url_for_object
-
-            doc_url = docs_url_for_object(err.obj_type, version)
-        except Exception:
-            doc_url = None
-        if doc_url:
-            result["doc_url"] = doc_url.url
-    return result
 
 
 def serialize_validation_result(
@@ -123,8 +119,8 @@ def serialize_validation_result(
         "error_count": len(result.errors),
         "warning_count": len(result.warnings),
         "info_count": len(result.info),
-        "errors": [serialize_validation_error(e, version) for e in errors],
-        "warnings": [serialize_validation_error(w, version) for w in warnings],
+        "errors": [serialize_validation_error(e) for e in errors],
+        "warnings": [serialize_validation_error(w) for w in warnings],
         "errors_truncated": len(result.errors) > max_errors,
         "warnings_truncated": len(result.warnings) > max_warnings,
     }

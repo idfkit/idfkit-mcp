@@ -22,14 +22,14 @@ _DOWNLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempoten
 
 @mcp.tool(annotations=_READ_ONLY_OPEN)
 def search_weather_stations(
-    query: Annotated[str | None, Field(description='City or airport name (e.g. "Boston"). Keep short.')] = None,
-    latitude: Annotated[float | None, Field(description="Latitude for nearest-station search.")] = None,
-    longitude: Annotated[float | None, Field(description="Longitude for nearest-station search.")] = None,
-    country: Annotated[str | None, Field(description='Country code (e.g. "USA").')] = None,
-    state: Annotated[str | None, Field(description='State/province code (e.g. "MA").')] = None,
-    limit: Annotated[int, Field(description="Maximum results.")] = 5,
+    query: Annotated[str | None, Field(description="City or airport name.")] = None,
+    latitude: Annotated[float | None, Field(description="Latitude.")] = None,
+    longitude: Annotated[float | None, Field(description="Longitude.")] = None,
+    country: Annotated[str | None, Field(description='Country code, e.g. "USA".')] = None,
+    state: Annotated[str | None, Field(description='State code, e.g. "MA".')] = None,
+    limit: Annotated[int, Field(description="Max results.")] = 5,
 ) -> SearchWeatherStationsResult:
-    """Search for weather stations by text query or lat/lon coordinates. Use country/state to disambiguate."""
+    """Find weather stations by name or coordinates."""
     index = get_state().get_or_load_station_index()
 
     if latitude is not None and longitude is not None:
@@ -84,12 +84,12 @@ def _matches_filters(station: Any, country: str | None, state: str | None) -> bo
 
 @mcp.tool(annotations=_DOWNLOAD)
 def download_weather_file(
-    wmo: Annotated[str | None, Field(description="WMO station number to download directly.")] = None,
-    query: Annotated[str | None, Field(description='City or airport name (e.g. "Boston"). Keep short.')] = None,
-    country: Annotated[str | None, Field(description='Country code (e.g. "USA").')] = None,
-    state: Annotated[str | None, Field(description='State/province code (e.g. "MA").')] = None,
+    wmo: Annotated[str | None, Field(description="WMO station number.")] = None,
+    query: Annotated[str | None, Field(description="City or airport name.")] = None,
+    country: Annotated[str | None, Field(description='Country code, e.g. "USA".')] = None,
+    state: Annotated[str | None, Field(description='State code, e.g. "MA".')] = None,
 ) -> DownloadWeatherFileResult:
-    """Download an EPW weather file. Stored for reuse with run_simulation. Use country/state to disambiguate."""
+    """Download EPW/DDY files for a station. Auto-used by run_simulation."""
     from idfkit.weather import WeatherDownloader
 
     index = get_state().get_or_load_station_index()

@@ -1,16 +1,16 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **32 tools** in seven categories.
+`idfkit-mcp` exposes **26 tools** in seven categories, plus **6 MCP resources** for read-only data access.
 
 ## Categories
 
 - Schema exploration: 4 tools
-- Model read: 7 tools
+- Model read: 4 tools
 - Model write: 9 tools
-- Validation: 2 tools
-- Simulation: 5 tools
+- Validation: 1 tool
+- Simulation: 4 tools
 - Weather: 2 tools
-- Documentation: 3 tools
+- Documentation: 2 tools
 
 ## Tool Catalog
 
@@ -22,11 +22,8 @@
 | Schema | `get_available_references` | Resolve valid reference values from model |
 | Read | `load_model` | Load IDF/epJSON into active server state |
 | Read | `convert_osm_to_idf` | Convert OSM to IDF and load into active server state |
-| Read | `get_model_summary` | Summarize loaded model |
 | Read | `list_objects` | List objects by type |
-| Read | `get_object` | Fetch one object by type/name |
 | Read | `search_objects` | Search model objects by substring |
-| Read | `get_references` | Inspect inbound and outbound references |
 | Write | `new_model` | Create empty model |
 | Write | `add_object` | Add one object |
 | Write | `batch_add_objects` | Add many objects in one call |
@@ -36,18 +33,28 @@
 | Write | `duplicate_object` | Clone object to a new name |
 | Write | `save_model` | Save IDF/epJSON |
 | Write | `clear_session` | Clear persisted session and reset state |
-| Validation | `validate_model` | Full schema validation |
-| Validation | `check_references` | Detect dangling references |
+| Validation | `validate_model` | Full schema and reference validation |
 | Simulation | `run_simulation` | Execute EnergyPlus run |
-| Simulation | `get_results_summary` | Summarize previous run |
 | Simulation | `list_output_variables` | Enumerate meters/variables |
 | Simulation | `query_timeseries` | Query time series data from SQL output |
 | Simulation | `export_timeseries` | Export time series data to CSV |
 | Weather | `search_weather_stations` | Find weather stations |
 | Weather | `download_weather_file` | Download EPW/DDY and cache path |
-| Documentation | `lookup_documentation` | Get docs.idfkit.com URLs for an object type |
 | Documentation | `search_docs` | Full-text search across EnergyPlus documentation |
 | Documentation | `get_doc_section` | Retrieve full content of a documentation section |
+
+## MCP Resources
+
+Read-only data is available via MCP resources without making tool calls:
+
+| URI | Description |
+|-----|-------------|
+| `idfkit://model/summary` | Model version, zones, and object counts |
+| `idfkit://schema/{object_type}` | Full field schema for an object type |
+| `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object |
+| `idfkit://model/references/{name}` | Inbound and outbound references for an object |
+| `idfkit://docs/{object_type}` | Documentation URLs for an object type |
+| `idfkit://simulation/results` | Summary of the most recent simulation results |
 
 ## Global Best Practices
 

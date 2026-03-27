@@ -7,7 +7,6 @@ from fastmcp.client.transports import FastMCPTransport
 
 from idfkit_mcp.models import (
     BatchAddResult,
-    CheckReferencesResult,
     DescribeObjectTypeResult,
     ListObjectsResult,
     ModelSummary,
@@ -18,11 +17,11 @@ from idfkit_mcp.models import (
     SearchObjectsResult,
     ValidationResult,
 )
-from tests.conftest import call_tool
+from tests.conftest import call_tool, read_resource_json
 
 
 class TestCreateEditValidateSave:
-    """Full workflow: create model → add objects → validate → save."""
+    """Full workflow: create model -> add objects -> validate -> save."""
 
     async def test_full_workflow(self, client: Client[FastMCPTransport], tmp_path: object) -> None:
         import tempfile
@@ -41,9 +40,9 @@ class TestCreateEditValidateSave:
         batch_result = await call_tool(client, "batch_add_objects", {"objects": objects}, BatchAddResult)
         assert batch_result.success == 3
 
-        summary = await call_tool(client, "get_model_summary", model=ModelSummary)
-        assert summary.zone_count == 3
-        assert summary.total_objects >= 3
+        summary = await read_resource_json(client, "idfkit://model/summary")
+        assert summary["zone_count"] == 3
+        assert summary["total_objects"] >= 3
 
         zones = await call_tool(client, "list_objects", {"object_type": "Zone"}, ListObjectsResult)
         assert zones.total == 3
@@ -58,9 +57,6 @@ class TestCreateEditValidateSave:
 
         validation = await call_tool(client, "validate_model", model=ValidationResult)
         assert validation.is_valid is True
-
-        refs = await call_tool(client, "check_references", model=CheckReferencesResult)
-        assert refs.dangling_count is not None
 
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
             save_result = await call_tool(client, "save_model", {"file_path": f.name}, SaveModelResult)
@@ -84,8 +80,8 @@ class TestCreateEditValidateSave:
         )
         assert renamed.status == "renamed"
 
-        summary = await call_tool(client, "get_model_summary", model=ModelSummary)
-        assert summary.zone_count == 2
+        summary = await read_resource_json(client, "idfkit://model/summary")
+        assert summary["zone_count"] == 2
 
     async def test_remove_workflow(self, client: object) -> None:
         await call_tool(client, "new_model", model=NewModelResult)
@@ -96,5 +92,5 @@ class TestCreateEditValidateSave:
         )
         assert result.status == "removed"
 
-        summary = await call_tool(client, "get_model_summary", model=ModelSummary)
-        assert summary.zone_count == 0
+        summary = await read_resource_json(client, "idfkit://model/summary")
+        assert summary["zone_count"] == 0

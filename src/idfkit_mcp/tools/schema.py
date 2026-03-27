@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 from typing import Annotated
 
@@ -21,6 +22,24 @@ from idfkit_mcp.serializers import serialize_object_description
 from idfkit_mcp.state import get_state
 
 logger = logging.getLogger(__name__)
+
+
+# Cache schema introspection results keyed by (object_type, schema_id).
+# Schema objects are singletons per version, so id() is a stable key.
+@functools.lru_cache(maxsize=256)
+def _cached_describe(obj_type: str, schema_id: int) -> dict[str, object]:
+    """Cache-wrapped schema introspection and serialization."""
+    from idfkit.introspection import describe_object_type as _describe
+
+    from idfkit_mcp.state import get_state as _gs
+
+    schema = _gs().get_or_load_schema(None)
+    # Validate that the schema id still matches (defensive)
+    if id(schema) != schema_id:
+        schema = _gs().get_or_load_schema(None)
+    desc = _describe(schema, obj_type)
+    return serialize_object_description(desc)
+
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
@@ -42,7 +61,7 @@ def list_object_types(
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
     limit: Annotated[int, Field(description="Max type names to include.")] = 50,
 ) -> ListObjectTypesResult:
-    """Browse available EnergyPlus object types. Filter by group to see individual types."""
+    """Browse object types grouped by category. Filter by group to list individual types."""
     limit = min(limit, 100)
 
     state = get_state()
@@ -72,16 +91,16 @@ def describe_object_type(
     object_type: Annotated[str, Field(description='Object type name (e.g. "Zone", "Material").')],
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
 ) -> DescribeObjectTypeResult:
-    """Get the full field schema: names, types, constraints, defaults, references, and doc URL."""
+    """Field schema with types, constraints, defaults, and references. Call before adding objects."""
     from idfkit.docs import docs_url_for_object
-    from idfkit.introspection import describe_object_type as _describe
 
     state = get_state()
     ver_tuple = _parse_version(version)
     schema = state.get_or_load_schema(ver_tuple)
-    desc = _describe(schema, object_type)
     logger.debug("describe_object_type: %s version=%s", object_type, version)
-    data = serialize_object_description(desc)
+
+    # Use cache for the expensive introspection + serialization step
+    data = dict(_cached_describe(object_type, id(schema)))
 
     doc_url = _get_doc_url(object_type, ver_tuple, schema, docs_url_for_object)
     data["doc_url"] = doc_url
@@ -94,7 +113,7 @@ def search_schema(
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
     limit: Annotated[int, Field(description="Maximum results to return.")] = 10,
 ) -> SearchSchemaResult:
-    """Search for object types by name or description. Use describe_object_type for full details."""
+    """Find object types by name or description."""
     from idfkit.docs import docs_url_for_object
 
     limit = min(limit, 30)
@@ -113,7 +132,7 @@ def search_schema(
             matches.append({
                 "object_type": obj_type,
                 "group": obj_group,
-                "memo": memo[:100] if memo else None,
+                "memo": memo[:60] if memo else None,
                 "doc_url": doc_url,
             })
             if len(matches) >= limit:
@@ -133,7 +152,7 @@ def get_available_references(
     object_type: Annotated[str, Field(description="Object type containing the reference field.")],
     field_name: Annotated[str, Field(description="Field name to check.")],
 ) -> AvailableReferencesResult:
-    """Get valid object names for a reference field (e.g. zone_name, construction_name)."""
+    """List valid names for a reference field (e.g. zone_name)."""
     state = get_state()
     doc = state.require_model()
     schema = state.require_schema()

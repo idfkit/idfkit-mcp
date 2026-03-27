@@ -181,9 +181,9 @@ def profile_tool_calls() -> list[TimingResult]:
     from idfkit import new_document
 
     from idfkit_mcp.state import get_state
-    from idfkit_mcp.tools.read import get_model_summary, get_object, get_references, list_objects, search_objects
+    from idfkit_mcp.tools.read import list_objects, search_objects
     from idfkit_mcp.tools.schema import describe_object_type, get_available_references, list_object_types, search_schema
-    from idfkit_mcp.tools.validation import check_references, validate_model
+    from idfkit_mcp.tools.validation import validate_model
     from idfkit_mcp.tools.weather import search_weather_stations
     from idfkit_mcp.tools.write import (
         add_object,
@@ -239,7 +239,6 @@ def profile_tool_calls() -> list[TimingResult]:
     for i in range(10):
         doc.add("Construction", f"Const_{i}", outside_layer=f"Mat_{i}")
 
-    results.append(bench("tool:get_model_summary", get_model_summary, runs=20))
     results.append(bench("tool:list_objects(Zone)", list_objects, object_type="Zone", runs=20))
     results.append(
         bench(
@@ -250,10 +249,8 @@ def profile_tool_calls() -> list[TimingResult]:
             runs=20,
         )
     )
-    results.append(bench("tool:get_object", lambda: get_object(object_type="Zone", name="Zone_0"), runs=20))
     results.append(bench("tool:search_objects(Zone_2)", lambda: search_objects(query="Zone_2"), runs=20))
     results.append(bench("tool:search_objects(all_types)", lambda: search_objects(query="0"), runs=20))
-    results.append(bench("tool:get_references", lambda: get_references(name="Zone_0"), runs=20))
     results.append(
         bench(
             "tool:get_available_references",
@@ -262,7 +259,6 @@ def profile_tool_calls() -> list[TimingResult]:
         )
     )
     results.append(bench("tool:validate_model", validate_model, runs=10))
-    results.append(bench("tool:check_references", check_references, runs=10))
 
     # Write tools (need fresh state each time for some)
     results.append(bench("tool:new_model", new_model, runs=10))
@@ -438,7 +434,7 @@ def profile_response_sizes() -> list[dict[str, Any]]:
     from idfkit import new_document
 
     from idfkit_mcp.state import get_state
-    from idfkit_mcp.tools.read import get_model_summary, list_objects
+    from idfkit_mcp.tools.read import list_objects
     from idfkit_mcp.tools.schema import describe_object_type, list_object_types, search_schema
 
     state = get_state()
@@ -466,7 +462,6 @@ def profile_response_sizes() -> list[dict[str, Any]]:
         ("describe_object_type(Zone)", describe_object_type, {"object_type": "Zone"}),
         ("describe_object_type(Surface)", describe_object_type, {"object_type": "BuildingSurface:Detailed"}),
         ("search_schema(zone)", search_schema, {"query": "zone"}),
-        ("get_model_summary()", get_model_summary, {}),
         ("list_objects(Zone,50)", list_objects, {"object_type": "Zone"}),
         ("list_objects(Surface,50)", list_objects, {"object_type": "BuildingSurface:Detailed"}),
     ]
