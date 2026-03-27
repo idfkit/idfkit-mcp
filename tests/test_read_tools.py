@@ -13,25 +13,20 @@ import pytest
 from fastmcp.exceptions import ToolError
 from idfkit import new_document, write_idf
 
+from idfkit_mcp.models import ConvertOsmResult, ListObjectsResult, ModelSummary, ReferencesResult, SearchObjectsResult
 from idfkit_mcp.state import ServerState, get_state
-from tests.tool_helpers import get_tool_sync
-
-
-def _tool(name: str):
-    from idfkit_mcp.server import mcp
-
-    return get_tool_sync(mcp, name)
+from tests.conftest import call_tool
 
 
 class TestLoadModel:
-    def test_load_idf(self) -> None:
+    async def test_load_idf(self, client: object) -> None:
         doc = new_document()
         doc.add("Zone", "TestZone")
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
             write_idf(doc, f.name)
             path = f.name
 
-        result = _tool("load_model").fn(file_path=path)
+        result = await call_tool(client, "load_model", {"file_path": path}, ModelSummary)
         assert result.total_objects >= 1
         assert result.zone_count == 1
 
@@ -39,42 +34,42 @@ class TestLoadModel:
         assert state.document is not None
         assert state.file_path == Path(path)
 
-    def test_load_nonexistent(self) -> None:
+    async def test_load_nonexistent(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("load_model").fn(file_path="/nonexistent/file.idf")
+            await call_tool(client, "load_model", {"file_path": "/nonexistent/file.idf"})
 
 
 class TestGetModelSummary:
-    def test_without_model(self) -> None:
+    async def test_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("get_model_summary").fn()
+            await call_tool(client, "get_model_summary")
 
-    def test_with_model(self, state_with_zones: ServerState) -> None:
-        result = _tool("get_model_summary").fn()
+    async def test_with_model(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "get_model_summary", model=ModelSummary)
         assert result.zone_count == 2
-        assert result.total_objects >= 3  # 2 zones + 1 surface + defaults
+        assert result.total_objects >= 3
 
 
 class TestListObjects:
-    def test_without_model(self) -> None:
+    async def test_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("list_objects").fn(object_type="Zone")
+            await call_tool(client, "list_objects", {"object_type": "Zone"})
 
-    def test_list_zones(self, state_with_zones: ServerState) -> None:
-        result = _tool("list_objects").fn(object_type="Zone")
+    async def test_list_zones(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "list_objects", {"object_type": "Zone"}, ListObjectsResult)
         assert result.total == 2
         names = [o["name"] for o in result.objects]
         assert "Office" in names
         assert "Corridor" in names
 
-    def test_missing_type(self, state_with_zones: ServerState) -> None:
+    async def test_missing_type(self, client: object, state_with_zones: ServerState) -> None:
         with pytest.raises(ToolError):
-            _tool("list_objects").fn(object_type="Material")
+            await call_tool(client, "list_objects", {"object_type": "Material"})
 
 
 class TestGetObject:
-    def test_get_zone(self, state_with_zones: ServerState) -> None:
-        result = _tool("get_object").fn(object_type="Zone", name="Office")
+    async def test_get_zone(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "get_object", {"object_type": "Zone", "name": "Office"})
         assert result["name"] == "Office"
         assert result["object_type"] == "Zone"
         assert "x_origin" in result
@@ -82,58 +77,63 @@ class TestGetObject:
         assert "z_origin" in result
         assert result["x_origin"] is None
 
-    def test_missing_object(self, state_with_zones: ServerState) -> None:
+    async def test_missing_object(self, client: object, state_with_zones: ServerState) -> None:
         with pytest.raises(ToolError):
-            _tool("get_object").fn(object_type="Zone", name="Nonexistent")
+            await call_tool(client, "get_object", {"object_type": "Zone", "name": "Nonexistent"})
 
 
 class TestGetObjectSingleton:
     """Singleton types (no name field) should be retrievable."""
 
-    def test_get_singleton_with_empty_name(self, state_with_singletons: ServerState) -> None:
-        result = _tool("get_object").fn(object_type="SimulationControl", name="")
+    async def test_get_singleton_with_empty_name(self, client: object, state_with_singletons: ServerState) -> None:
+        result = await call_tool(client, "get_object", {"object_type": "SimulationControl", "name": ""})
         assert result["object_type"] == "SimulationControl"
 
-    def test_get_singleton_with_any_name(self, state_with_singletons: ServerState) -> None:
-        # AI clients often pass the type name as the name — should still work
-        result = _tool("get_object").fn(object_type="SimulationControl", name="SimulationControl")
+    async def test_get_singleton_with_any_name(self, client: object, state_with_singletons: ServerState) -> None:
+        result = await call_tool(
+            client, "get_object", {"object_type": "SimulationControl", "name": "SimulationControl"}
+        )
         assert result["object_type"] == "SimulationControl"
 
-    def test_get_singleton_global_geometry_rules(self, state_with_singletons: ServerState) -> None:
-        result = _tool("get_object").fn(object_type="GlobalGeometryRules", name="")
+    async def test_get_singleton_global_geometry_rules(
+        self, client: object, state_with_singletons: ServerState
+    ) -> None:
+        result = await call_tool(client, "get_object", {"object_type": "GlobalGeometryRules", "name": ""})
         assert result["object_type"] == "GlobalGeometryRules"
 
 
 class TestSearchObjects:
-    def test_search_by_name(self, state_with_zones: ServerState) -> None:
-        result = _tool("search_objects").fn(query="Office")
+    async def test_search_by_name(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "search_objects", {"query": "Office"}, SearchObjectsResult)
         assert result.count >= 1
         types = [m.object_type for m in result.matches]
         assert "Zone" in types
 
-    def test_search_by_type(self, state_with_zones: ServerState) -> None:
-        result = _tool("search_objects").fn(query="Office", object_type="Zone")
+    async def test_search_by_type(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(
+            client, "search_objects", {"query": "Office", "object_type": "Zone"}, SearchObjectsResult
+        )
         assert result.count == 1
 
-    def test_no_results(self, state_with_zones: ServerState) -> None:
-        result = _tool("search_objects").fn(query="xyznonexistent")
+    async def test_no_results(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "search_objects", {"query": "xyznonexistent"}, SearchObjectsResult)
         assert result.count == 0
 
 
 class TestGetReferences:
-    def test_referenced_zone(self, state_with_zones: ServerState) -> None:
-        result = _tool("get_references").fn(name="Office")
+    async def test_referenced_zone(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "get_references", {"name": "Office"}, ReferencesResult)
         assert result.referenced_by_count >= 1
         ref_types = [r.object_type for r in result.referenced_by]
         assert "BuildingSurface:Detailed" in ref_types
 
-    def test_unreferenced(self, state_with_zones: ServerState) -> None:
-        result = _tool("get_references").fn(name="Corridor")
+    async def test_unreferenced(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "get_references", {"name": "Corridor"}, ReferencesResult)
         assert result.referenced_by_count == 0
 
 
 class TestConvertOsmToIdf:
-    def test_missing_openstudio(self, tmp_path: Path) -> None:
+    async def test_missing_openstudio(self, client: object, tmp_path: Path) -> None:
         osm_path = tmp_path / "input.osm"
         osm_path.write_text("OSM")
         output_path = tmp_path / "out.idf"
@@ -147,20 +147,18 @@ class TestConvertOsmToIdf:
             return original_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=_import), pytest.raises(ToolError, match="OpenStudio"):
-            _tool("convert_osm_to_idf").fn(
-                osm_path=str(osm_path),
-                output_path=str(output_path),
-            )
+            await call_tool(client, "convert_osm_to_idf", {"osm_path": str(osm_path), "output_path": str(output_path)})
 
-    def test_missing_input_file(self, tmp_path: Path) -> None:
+    async def test_missing_input_file(self, client: object, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
         with patch.dict(sys.modules, {"openstudio": fake_openstudio}), pytest.raises(ToolError, match="not found"):
-            _tool("convert_osm_to_idf").fn(
-                osm_path=str(tmp_path / "missing.osm"),
-                output_path=str(tmp_path / "out.idf"),
+            await call_tool(
+                client,
+                "convert_osm_to_idf",
+                {"osm_path": str(tmp_path / "missing.osm"), "output_path": str(tmp_path / "out.idf")},
             )
 
-    def test_invalid_extensions(self, tmp_path: Path) -> None:
+    async def test_invalid_extensions(self, client: object, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
         bad_input = tmp_path / "input.txt"
         bad_input.write_text("not osm")
@@ -168,17 +166,17 @@ class TestConvertOsmToIdf:
         good_input.write_text("osm")
         with patch.dict(sys.modules, {"openstudio": fake_openstudio}):
             with pytest.raises(ToolError, match=r"\.osm"):
-                _tool("convert_osm_to_idf").fn(
-                    osm_path=str(bad_input),
-                    output_path=str(tmp_path / "out.idf"),
+                await call_tool(
+                    client, "convert_osm_to_idf", {"osm_path": str(bad_input), "output_path": str(tmp_path / "out.idf")}
                 )
             with pytest.raises(ToolError, match=r"\.idf"):
-                _tool("convert_osm_to_idf").fn(
-                    osm_path=str(good_input),
-                    output_path=str(tmp_path / "out.txt"),
+                await call_tool(
+                    client,
+                    "convert_osm_to_idf",
+                    {"osm_path": str(good_input), "output_path": str(tmp_path / "out.txt")},
                 )
 
-    def test_output_exists_requires_overwrite(self, tmp_path: Path) -> None:
+    async def test_output_exists_requires_overwrite(self, client: object, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
         osm_path = tmp_path / "input.osm"
         osm_path.write_text("OSM")
@@ -186,13 +184,13 @@ class TestConvertOsmToIdf:
         output_path.write_text("existing")
 
         with patch.dict(sys.modules, {"openstudio": fake_openstudio}), pytest.raises(ToolError, match="overwrite=True"):
-            _tool("convert_osm_to_idf").fn(
-                osm_path=str(osm_path),
-                output_path=str(output_path),
-                overwrite=False,
+            await call_tool(
+                client,
+                "convert_osm_to_idf",
+                {"osm_path": str(osm_path), "output_path": str(output_path), "overwrite": False},
             )
 
-    def test_successful_conversion_loads_state(self, tmp_path: Path) -> None:
+    async def test_successful_conversion_loads_state(self, client: object, tmp_path: Path) -> None:
         fake_openstudio = _fake_openstudio_module()
         osm_path = tmp_path / "input.osm"
         osm_path.write_text("OSM")
@@ -202,11 +200,16 @@ class TestConvertOsmToIdf:
         doc.add("Zone", "ConvertedZone")
 
         with patch.dict(sys.modules, {"openstudio": fake_openstudio}), patch("idfkit.load_idf", return_value=doc):
-            result = _tool("convert_osm_to_idf").fn(
-                osm_path=str(osm_path),
-                output_path=str(output_path),
-                allow_newer_versions=True,
-                overwrite=False,
+            result = await call_tool(
+                client,
+                "convert_osm_to_idf",
+                {
+                    "osm_path": str(osm_path),
+                    "output_path": str(output_path),
+                    "allow_newer_versions": True,
+                    "overwrite": False,
+                },
+                ConvertOsmResult,
             )
 
         assert result.status == "converted"

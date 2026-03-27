@@ -11,15 +11,20 @@ from unittest.mock import patch
 import pytest
 from fastmcp.exceptions import ToolError
 
-from idfkit_mcp.server import mcp
+from idfkit_mcp.models import (
+    DescribeObjectTypeResult,
+    GetDocSectionResult,
+    LookupDocumentationResult,
+    SearchDocsResult,
+    SearchSchemaResult,
+)
 from idfkit_mcp.state import ServerState, get_state
-from tests.tool_helpers import get_tool_sync
+from tests.conftest import call_tool
 
 
 class TestLookupDocumentation:
-    def test_known_object_type(self) -> None:
-        tool = get_tool_sync(mcp, "lookup_documentation")
-        result = tool.fn(object_type="Zone")
+    async def test_known_object_type(self, client: object) -> None:
+        result = await call_tool(client, "lookup_documentation", {"object_type": "Zone"}, LookupDocumentationResult)
         assert result.object_type == "Zone"
         assert result.io_reference_url is not None
         assert "docs.idfkit.com" in result.io_reference_url
@@ -28,41 +33,40 @@ class TestLookupDocumentation:
         assert result.search_url is not None
         assert result.version  # should be set
 
-    def test_unknown_object_type(self) -> None:
-        tool = get_tool_sync(mcp, "lookup_documentation")
-        result = tool.fn(object_type="NotARealType")
+    async def test_unknown_object_type(self, client: object) -> None:
+        result = await call_tool(
+            client, "lookup_documentation", {"object_type": "NotARealType"}, LookupDocumentationResult
+        )
         assert result.object_type == "NotARealType"
         assert result.io_reference_url is None
         assert result.engineering_reference_url is not None
         assert result.search_url is not None
 
-    def test_with_explicit_version(self) -> None:
-        tool = get_tool_sync(mcp, "lookup_documentation")
-        result = tool.fn(object_type="Zone", version="24.1.0")
+    async def test_with_explicit_version(self, client: object) -> None:
+        result = await call_tool(
+            client, "lookup_documentation", {"object_type": "Zone", "version": "24.1.0"}, LookupDocumentationResult
+        )
         assert result.version == "24.1.0"
         assert result.io_reference_url is not None
         assert "/v24.1/" in result.io_reference_url
 
 
 class TestDescribeObjectTypeDocUrl:
-    def test_doc_url_present(self) -> None:
-        tool = get_tool_sync(mcp, "describe_object_type")
-        result = tool.fn(object_type="Zone")
+    async def test_doc_url_present(self, client: object) -> None:
+        result = await call_tool(client, "describe_object_type", {"object_type": "Zone"}, DescribeObjectTypeResult)
         assert result.doc_url is not None
         assert "docs.idfkit.com" in result.doc_url
         assert "#zone" in result.doc_url
 
-    def test_doc_url_for_material(self) -> None:
-        tool = get_tool_sync(mcp, "describe_object_type")
-        result = tool.fn(object_type="Material")
+    async def test_doc_url_for_material(self, client: object) -> None:
+        result = await call_tool(client, "describe_object_type", {"object_type": "Material"}, DescribeObjectTypeResult)
         assert result.doc_url is not None
         assert "#material" in result.doc_url
 
 
 class TestSearchSchemaDocUrl:
-    def test_doc_url_in_matches(self) -> None:
-        tool = get_tool_sync(mcp, "search_schema")
-        result = tool.fn(query="Material", limit=10)
+    async def test_doc_url_in_matches(self, client: object) -> None:
+        result = await call_tool(client, "search_schema", {"query": "Material", "limit": 10}, SearchSchemaResult)
         assert result.count > 0
         # All matches should have doc_url populated
         match_with_url = [m for m in result.matches if m.doc_url is not None]
@@ -71,112 +75,96 @@ class TestSearchSchemaDocUrl:
 
 
 class TestSearchDocs:
-    def test_basic_search(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="zone")
+    async def test_basic_search(self, client: object) -> None:
+        result = await call_tool(client, "search_docs", {"query": "zone"}, SearchDocsResult)
         assert result.count > 0
         assert result.version
         assert all(hit.score > 0 for hit in result.results)
 
-    def test_results_have_doc_url(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="zone")
+    async def test_results_have_doc_url(self, client: object) -> None:
+        result = await call_tool(client, "search_docs", {"query": "zone"}, SearchDocsResult)
         assert result.count > 0
         for hit in result.results:
             assert "docs.idfkit.com" in hit.doc_url
             assert hit.doc_url.startswith("https://")
 
-    def test_tag_filter(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="zone", tags="Input Output Reference")
+    async def test_tag_filter(self, client: object) -> None:
+        result = await call_tool(
+            client, "search_docs", {"query": "zone", "tags": "Input Output Reference"}, SearchDocsResult
+        )
         assert result.count > 0
         assert all("Input Output Reference" in hit.tags for hit in result.results)
 
-    def test_limit(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="material", limit=3)
+    async def test_limit(self, client: object) -> None:
+        result = await call_tool(client, "search_docs", {"query": "material", "limit": 3}, SearchDocsResult)
         assert len(result.results) <= 3
 
-    def test_html_stripped(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="zone")
+    async def test_html_stripped(self, client: object) -> None:
+        result = await call_tool(client, "search_docs", {"query": "zone"}, SearchDocsResult)
         assert result.count > 0
         for hit in result.results:
             assert "<p>" not in hit.text
             assert "<code>" not in hit.text
             assert "<ul>" not in hit.text
 
-    def test_empty_query(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="")
+    async def test_empty_query(self, client: object) -> None:
+        result = await call_tool(client, "search_docs", {"query": ""}, SearchDocsResult)
         assert result.count == 0
         assert result.results == []
 
-    def test_text_truncated(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        result = tool.fn(query="zone", limit=20)
+    async def test_text_truncated(self, client: object) -> None:
+        result = await call_tool(client, "search_docs", {"query": "zone", "limit": 20}, SearchDocsResult)
         for hit in result.results:
             # Truncated text should be at most 500 chars + "..."
             assert len(hit.text) <= 503
 
-    def test_index_cached(self) -> None:
-        tool = get_tool_sync(mcp, "search_docs")
-        tool.fn(query="zone")
+    async def test_index_cached(self, client: object) -> None:
+        await call_tool(client, "search_docs", {"query": "zone"}, SearchDocsResult)
         state = get_state()
         cached = state.docs_index
         assert cached is not None
-        tool.fn(query="material")
+        await call_tool(client, "search_docs", {"query": "material"}, SearchDocsResult)
         assert state.docs_index is cached
 
 
 class TestGetDocSection:
-    def test_known_location(self) -> None:
-        search_tool = get_tool_sync(mcp, "search_docs")
-        section_tool = get_tool_sync(mcp, "get_doc_section")
-
-        search_result = search_tool.fn(query="zone heat balance")
+    async def test_known_location(self, client: object) -> None:
+        search_result = await call_tool(client, "search_docs", {"query": "zone heat balance"}, SearchDocsResult)
         assert search_result.count > 0
 
         loc = search_result.results[0].location
-        result = section_tool.fn(location=loc)
+        result = await call_tool(client, "get_doc_section", {"location": loc}, GetDocSectionResult)
         assert result.title
         assert result.doc_url
         assert "docs.idfkit.com" in result.doc_url
         assert result.version
 
-    def test_unknown_location(self) -> None:
-        section_tool = get_tool_sync(mcp, "get_doc_section")
+    async def test_unknown_location(self, client: object) -> None:
         with pytest.raises(ToolError, match="not found"):
-            section_tool.fn(location="nonexistent/path/#nothing")
+            await call_tool(client, "get_doc_section", {"location": "nonexistent/path/#nothing"})
 
-    def test_full_text_not_truncated(self) -> None:
-        """get_doc_section should return full text, unlike search_docs which truncates."""
-        search_tool = get_tool_sync(mcp, "search_docs")
-        section_tool = get_tool_sync(mcp, "get_doc_section")
-
-        # Search for something likely to have long text
-        search_result = search_tool.fn(query="zone heat balance", limit=10)
+    async def test_full_text_not_truncated(self, client: object) -> None:
+        search_result = await call_tool(
+            client, "search_docs", {"query": "zone heat balance", "limit": 10}, SearchDocsResult
+        )
         assert search_result.count > 0
 
-        # Find a result whose text was truncated in search
         for hit in search_result.results:
             if hit.text.endswith("..."):
-                full = section_tool.fn(location=hit.location)
+                full = await call_tool(client, "get_doc_section", {"location": hit.location}, GetDocSectionResult)
                 assert len(full.text) > 500
                 assert not full.text.endswith("...")
                 return
 
-        # If no truncated results, just verify get_doc_section works
-        result = section_tool.fn(location=search_result.results[0].location)
+        result = await call_tool(
+            client, "get_doc_section", {"location": search_result.results[0].location}, GetDocSectionResult
+        )
         assert len(result.text) >= 0
 
-    def test_html_stripped(self) -> None:
-        search_tool = get_tool_sync(mcp, "search_docs")
-        section_tool = get_tool_sync(mcp, "get_doc_section")
-
-        search_result = search_tool.fn(query="zone")
+    async def test_html_stripped(self, client: object) -> None:
+        search_result = await call_tool(client, "search_docs", {"query": "zone"}, SearchDocsResult)
         loc = search_result.results[0].location
-        result = section_tool.fn(location=loc)
+        result = await call_tool(client, "get_doc_section", {"location": loc}, GetDocSectionResult)
         assert "<p>" not in result.text
         assert "<code>" not in result.text
 
