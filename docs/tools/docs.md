@@ -21,7 +21,7 @@ Parameters:
 
 Full-text search across the EnergyPlus documentation index (~20,000 sections).
 
-Results include HTML-stripped text truncated to 500 characters. Use `get_doc_section` to read full content.
+Results include HTML-stripped text truncated to 250 characters. Use `get_doc_section` to read full content.
 
 Parameters:
 
@@ -49,8 +49,9 @@ Parameters:
 
 - `location` (required): the location from a `search_docs` result
 - `version`: EnergyPlus version as `"X.Y"` (default: latest)
+- `max_length`: maximum characters to return (default: 8000)
 
-Returns the full text (not truncated) with HTML stripped.
+Returns the text with HTML stripped, truncated to `max_length` characters.
 
 ## Typical Flows
 

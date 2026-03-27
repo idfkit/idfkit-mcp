@@ -40,8 +40,10 @@ nav:
 
   - API Reference:
     - Overview: api/index.md
+    - App: api/app.md
     - Server: api/server.md
     - State: api/state.md
+    - Resources: api/resources.md
     - Tools:
       - Schema: api/tools-schema.md
       - Read: api/tools-read.md

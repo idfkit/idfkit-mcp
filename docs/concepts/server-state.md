@@ -49,6 +49,19 @@ Behavior:
 - Session file is keyed by working directory (SHA-256 hash) and stored in `~/.cache/idfkit/sessions/` (Linux) or `~/Library/Caches/idfkit/sessions/` (macOS).
 - Use `clear_session` to delete the session file and reset all state.
 
+## MCP Resources
+
+In addition to tools, the server exposes read-only MCP resources that let clients subscribe to model state without making tool calls.
+
+| URI | Description |
+|-----|-------------|
+| `idfkit://model/summary` | Current model summary (version, zones, object counts) |
+| `idfkit://schema/{object_type}` | Full field schema for an object type |
+| `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object |
+| `idfkit://simulation/results` | Summary of the most recent simulation results |
+
+Resources return JSON (`application/json`) and are available whenever the corresponding state exists (e.g., `model/summary` requires a loaded model).
+
 ## Session Strategy
 
 For deterministic automation:
