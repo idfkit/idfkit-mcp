@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Annotated
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.errors import tool_error
@@ -35,22 +37,12 @@ def _parse_version(version: str | None) -> tuple[int, int, int] | None:
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def list_object_types(group: str | None = None, version: str | None = None, limit: int = 50) -> ListObjectTypesResult:
-    """Discover available EnergyPlus object types, optionally filtered by group.
-
-    Use this to browse what object types exist before creating objects.
-
-    When the total exceeds the limit, type names are omitted and only group
-    names with counts are returned.  Filter by group to see individual types.
-
-    Args:
-        group: Filter to a specific IDD group (e.g. "Thermal Zones and Surfaces").
-        version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
-        limit: Maximum number of type names to include (default 50).
-
-    Returns:
-        Groups with their object type names (or counts only when truncated).
-    """
+def list_object_types(
+    group: Annotated[str | None, Field(description='Filter to a group (e.g. "Thermal Zones and Surfaces").')] = None,
+    version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
+    limit: Annotated[int, Field(description="Max type names to include.")] = 50,
+) -> ListObjectTypesResult:
+    """Browse available EnergyPlus object types. Filter by group to see individual types."""
     limit = min(limit, 100)
 
     state = get_state()
@@ -76,17 +68,11 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def describe_object_type(object_type: str, version: str | None = None) -> DescribeObjectTypeResult:
-    """Get the full field schema for an EnergyPlus object type.
-
-    Use this before creating or editing objects to learn valid fields and constraints.
-    Returns field names, types, constraints, defaults, references, memo, and a
-    documentation URL for the object on docs.idfkit.com.
-
-    Args:
-        object_type: The object type name (e.g. "Zone", "Material").
-        version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
-    """
+def describe_object_type(
+    object_type: Annotated[str, Field(description='Object type name (e.g. "Zone", "Material").')],
+    version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
+) -> DescribeObjectTypeResult:
+    """Get the full field schema: names, types, constraints, defaults, references, and doc URL."""
     from idfkit.docs import docs_url_for_object
     from idfkit.introspection import describe_object_type as _describe
 
@@ -103,20 +89,15 @@ def describe_object_type(object_type: str, version: str | None = None) -> Descri
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def search_schema(query: str, version: str | None = None, limit: int = 50) -> SearchSchemaResult:
-    """Search for EnergyPlus object types by name or description.
-
-    Use this to find the right object type when you know a keyword but not the exact name.
-    Each match includes a ``doc_url`` linking to the object's page on docs.idfkit.com.
-
-    Args:
-        query: Search string (case-insensitive substring match).
-        version: EnergyPlus version as "X.Y.Z" (default: latest or loaded model version).
-        limit: Maximum number of results to return (default 50).
-    """
+def search_schema(
+    query: Annotated[str, Field(description="Case-insensitive substring match.")],
+    version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
+    limit: Annotated[int, Field(description="Maximum results to return.")] = 10,
+) -> SearchSchemaResult:
+    """Search for object types by name or description. Use describe_object_type for full details."""
     from idfkit.docs import docs_url_for_object
 
-    limit = min(limit, 50)
+    limit = min(limit, 30)
 
     state = get_state()
     ver_tuple = _parse_version(version)
@@ -132,7 +113,7 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
             matches.append({
                 "object_type": obj_type,
                 "group": obj_group,
-                "memo": memo[:200] if memo else None,
+                "memo": memo[:100] if memo else None,
                 "doc_url": doc_url,
             })
             if len(matches) >= limit:
@@ -148,16 +129,11 @@ def search_schema(query: str, version: str | None = None, limit: int = 50) -> Se
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def get_available_references(object_type: str, field_name: str) -> AvailableReferencesResult:
-    """Get valid object names for a reference field from the loaded model.
-
-    Use this to find valid values when setting reference fields like zone_name,
-    construction_name, etc.
-
-    Args:
-        object_type: The object type containing the field.
-        field_name: The field name to check.
-    """
+def get_available_references(
+    object_type: Annotated[str, Field(description="Object type containing the reference field.")],
+    field_name: Annotated[str, Field(description="Field name to check.")],
+) -> AvailableReferencesResult:
+    """Get valid object names for a reference field (e.g. zone_name, construction_name)."""
     state = get_state()
     doc = state.require_model()
     schema = state.require_schema()

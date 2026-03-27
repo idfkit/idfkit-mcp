@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
@@ -30,14 +31,10 @@ _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 
 
 @mcp.tool(annotations=_MUTATE)
-def new_model(version: str | None = None) -> NewModelResult:
-    """Create a new empty EnergyPlus model.
-
-    Use this to start building a model from scratch.
-
-    Args:
-        version: EnergyPlus version as "X.Y.Z" (default: latest).
-    """
+def new_model(
+    version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z" (default: latest).')] = None,
+) -> NewModelResult:
+    """Create a new empty EnergyPlus model."""
     from idfkit import LATEST_VERSION, new_document, version_string
 
     ver = LATEST_VERSION
@@ -57,17 +54,12 @@ def new_model(version: str | None = None) -> NewModelResult:
 
 
 @mcp.tool(annotations=_MUTATE, output_schema=None)
-def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Add a new object to the model.
-
-    Use this to create a single EnergyPlus object. Call describe_object_type first
-    to see valid fields for this type.
-
-    Args:
-        object_type: The EnergyPlus object type (e.g. "Zone", "Material").
-        name: Object name (empty string for unnamed types).
-        fields: Field values as {field_name: value}.
-    """
+def add_object(
+    object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone", "Material").')],
+    name: Annotated[str, Field(description="Object name (empty for unnamed types).")] = "",
+    fields: Annotated[dict[str, Any] | None, Field(description="Field values as {field_name: value}.")] = None,
+) -> dict[str, Any]:
+    """Add a new object. Call describe_object_type first to see valid fields."""
     state = get_state()
     doc = state.require_model()
     kwargs = fields or {}
@@ -78,17 +70,10 @@ def add_object(object_type: str, name: str = "", fields: dict[str, Any] | None =
 
 
 @mcp.tool(annotations=_MUTATE)
-def batch_add_objects(objects: list[dict[str, Any]]) -> BatchAddResult:
-    """Add multiple objects to the model in a single call.
-
-    Use this when creating multiple objects at once for efficiency — building a zone
-    requires many related objects. Each entry should have: object_type (required),
-    name (optional), fields (optional). Continues on individual failures and reports
-    per-object results.
-
-    Args:
-        objects: List of dicts with keys: object_type, name, fields.
-    """
+def batch_add_objects(
+    objects: Annotated[list[dict[str, Any]], Field(description="List of dicts with keys: object_type, name, fields.")],
+) -> BatchAddResult:
+    """Add multiple objects in one call. Continues on failures and reports per-object results."""
     state = get_state()
     doc = state.require_model()
 
@@ -120,16 +105,12 @@ def batch_add_objects(objects: list[dict[str, Any]]) -> BatchAddResult:
 
 
 @mcp.tool(annotations=_MUTATE, output_schema=None)
-def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[str, Any]:
-    """Update fields on an existing object.
-
-    Use this to modify field values on an object already in the model.
-
-    Args:
-        object_type: The EnergyPlus object type.
-        name: The object name.
-        fields: Fields to update as {field_name: value}.
-    """
+def update_object(
+    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
+    name: Annotated[str, Field(description="Object name.")],
+    fields: Annotated[dict[str, Any], Field(description="Fields to update as {field_name: value}.")],
+) -> dict[str, Any]:
+    """Update fields on an existing object."""
     state = get_state()
     doc = state.require_model()
     obj = resolve_object(doc, object_type, name)
@@ -143,17 +124,12 @@ def update_object(object_type: str, name: str, fields: dict[str, Any]) -> dict[s
 
 
 @mcp.tool(annotations=_DESTRUCTIVE)
-def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObjectResult:
-    """Remove an object from the model.
-
-    Use this to delete an object. Refuses removal if other objects reference it
-    unless force=True.
-
-    Args:
-        object_type: The EnergyPlus object type.
-        name: The object name.
-        force: If True, remove even if referenced by other objects.
-    """
+def remove_object(
+    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
+    name: Annotated[str, Field(description="Object name.")],
+    force: Annotated[bool, Field(description="Remove even if referenced by other objects.")] = False,
+) -> RemoveObjectResult:
+    """Remove an object. Refuses if other objects reference it unless force=True."""
     state = get_state()
     doc = state.require_model()
     obj = resolve_object(doc, object_type, name)
@@ -173,16 +149,12 @@ def remove_object(object_type: str, name: str, force: bool = False) -> RemoveObj
 
 
 @mcp.tool(annotations=_MUTATE)
-def rename_object(object_type: str, old_name: str, new_name: str) -> RenameObjectResult:
-    """Rename an object and update all references to it.
-
-    Use this to change an object's name while keeping the model consistent.
-
-    Args:
-        object_type: The EnergyPlus object type.
-        old_name: Current object name.
-        new_name: New object name.
-    """
+def rename_object(
+    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
+    old_name: Annotated[str, Field(description="Current object name.")],
+    new_name: Annotated[str, Field(description="New object name.")],
+) -> RenameObjectResult:
+    """Rename an object and update all references to it."""
     state = get_state()
     doc = state.require_model()
 
@@ -202,16 +174,12 @@ def rename_object(object_type: str, old_name: str, new_name: str) -> RenameObjec
 
 
 @mcp.tool(annotations=_MUTATE, output_schema=None)
-def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, Any]:
-    """Duplicate an existing object with a new name.
-
-    Use this to copy an object as a starting point for a similar one.
-
-    Args:
-        object_type: The EnergyPlus object type.
-        name: The source object name.
-        new_name: The name for the duplicate.
-    """
+def duplicate_object(
+    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
+    name: Annotated[str, Field(description="Source object name.")],
+    new_name: Annotated[str, Field(description="Name for the duplicate.")],
+) -> dict[str, Any]:
+    """Duplicate an existing object with a new name."""
     state = get_state()
     doc = state.require_model()
     source = resolve_object(doc, object_type, name)
@@ -222,15 +190,11 @@ def duplicate_object(object_type: str, name: str, new_name: str) -> dict[str, An
 
 
 @mcp.tool(annotations=_SAVE)
-def save_model(file_path: str | None = None, output_format: Literal["idf", "epjson"] = "idf") -> SaveModelResult:
-    """Save the model to a file.
-
-    Use this to persist changes to disk in IDF or epJSON format.
-
-    Args:
-        file_path: Output path. If None, uses the original load path.
-        output_format: Output format: "idf" or "epjson".
-    """
+def save_model(
+    file_path: Annotated[str | None, Field(description="Output path (default: original load path).")] = None,
+    output_format: Annotated[Literal["idf", "epjson"], Field(description="Output format.")] = "idf",
+) -> SaveModelResult:
+    """Save the model to disk in IDF or epJSON format."""
     from pathlib import Path
 
     from idfkit import write_epjson, write_idf
@@ -261,11 +225,7 @@ def save_model(file_path: str | None = None, output_format: Literal["idf", "epjs
 
 @mcp.tool(annotations=_DESTRUCTIVE)
 def clear_session() -> ClearSessionResult:
-    """Clear the persisted session and reset all state.
-
-    Use this to start fresh when the restored model or simulation results are
-    stale or unwanted.  Does not delete any model or simulation files on disk.
-    """
+    """Clear the persisted session and reset all state. Does not delete files on disk."""
     state = get_state()
     state.clear_session()
     return ClearSessionResult(status="cleared")

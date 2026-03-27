@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import re
 from sqlite3 import OperationalError
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastmcp import Context
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
@@ -24,7 +25,7 @@ from idfkit_mcp.state import get_state
 logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
-_RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True)
+_RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 # Valid EnergyPlus reporting frequencies for time series queries.
@@ -96,26 +97,15 @@ def _build_progress_handler(ctx: Context | None) -> Any:
 
 @mcp.tool(annotations=_RUN)
 async def run_simulation(
-    weather_file: str | None = None,
-    design_day: bool = False,
-    annual: bool = False,
-    energyplus_dir: str | None = None,
-    energyplus_version: str | None = None,
-    output_directory: str | None = None,
+    weather_file: Annotated[str | None, Field(description="Path to EPW file (default: previously downloaded).")] = None,
+    design_day: Annotated[bool, Field(description="Run design-day-only simulation.")] = False,
+    annual: Annotated[bool, Field(description="Run annual simulation.")] = False,
+    energyplus_dir: Annotated[str | None, Field(description="EnergyPlus installation directory.")] = None,
+    energyplus_version: Annotated[str | None, Field(description='EnergyPlus version filter (e.g. "25.1.0").')] = None,
+    output_directory: Annotated[str | None, Field(description="Output directory for results.")] = None,
     ctx: Context | None = None,
 ) -> RunSimulationResult:
-    """Execute an EnergyPlus simulation on the loaded model.
-
-    Use this to run the simulation after building or modifying a model.
-
-    Args:
-        weather_file: Path to EPW weather file. Uses previously downloaded file if None.
-        design_day: Run design-day-only simulation.
-        annual: Run annual simulation.
-        energyplus_dir: Optional explicit EnergyPlus installation directory or executable path.
-        energyplus_version: Optional EnergyPlus version filter (e.g. "25.1.0").
-        output_directory: Optional explicit output directory for simulation results.
-    """
+    """Execute an EnergyPlus simulation on the loaded model."""
     from idfkit.simulation import async_simulate
     from idfkit.simulation.config import find_energyplus
 
@@ -168,10 +158,7 @@ async def run_simulation(
 
 @mcp.tool(annotations=_READ_ONLY)
 def get_results_summary() -> GetResultsSummaryResult:
-    """Get a summary of the last simulation results.
-
-    Use this after run_simulation to review energy metrics, error counts, and key tables.
-    """
+    """Get energy metrics, error counts, and key tables from the last simulation."""
     state = get_state()
     result = state.require_simulation_result()
 
@@ -216,15 +203,11 @@ def get_results_summary() -> GetResultsSummaryResult:
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def list_output_variables(search: str | None = None, limit: int = 50) -> ListOutputVariablesResult:
-    """List available output variables from the last simulation.
-
-    Use this to discover what time series data is available for querying.
-
-    Args:
-        search: Optional regex pattern to filter variables by name.
-        limit: Maximum number of results (default 50).
-    """
+def list_output_variables(
+    search: Annotated[str | None, Field(description="Regex pattern to filter variables by name.")] = None,
+    limit: Annotated[int, Field(description="Maximum results.")] = 50,
+) -> ListOutputVariablesResult:
+    """List available output variables and meters from the last simulation."""
     state = get_state()
     result = state.require_simulation_result()
 
@@ -271,24 +254,13 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> ListOut
 
 @mcp.tool(annotations=_READ_ONLY)
 def query_timeseries(
-    variable_name: str,
-    key_value: str = "*",
-    frequency: ReportingFrequency | None = None,
-    environment: Literal["sizing", "annual"] | None = None,
-    limit: int = 24,
+    variable_name: Annotated[str, Field(description='Output variable name (e.g. "Zone Mean Air Temperature").')],
+    key_value: Annotated[str, Field(description='Zone/surface name, or "*" for environment-level.')] = "*",
+    frequency: Annotated[ReportingFrequency | None, Field(description='e.g. "Hourly", "Monthly".')] = None,
+    environment: Annotated[Literal["sizing", "annual"] | None, Field(description="Environment type filter.")] = None,
+    limit: Annotated[int, Field(description="Maximum data points to return.")] = 24,
 ) -> QueryTimeseriesResult:
-    """Query time series data from the last simulation's SQL output.
-
-    Use this for quick inspection of simulation output data inline.
-    Returns the first `limit` data points.
-
-    Args:
-        variable_name: The output variable name (e.g. "Zone Mean Air Temperature").
-        key_value: Key value such as zone or surface name. Use "*" for environment-level variables.
-        frequency: Reporting frequency filter (e.g. "Hourly", "Monthly").
-        environment: Filter by environment type: "sizing" or "annual".
-        limit: Maximum number of data points to return (default 24).
-    """
+    """Query time series data from the last simulation's SQL output."""
     limit = min(limit, 500)
 
     state = get_state()
@@ -337,23 +309,13 @@ def query_timeseries(
 
 @mcp.tool(annotations=_EXPORT)
 def export_timeseries(
-    variable_name: str,
-    key_value: str = "*",
-    frequency: ReportingFrequency | None = None,
-    environment: Literal["sizing", "annual"] | None = None,
-    output_path: str | None = None,
+    variable_name: Annotated[str, Field(description='Output variable name (e.g. "Zone Mean Air Temperature").')],
+    key_value: Annotated[str, Field(description='Zone/surface name, or "*" for environment-level.')] = "*",
+    frequency: Annotated[ReportingFrequency | None, Field(description='e.g. "Hourly", "Monthly".')] = None,
+    environment: Annotated[Literal["sizing", "annual"] | None, Field(description="Environment type filter.")] = None,
+    output_path: Annotated[str | None, Field(description="Output CSV path (default: simulation output dir).")] = None,
 ) -> ExportTimeseriesResult:
-    """Export time series data from the last simulation to a CSV file.
-
-    Use this to save full simulation output data for external analysis.
-
-    Args:
-        variable_name: The output variable name (e.g. "Zone Mean Air Temperature").
-        key_value: Key value such as zone or surface name. Use "*" for environment-level variables.
-        frequency: Reporting frequency filter (e.g. "Hourly", "Monthly").
-        environment: Filter by environment type: "sizing" or "annual".
-        output_path: Output CSV file path. Defaults to a file in the simulation output directory.
-    """
+    """Export time series data from the last simulation to a CSV file."""
     import csv
     import re
     from pathlib import Path

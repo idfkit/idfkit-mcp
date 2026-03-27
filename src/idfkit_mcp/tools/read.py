@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
@@ -28,16 +29,11 @@ _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 
 
 @mcp.tool(annotations=_LOAD)
-def load_model(file_path: str, version: str | None = None) -> ModelSummary:
-    """Open an existing IDF or epJSON file as the active model.
-
-    Use this to load a building energy model for inspection or editing.
-    Auto-detects format by file extension (.idf or .epjson/.json).
-
-    Args:
-        file_path: Path to the IDF or epJSON file.
-        version: Optional version override as "X.Y.Z".
-    """
+def load_model(
+    file_path: Annotated[str, Field(description="Path to the IDF or epJSON file.")],
+    version: Annotated[str | None, Field(description='Version override as "X.Y.Z".')] = None,
+) -> ModelSummary:
+    """Open an existing IDF or epJSON file. Auto-detects format by extension (.idf or .epjson/.json)."""
     from pathlib import Path
 
     from idfkit import load_epjson, load_idf
@@ -66,21 +62,12 @@ def load_model(file_path: str, version: str | None = None) -> ModelSummary:
 
 @mcp.tool(annotations=_LOAD)
 def convert_osm_to_idf(
-    osm_path: str,
-    output_path: str,
-    allow_newer_versions: bool = True,
-    overwrite: bool = False,
+    osm_path: Annotated[str, Field(description="Path to the source .osm file.")],
+    output_path: Annotated[str, Field(description="Path where the translated .idf will be written.")],
+    allow_newer_versions: Annotated[bool, Field(description="Allow loading OSM files with newer versions.")] = True,
+    overwrite: Annotated[bool, Field(description="Overwrite an existing output file.")] = False,
 ) -> ConvertOsmResult:
-    """Convert an OpenStudio OSM model to IDF and load it as the active model.
-
-    Use this when working with OpenStudio models that need EnergyPlus simulation.
-
-    Args:
-        osm_path: Path to the source .osm file.
-        output_path: Path where the translated .idf file will be written.
-        allow_newer_versions: Allow loading OSM files with newer OpenStudio versions.
-        overwrite: Whether to overwrite an existing output file.
-    """
+    """Convert an OpenStudio OSM model to IDF and load it as the active model."""
     from pathlib import Path
 
     from idfkit import load_idf
@@ -163,27 +150,18 @@ def convert_osm_to_idf(
 
 @mcp.tool(annotations=_READ_ONLY)
 def get_model_summary() -> ModelSummary:
-    """Get a summary of the currently loaded model.
-
-    Use this first after loading a model to understand its contents.
-    Returns version, total objects, zone count, and counts by group/type.
-    """
+    """Get version, total objects, zone count, and counts by group/type for the loaded model."""
     state = get_state()
     doc = state.require_model()
     return build_model_summary(doc, state)
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
-    """List objects of a given type from the loaded model.
-
-    Use this to browse existing objects before inspecting or editing them.
-    Returns object names and required field values in brief format.
-
-    Args:
-        object_type: The EnergyPlus object type (e.g. "Zone").
-        limit: Maximum number of objects to return (default 50).
-    """
+def list_objects(
+    object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone").')],
+    limit: Annotated[int, Field(description="Maximum objects to return.")] = 50,
+) -> ListObjectsResult:
+    """List objects of a given type with names and required fields in brief format."""
     limit = min(limit, 200)
 
     state = get_state()
@@ -201,15 +179,11 @@ def list_objects(object_type: str, limit: int = 50) -> ListObjectsResult:
 
 
 @mcp.tool(annotations=_READ_ONLY, output_schema=None)
-def get_object(object_type: str, name: str) -> dict[str, Any]:
-    """Get all field values for a specific object.
-
-    Use this to inspect the full details of a single object.
-
-    Args:
-        object_type: The EnergyPlus object type.
-        name: The object name.
-    """
+def get_object(
+    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
+    name: Annotated[str, Field(description="Object name.")],
+) -> dict[str, Any]:
+    """Get all field values for a specific object."""
     state = get_state()
     doc = state.require_model()
     obj = resolve_object(doc, object_type, name)
@@ -217,16 +191,12 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def search_objects(query: str, object_type: str | None = None, limit: int = 20) -> SearchObjectsResult:
-    """Search for objects by name or field values.
-
-    Use this to find objects when you know a keyword but not the exact name or type.
-
-    Args:
-        query: Search string (case-insensitive substring match on name and string fields).
-        object_type: Optionally restrict search to a specific type.
-        limit: Maximum results to return (default 20).
-    """
+def search_objects(
+    query: Annotated[str, Field(description="Case-insensitive substring match on name and string fields.")],
+    object_type: Annotated[str | None, Field(description="Restrict search to a specific type.")] = None,
+    limit: Annotated[int, Field(description="Maximum results to return.")] = 20,
+) -> SearchObjectsResult:
+    """Search for objects by name or field values."""
     limit = min(limit, 100)
 
     state = get_state()
@@ -247,15 +217,10 @@ def search_objects(query: str, object_type: str | None = None, limit: int = 20) 
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def get_references(name: str) -> ReferencesResult:
-    """Get bidirectional references for an object name.
-
-    Use this to understand dependencies before renaming or removing an object.
-    Returns objects that reference this name, and names this object references.
-
-    Args:
-        name: The object name to check references for.
-    """
+def get_references(
+    name: Annotated[str, Field(description="Object name to check references for.")],
+) -> ReferencesResult:
+    """Get bidirectional references: objects that reference this name, and names this object references."""
     state = get_state()
     doc = state.require_model()
 

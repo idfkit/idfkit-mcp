@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Annotated
 
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import CheckReferencesResult, ValidationResult
@@ -17,15 +19,11 @@ _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempoten
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def validate_model(object_types: list[str] | None = None, check_references: bool = True) -> ValidationResult:
-    """Validate the loaded model against the EnergyPlus schema.
-
-    Use this after making modifications to check for errors before simulation.
-
-    Args:
-        object_types: Only validate specific types (default: all).
-        check_references: Whether to check reference integrity (default: True).
-    """
+def validate_model(
+    object_types: Annotated[list[str] | None, Field(description="Only validate specific types (default: all).")] = None,
+    check_references: Annotated[bool, Field(description="Check reference integrity.")] = True,
+) -> ValidationResult:
+    """Validate the model against the EnergyPlus schema. Run after modifications."""
     from idfkit import validate_document
 
     state = get_state()
@@ -43,14 +41,10 @@ def validate_model(object_types: list[str] | None = None, check_references: bool
 
 
 @mcp.tool(annotations=_READ_ONLY)
-def check_references(limit: int = 100) -> CheckReferencesResult:
-    """Check for dangling references in the loaded model.
-
-    Use this to find references that point to non-existent objects.
-
-    Args:
-        limit: Maximum number of dangling references to return (default 100).
-    """
+def check_references(
+    limit: Annotated[int, Field(description="Maximum dangling references to return.")] = 100,
+) -> CheckReferencesResult:
+    """Find references that point to non-existent objects."""
     state = get_state()
     doc = state.require_model()
 
