@@ -12,13 +12,13 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/troubleshooting/simulation/">
+        <link rel="canonical" href="https://mcp.idfkit.com/docs/api/app/">
       
       
-        <link rel="prev" href="../setup/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../../api/">
+        <link rel="next" href="../server/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Modeling & Simulation Troubleshooting - idfkit-mcp</title>
+        <title>App - idfkit-mcp</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#modeling-simulation-troubleshooting" class="md-skip">
+        <a href="#idfkit_mcp.app" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Modeling &amp; Simulation Troubleshooting
+              App
             
           </span>
         </div>
@@ -291,13 +291,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../setup/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../troubleshooting/setup/" class="md-tabs__link">
           
   
   Troubleshooting
@@ -312,11 +310,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   API Reference
@@ -1116,10 +1116,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1131,22 +1129,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1164,7 +1159,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1182,7 +1177,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../setup/" class="md-nav__link">
+      <a href="../../troubleshooting/setup/" class="md-nav__link">
         
   
   
@@ -1207,37 +1202,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Modeling & Simulation
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/simulation/" class="md-nav__link">
         
   
   
@@ -1253,222 +1221,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#missing-weather-file-error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Missing Weather File Error
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Missing Weather File Error">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-fails-repeatedly" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Fails Repeatedly
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Fails Repeatedly">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Strategy
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dangling-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dangling References
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dangling References">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#object-removal-is-blocked" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Object Removal Is Blocked
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Object Removal Is Blocked">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix options
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-output-variables-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No Output Variables Found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No Output Variables Found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#causes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Causes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1485,6 +1237,8 @@
       
   
   
+    
+  
   
   
     
@@ -1508,20 +1262,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1539,13 +1296,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1562,10 +1319,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/app/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    App
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1581,6 +1363,36 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        app
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1593,7 +1405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/server/" class="md-nav__link">
+      <a href="../server/" class="md-nav__link">
         
   
   
@@ -1621,7 +1433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/state/" class="md-nav__link">
+      <a href="../state/" class="md-nav__link">
         
   
   
@@ -1649,7 +1461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/resources/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
@@ -1699,17 +1511,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
         
           
-          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="">
             
   
   
@@ -1745,7 +1560,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schema/" class="md-nav__link">
+      <a href="../tools-schema/" class="md-nav__link">
         
   
   
@@ -1773,7 +1588,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-read/" class="md-nav__link">
+      <a href="../tools-read/" class="md-nav__link">
         
   
   
@@ -1801,7 +1616,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-write/" class="md-nav__link">
+      <a href="../tools-write/" class="md-nav__link">
         
   
   
@@ -1829,7 +1644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-validation/" class="md-nav__link">
+      <a href="../tools-validation/" class="md-nav__link">
         
   
   
@@ -1857,7 +1672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-simulation/" class="md-nav__link">
+      <a href="../tools-simulation/" class="md-nav__link">
         
   
   
@@ -1885,7 +1700,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-weather/" class="md-nav__link">
+      <a href="../tools-weather/" class="md-nav__link">
         
   
   
@@ -1913,7 +1728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-docs/" class="md-nav__link">
+      <a href="../tools-docs/" class="md-nav__link">
         
   
   
@@ -1967,8 +1782,6 @@
   
   
   
-    
-  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1977,197 +1790,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#missing-weather-file-error" class="md-nav__link">
+  <a href="#idfkit_mcp.app" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Missing Weather File Error
+        app
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Missing Weather File Error">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-fails-repeatedly" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Fails Repeatedly
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Fails Repeatedly">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Strategy
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dangling-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dangling References
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dangling References">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#object-removal-is-blocked" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Object Removal Is Blocked
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Object Removal Is Blocked">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix options
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-output-variables-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No Output Variables Found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No Output Variables Found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#causes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Causes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2186,7 +1815,7 @@
                 
                   
   
-    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/troubleshooting/simulation.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/api/app.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"/></svg>
     </a>
@@ -2195,60 +1824,51 @@
     
       
     
-    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/troubleshooting/simulation.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/api/app.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0 8a5 5 0 0 1-5-5 5 5 0 0 1 5-5 5 5 0 0 1 5 5 5 5 0 0 1-5 5m0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5"/></svg>
     </a>
   
 
 
-<h1 id="modeling-simulation-troubleshooting">Modeling &amp; Simulation Troubleshooting<a class="headerlink" href="#modeling-simulation-troubleshooting" title="Permanent link">&para;</a></h1>
-<h2 id="missing-weather-file-error">Missing Weather File Error<a class="headerlink" href="#missing-weather-file-error" title="Permanent link">&para;</a></h2>
-<h3 id="symptom">Symptom<a class="headerlink" href="#symptom" title="Permanent link">&para;</a></h3>
-<p><code>run_simulation</code> returns weather-related error.</p>
-<h3 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Call <code>download_weather_file(query=...)</code> first, or</li>
-<li>pass explicit <code>weather_file</code> path.</li>
-</ul>
-<h2 id="validation-fails-repeatedly">Validation Fails Repeatedly<a class="headerlink" href="#validation-fails-repeatedly" title="Permanent link">&para;</a></h2>
-<h3 id="strategy">Strategy<a class="headerlink" href="#strategy" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Run <code>validate_model(object_types=[...])</code> to narrow scope.</li>
-<li>Call <code>describe_object_type</code> for failing types.</li>
-<li>Repair fields using <code>update_object</code>.</li>
-<li>Re-run validation.</li>
-</ol>
-<h2 id="dangling-references">Dangling References<a class="headerlink" href="#dangling-references" title="Permanent link">&para;</a></h2>
-<h3 id="symptom_1">Symptom<a class="headerlink" href="#symptom_1" title="Permanent link">&para;</a></h3>
-<p><code>check_references</code> returns <code>dangling_count &gt; 0</code>.</p>
-<h3 id="fix-pattern">Fix pattern<a class="headerlink" href="#fix-pattern" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Inspect each entry's <code>source_type</code>, <code>field</code>, and <code>missing_target</code>.</li>
-<li>Use <code>get_available_references</code> for that field.</li>
-<li>Update to valid target names.</li>
-</ol>
-<h2 id="object-removal-is-blocked">Object Removal Is Blocked<a class="headerlink" href="#object-removal-is-blocked" title="Permanent link">&para;</a></h2>
-<h3 id="symptom_2">Symptom<a class="headerlink" href="#symptom_2" title="Permanent link">&para;</a></h3>
-<p><code>remove_object</code> returns "Object is referenced by other objects".</p>
-<h3 id="fix-options">Fix options<a class="headerlink" href="#fix-options" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Preferred: rewire references first.</li>
-<li>Last resort: <code>force=true</code>.</li>
-</ol>
-<h2 id="no-output-variables-found">No Output Variables Found<a class="headerlink" href="#no-output-variables-found" title="Permanent link">&para;</a></h2>
-<h3 id="symptom_3">Symptom<a class="headerlink" href="#symptom_3" title="Permanent link">&para;</a></h3>
-<p><code>list_output_variables</code> returns missing index error.</p>
-<h3 id="causes">Causes<a class="headerlink" href="#causes" title="Permanent link">&para;</a></h3>
-<ul>
-<li>simulation failed early</li>
-<li>output metadata files were not produced</li>
-</ul>
-<h3 id="fix_1">Fix<a class="headerlink" href="#fix_1" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Inspect <code>get_results_summary</code> errors first.</li>
-<li>correct model issues and rerun simulation.</li>
-</ul>
+  <h1>App</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="idfkit_mcp.app"></a>
+    <div class="doc doc-contents first">
+
+        <p>Shared FastMCP application instance.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -2286,7 +1906,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../setup/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Setup &amp; Configuration">
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2296,20 +1916,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Setup & Configuration
+                Overview
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../api/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+          <a href="../server/" class="md-footer__link md-footer__link--next" aria-label="Next: Server">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Overview
+                Server
               </div>
             </div>
             <div class="md-footer__button md-icon">

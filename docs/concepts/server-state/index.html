@@ -1166,6 +1166,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#session-strategy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1360,6 +1371,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1412,6 +1427,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1476,6 +1519,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../api/resources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -1506,10 +1577,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
         
           
-          <label class="md-nav__link" for="__nav_7_4" id="__nav_7_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
             
   
   
@@ -1527,8 +1598,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1821,6 +1892,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#session-strategy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1908,6 +1990,35 @@
 <li>Session file is keyed by working directory (SHA-256 hash) and stored in <code>~/.cache/idfkit/sessions/</code> (Linux) or <code>~/Library/Caches/idfkit/sessions/</code> (macOS).</li>
 <li>Use <code>clear_session</code> to delete the session file and reset all state.</li>
 </ul>
+<h2 id="mcp-resources">MCP Resources<a class="headerlink" href="#mcp-resources" title="Permanent link">&para;</a></h2>
+<p>In addition to tools, the server exposes read-only MCP resources that let clients subscribe to model state without making tool calls.</p>
+<table>
+<thead>
+<tr>
+<th>URI</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idfkit://model/summary</code></td>
+<td>Current model summary (version, zones, object counts)</td>
+</tr>
+<tr>
+<td><code>idfkit://schema/{object_type}</code></td>
+<td>Full field schema for an object type</td>
+</tr>
+<tr>
+<td><code>idfkit://model/objects/{object_type}/{name}</code></td>
+<td>All field values for a specific object</td>
+</tr>
+<tr>
+<td><code>idfkit://simulation/results</code></td>
+<td>Summary of the most recent simulation results</td>
+</tr>
+</tbody>
+</table>
+<p>Resources return JSON (<code>application/json</code>) and are available whenever the corresponding state exists (e.g., <code>model/summary</code> requires a loaded model).</p>
 <h2 id="session-strategy">Session Strategy<a class="headerlink" href="#session-strategy" title="Permanent link">&para;</a></h2>
 <p>For deterministic automation:</p>
 <ol>

@@ -61,10 +61,16 @@
         <loc>https://mcp.idfkit.com/docs/api/</loc>
       </url>
       <url>
+        <loc>https://mcp.idfkit.com/docs/api/app/</loc>
+      </url>
+      <url>
         <loc>https://mcp.idfkit.com/docs/api/server/</loc>
       </url>
       <url>
         <loc>https://mcp.idfkit.com/docs/api/state/</loc>
+      </url>
+      <url>
+        <loc>https://mcp.idfkit.com/docs/api/resources/</loc>
       </url>
       <url>
         <loc>https://mcp.idfkit.com/docs/api/tools-schema/</loc>
