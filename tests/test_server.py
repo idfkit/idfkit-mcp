@@ -172,8 +172,8 @@ class TestToolSchemas:
 
     async def test_structured_output_tools_have_output_schema(self, tools: list[Any]) -> None:
         """Tools with Pydantic return types must have an output schema defined."""
-        # Tools that return dynamic dicts (no Pydantic model) — intentionally unstructured.
-        unstructured_tools = {"add_object", "update_object", "duplicate_object"}
+        # Tools that return dynamic dicts or ToolResult (no Pydantic model) — intentionally unstructured.
+        unstructured_tools = {"add_object", "update_object", "duplicate_object", "view_geometry"}
 
         for tool in tools:
             if tool.name in unstructured_tools:

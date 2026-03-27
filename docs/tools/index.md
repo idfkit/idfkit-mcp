@@ -1,6 +1,6 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **26 tools** in seven categories, plus **6 MCP resources** for read-only data access.
+`idfkit-mcp` exposes **27 tools** in eight categories, plus **7 MCP resources** for read-only data access.
 
 ## Categories
 
@@ -9,6 +9,7 @@
 - Model write: 9 tools
 - Validation: 1 tool
 - Simulation: 4 tools
+- Geometry: 1 tool
 - Weather: 2 tools
 - Documentation: 2 tools
 
@@ -40,6 +41,7 @@
 | Simulation | `export_timeseries` | Export time series data to CSV |
 | Weather | `search_weather_stations` | Find weather stations |
 | Weather | `download_weather_file` | Download EPW/DDY and cache path |
+| Geometry | `view_geometry` | Interactive 3D building geometry viewer (MCP Apps) |
 | Documentation | `search_docs` | Full-text search across EnergyPlus documentation |
 | Documentation | `get_doc_section` | Retrieve full content of a documentation section |
 
@@ -55,6 +57,7 @@ Read-only data is available via MCP resources without making tool calls:
 | `idfkit://model/references/{name}` | Inbound and outbound references for an object |
 | `idfkit://docs/{object_type}` | Documentation URLs for an object type |
 | `idfkit://simulation/results` | Summary of the most recent simulation results |
+| `ui://idfkit/geometry-viewer.html` | Interactive Three.js geometry viewer (MCP Apps) |
 
 ## Global Best Practices
 
