@@ -1935,12 +1935,12 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 </ul>
 <h2 id="recommended-tool-order">Recommended Tool Order<a class="headerlink" href="#recommended-tool-order" title="Permanent link">&para;</a></h2>
 <ol>
-<li><code>get_model_summary</code> or <code>new_model</code></li>
+<li><code>load_model</code> or <code>new_model</code> (or read <code>idfkit://model/summary</code> resource)</li>
 <li><code>describe_object_type</code> before edits</li>
 <li><code>batch_add_objects</code> for bulk creation</li>
 <li><code>validate_model</code> after modifications</li>
 <li><code>run_simulation</code></li>
-<li><code>get_results_summary</code> and <code>list_output_variables</code></li>
+<li>Read <code>idfkit://simulation/results</code> resource, then <code>list_output_variables</code></li>
 </ol>
 <h2 id="quick-workflow-example">Quick Workflow Example<a class="headerlink" href="#quick-workflow-example" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>1) new_model(version=&quot;24.1.0&quot;)
@@ -1949,7 +1949,7 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>4) validate_model(check_references=True)
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>5) download_weather_file(query=&quot;Chicago&quot;)
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>6) run_simulation(annual=True)
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>7) get_results_summary()
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>7) read idfkit://simulation/results resource
 </span></code></pre></div>
 <hr />
 <h2 id="explore-the-docs">Explore the Docs<a class="headerlink" href="#explore-the-docs" title="Permanent link">&para;</a></h2>

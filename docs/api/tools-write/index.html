@@ -2080,7 +2080,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Add a new object. Call describe_object_type first to see valid fields.</p>
+        <p>Add one object. Use batch_add_objects for multiple.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2104,7 +2104,7 @@
 </span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Object name (empty for unnamed types).&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
 </span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">fields</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Field values as {field_name: value}.&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a new object. Call describe_object_type first to see valid fields.&quot;&quot;&quot;</span>
+</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add one object. Use batch_add_objects for multiple.&quot;&quot;&quot;</span>
 </span><span id="__span-0-63"><a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
 </span><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
 </span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">fields</span> <span class="ow">or</span> <span class="p">{}</span>
@@ -2129,7 +2129,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Add multiple objects in one call. Continues on failures and reports per-object results.</p>
+        <p>Add multiple objects in one call. Continues on errors.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2170,7 +2170,7 @@
 </span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="k">def</span><span class="w"> </span><span class="nf">batch_add_objects</span><span class="p">(</span>
 </span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="n">objects</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of dicts with keys: object_type, name, fields.&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BatchAddResult</span><span class="p">:</span>
-</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add multiple objects in one call. Continues on failures and reports per-object results.&quot;&quot;&quot;</span>
+</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add multiple objects in one call. Continues on errors.&quot;&quot;&quot;</span>
 </span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
 </span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
 </span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a>
@@ -2216,7 +2216,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Clear the persisted session and reset all state. Does not delete files on disk.</p>
+        <p>Reset session state. Does not delete files on disk.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2228,7 +2228,7 @@
 <span class="normal"><a href="#__codelineno-0-230">230</a></span>
 <span class="normal"><a href="#__codelineno-0-231">231</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-226"><a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">_DESTRUCTIVE</span><span class="p">)</span>
 </span><span id="__span-0-227"><a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="k">def</span><span class="w"> </span><span class="nf">clear_session</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ClearSessionResult</span><span class="p">:</span>
-</span><span id="__span-0-228"><a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Clear the persisted session and reset all state. Does not delete files on disk.&quot;&quot;&quot;</span>
+</span><span id="__span-0-228"><a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset session state. Does not delete files on disk.&quot;&quot;&quot;</span>
 </span><span id="__span-0-229"><a id="__codelineno-0-229" name="__codelineno-0-229"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
 </span><span id="__span-0-230"><a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="n">state</span><span class="o">.</span><span class="n">clear_session</span><span class="p">()</span>
 </span><span id="__span-0-231"><a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="k">return</span> <span class="n">ClearSessionResult</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;cleared&quot;</span><span class="p">)</span>
@@ -2249,7 +2249,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Duplicate an existing object with a new name.</p>
+        <p>Copy an object with a new name.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2273,7 +2273,7 @@
 </span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Source object name.&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a>    <span class="n">new_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Name for the duplicate.&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Duplicate an existing object with a new name.&quot;&quot;&quot;</span>
+</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Copy an object with a new name.&quot;&quot;&quot;</span>
 </span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
 </span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
 </span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="n">source</span> <span class="o">=</span> <span class="n">resolve_object</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">object_type</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
@@ -2298,7 +2298,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Create a new empty EnergyPlus model.</p>
+        <p>Create an empty model.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2327,7 +2327,7 @@
 </span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="k">def</span><span class="w"> </span><span class="nf">new_model</span><span class="p">(</span>
 </span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="n">version</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;EnergyPlus version as &quot;X.Y.Z&quot; (default: latest).&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NewModelResult</span><span class="p">:</span>
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new empty EnergyPlus model.&quot;&quot;&quot;</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an empty model.&quot;&quot;&quot;</span>
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">idfkit</span><span class="w"> </span><span class="kn">import</span> <span class="n">LATEST_VERSION</span><span class="p">,</span> <span class="n">new_document</span><span class="p">,</span> <span class="n">version_string</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="n">ver</span> <span class="o">=</span> <span class="n">LATEST_VERSION</span>
@@ -2361,7 +2361,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Remove an object. Refuses if other objects reference it unless force=True.</p>
+        <p>Delete an object. Blocked if referenced unless force=True.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2394,7 +2394,7 @@
 </span><span id="__span-0-129"><a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Object name.&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a>    <span class="n">force</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Remove even if referenced by other objects.&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RemoveObjectResult</span><span class="p">:</span>
-</span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove an object. Refuses if other objects reference it unless force=True.&quot;&quot;&quot;</span>
+</span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete an object. Blocked if referenced unless force=True.&quot;&quot;&quot;</span>
 </span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
 </span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
 </span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">obj</span> <span class="o">=</span> <span class="n">resolve_object</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">object_type</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
@@ -2428,7 +2428,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Rename an object and update all references to it.</p>
+        <p>Rename and auto-update all references.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2461,7 +2461,7 @@
 </span><span id="__span-0-154"><a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="n">old_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Current object name.&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-155"><a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="n">new_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;New object name.&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RenameObjectResult</span><span class="p">:</span>
-</span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Rename an object and update all references to it.&quot;&quot;&quot;</span>
+</span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Rename and auto-update all references.&quot;&quot;&quot;</span>
 </span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
 </span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
@@ -2495,7 +2495,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Save the model to disk in IDF or epJSON format.</p>
+        <p>Write model to disk as IDF or epJSON.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2536,7 +2536,7 @@
 </span><span id="__span-0-194"><a id="__codelineno-0-194" name="__codelineno-0-194"></a>    <span class="n">file_path</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Output path (default: original load path).&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-195"><a id="__codelineno-0-195" name="__codelineno-0-195"></a>    <span class="n">output_format</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;idf&quot;</span><span class="p">,</span> <span class="s2">&quot;epjson&quot;</span><span class="p">],</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Output format.&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="s2">&quot;idf&quot;</span><span class="p">,</span>
 </span><span id="__span-0-196"><a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SaveModelResult</span><span class="p">:</span>
-</span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Save the model to disk in IDF or epJSON format.&quot;&quot;&quot;</span>
+</span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write model to disk as IDF or epJSON.&quot;&quot;&quot;</span>
 </span><span id="__span-0-198"><a id="__codelineno-0-198" name="__codelineno-0-198"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 </span><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199"></a>
 </span><span id="__span-0-200"><a id="__codelineno-0-200" name="__codelineno-0-200"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">idfkit</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_epjson</span><span class="p">,</span> <span class="n">write_idf</span>

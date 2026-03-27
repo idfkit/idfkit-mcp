@@ -911,32 +911,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get_model_summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_model_summary
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#list_objects" class="md-nav__link">
     <span class="md-ellipsis">
       
         list_objects
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#get_object" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_object
       
     </span>
   </a>
@@ -955,10 +933,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get_references" class="md-nav__link">
+  <a href="#mcp-resources-for-model-inspection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        get_references
+        MCP Resources for Model Inspection
       
     </span>
   </a>
@@ -1881,32 +1859,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get_model_summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_model_summary
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#list_objects" class="md-nav__link">
     <span class="md-ellipsis">
       
         list_objects
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#get_object" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_object
       
     </span>
   </a>
@@ -1925,10 +1881,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get_references" class="md-nav__link">
+  <a href="#mcp-resources-for-model-inspection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        get_references
+        MCP Resources for Model Inspection
       
     </span>
   </a>
@@ -1994,16 +1950,6 @@ resulting IDF into active server state.</p>
 <li>Writes IDF, then loads it with the same state semantics as <code>load_model</code>.</li>
 <li>Returns conversion metadata plus standard model summary fields.</li>
 </ul>
-<h2 id="get_model_summary"><code>get_model_summary</code><a class="headerlink" href="#get_model_summary" title="Permanent link">&para;</a></h2>
-<p>Returns:</p>
-<ul>
-<li>version</li>
-<li>file path</li>
-<li>object totals</li>
-<li>zone count</li>
-<li>grouped type counts</li>
-</ul>
-<p>Use this as your first inspection call.</p>
 <h2 id="list_objects"><code>list_objects</code><a class="headerlink" href="#list_objects" title="Permanent link">&para;</a></h2>
 <p>Returns brief serialized objects for one <code>object_type</code>.</p>
 <p>Parameters:</p>
@@ -2011,18 +1957,33 @@ resulting IDF into active server state.</p>
 <li><code>object_type</code> (required)</li>
 <li><code>limit</code> (default <code>50</code>)</li>
 </ul>
-<h2 id="get_object"><code>get_object</code><a class="headerlink" href="#get_object" title="Permanent link">&para;</a></h2>
-<p>Fetches a specific object by type and name.</p>
 <h2 id="search_objects"><code>search_objects</code><a class="headerlink" href="#search_objects" title="Permanent link">&para;</a></h2>
 <p>Case-insensitive substring search across names and string fields.</p>
 <p>Optional <code>object_type</code> filter narrows results.</p>
-<h2 id="get_references"><code>get_references</code><a class="headerlink" href="#get_references" title="Permanent link">&para;</a></h2>
-<p>Returns both:</p>
-<ul>
-<li>objects that reference the target name</li>
-<li>names referenced by the target object</li>
-</ul>
-<p>Use this before renaming or removing high-connectivity objects.</p>
+<h2 id="mcp-resources-for-model-inspection">MCP Resources for Model Inspection<a class="headerlink" href="#mcp-resources-for-model-inspection" title="Permanent link">&para;</a></h2>
+<p>The following read-only data is available via MCP resources instead of tool calls:</p>
+<table>
+<thead>
+<tr>
+<th>Resource URI</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idfkit://model/summary</code></td>
+<td>Model version, zones, object counts (replaces <code>get_model_summary</code>)</td>
+</tr>
+<tr>
+<td><code>idfkit://model/objects/{object_type}/{name}</code></td>
+<td>All field values for a specific object (replaces <code>get_object</code>)</td>
+</tr>
+<tr>
+<td><code>idfkit://model/references/{name}</code></td>
+<td>Inbound and outbound references (replaces <code>get_references</code>)</td>
+</tr>
+</tbody>
+</table>
 
 
 

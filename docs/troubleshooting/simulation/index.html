@@ -2221,7 +2221,7 @@
 </ol>
 <h2 id="dangling-references">Dangling References<a class="headerlink" href="#dangling-references" title="Permanent link">&para;</a></h2>
 <h3 id="symptom_1">Symptom<a class="headerlink" href="#symptom_1" title="Permanent link">&para;</a></h3>
-<p><code>check_references</code> returns <code>dangling_count &gt; 0</code>.</p>
+<p><code>validate_model(check_references=true)</code> reports dangling references.</p>
 <h3 id="fix-pattern">Fix pattern<a class="headerlink" href="#fix-pattern" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Inspect each entry's <code>source_type</code>, <code>field</code>, and <code>missing_target</code>.</li>
@@ -2246,7 +2246,7 @@
 </ul>
 <h3 id="fix_1">Fix<a class="headerlink" href="#fix_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Inspect <code>get_results_summary</code> errors first.</li>
+<li>Inspect the <code>idfkit://simulation/results</code> resource errors first.</li>
 <li>correct model issues and rerun simulation.</li>
 </ul>
 

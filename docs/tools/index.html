@@ -1756,6 +1756,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#global-best-practices" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1798,16 +1809,16 @@
 
 
 <h1 id="tool-reference-overview">Tool Reference Overview<a class="headerlink" href="#tool-reference-overview" title="Permanent link">&para;</a></h1>
-<p><code>idfkit-mcp</code> exposes <strong>32 tools</strong> in seven categories.</p>
+<p><code>idfkit-mcp</code> exposes <strong>26 tools</strong> in seven categories, plus <strong>6 MCP resources</strong> for read-only data access.</p>
 <h2 id="categories">Categories<a class="headerlink" href="#categories" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Schema exploration: 4 tools</li>
-<li>Model read: 7 tools</li>
+<li>Model read: 4 tools</li>
 <li>Model write: 9 tools</li>
-<li>Validation: 2 tools</li>
-<li>Simulation: 5 tools</li>
+<li>Validation: 1 tool</li>
+<li>Simulation: 4 tools</li>
 <li>Weather: 2 tools</li>
-<li>Documentation: 3 tools</li>
+<li>Documentation: 2 tools</li>
 </ul>
 <h2 id="tool-catalog">Tool Catalog<a class="headerlink" href="#tool-catalog" title="Permanent link">&para;</a></h2>
 <table>
@@ -1851,28 +1862,13 @@
 </tr>
 <tr>
 <td>Read</td>
-<td><code>get_model_summary</code></td>
-<td>Summarize loaded model</td>
-</tr>
-<tr>
-<td>Read</td>
 <td><code>list_objects</code></td>
 <td>List objects by type</td>
 </tr>
 <tr>
 <td>Read</td>
-<td><code>get_object</code></td>
-<td>Fetch one object by type/name</td>
-</tr>
-<tr>
-<td>Read</td>
 <td><code>search_objects</code></td>
 <td>Search model objects by substring</td>
-</tr>
-<tr>
-<td>Read</td>
-<td><code>get_references</code></td>
-<td>Inspect inbound and outbound references</td>
 </tr>
 <tr>
 <td>Write</td>
@@ -1922,22 +1918,12 @@
 <tr>
 <td>Validation</td>
 <td><code>validate_model</code></td>
-<td>Full schema validation</td>
-</tr>
-<tr>
-<td>Validation</td>
-<td><code>check_references</code></td>
-<td>Detect dangling references</td>
+<td>Full schema and reference validation</td>
 </tr>
 <tr>
 <td>Simulation</td>
 <td><code>run_simulation</code></td>
 <td>Execute EnergyPlus run</td>
-</tr>
-<tr>
-<td>Simulation</td>
-<td><code>get_results_summary</code></td>
-<td>Summarize previous run</td>
 </tr>
 <tr>
 <td>Simulation</td>
@@ -1966,11 +1952,6 @@
 </tr>
 <tr>
 <td>Documentation</td>
-<td><code>lookup_documentation</code></td>
-<td>Get docs.idfkit.com URLs for an object type</td>
-</tr>
-<tr>
-<td>Documentation</td>
 <td><code>search_docs</code></td>
 <td>Full-text search across EnergyPlus documentation</td>
 </tr>
@@ -1978,6 +1959,42 @@
 <td>Documentation</td>
 <td><code>get_doc_section</code></td>
 <td>Retrieve full content of a documentation section</td>
+</tr>
+</tbody>
+</table>
+<h2 id="mcp-resources">MCP Resources<a class="headerlink" href="#mcp-resources" title="Permanent link">&para;</a></h2>
+<p>Read-only data is available via MCP resources without making tool calls:</p>
+<table>
+<thead>
+<tr>
+<th>URI</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idfkit://model/summary</code></td>
+<td>Model version, zones, and object counts</td>
+</tr>
+<tr>
+<td><code>idfkit://schema/{object_type}</code></td>
+<td>Full field schema for an object type</td>
+</tr>
+<tr>
+<td><code>idfkit://model/objects/{object_type}/{name}</code></td>
+<td>All field values for a specific object</td>
+</tr>
+<tr>
+<td><code>idfkit://model/references/{name}</code></td>
+<td>Inbound and outbound references for an object</td>
+</tr>
+<tr>
+<td><code>idfkit://docs/{object_type}</code></td>
+<td>Documentation URLs for an object type</td>
+</tr>
+<tr>
+<td><code>idfkit://simulation/results</code></td>
+<td>Summary of the most recent simulation results</td>
 </tr>
 </tbody>
 </table>

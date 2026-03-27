@@ -956,17 +956,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#check_references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        check_references
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#recommended-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1826,17 +1815,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#check_references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        check_references
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#recommended-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1891,23 +1869,14 @@
 <ul>
 <li><code>is_valid</code></li>
 <li>counts by severity</li>
-<li>structured error and warning entries (each may include a <code>doc_url</code> linking to the relevant object's documentation on docs.idfkit.com)</li>
+<li>structured error and warning entries</li>
 </ul>
-<h2 id="check_references"><code>check_references</code><a class="headerlink" href="#check_references" title="Permanent link">&para;</a></h2>
-<p>Performs explicit dangling-reference detection.</p>
-<p>Response:</p>
-<ul>
-<li><code>dangling_count</code></li>
-<li><code>returned</code> (number of items in the response, may be less than total)</li>
-<li>list of source object, field, and missing target</li>
-</ul>
+<p>Use the <code>idfkit://docs/{object_type}</code> resource to look up documentation for object types that appear in validation errors.</p>
 <h2 id="recommended-gate">Recommended Gate<a class="headerlink" href="#recommended-gate" title="Permanent link">&para;</a></h2>
-<p>Run both tools after any mutation batch:</p>
-<ol>
-<li><code>validate_model(check_references=true)</code></li>
-<li><code>check_references()</code></li>
-</ol>
-<p>Only proceed to simulation when both are clean.</p>
+<p>Run after any mutation batch:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>validate_model(check_references=true)
+</span></code></pre></div>
+<p>Only proceed to simulation when validation is clean.</p>
 
 
 

@@ -1968,7 +1968,7 @@
 <p>Some tools require prior state:</p>
 <ul>
 <li>model required: most read/write/validation/simulation tools</li>
-<li>simulation result required: <code>get_results_summary</code>, <code>list_output_variables</code></li>
+<li>simulation result required: <code>list_output_variables</code>, <code>query_timeseries</code>, <code>export_timeseries</code>, and the <code>idfkit://simulation/results</code> resource</li>
 </ul>
 <p>If missing, tools return descriptive errors such as:</p>
 <ul>
@@ -2011,6 +2011,14 @@
 <tr>
 <td><code>idfkit://model/objects/{object_type}/{name}</code></td>
 <td>All field values for a specific object</td>
+</tr>
+<tr>
+<td><code>idfkit://model/references/{name}</code></td>
+<td>Inbound and outbound references for an object</td>
+</tr>
+<tr>
+<td><code>idfkit://docs/{object_type}</code></td>
+<td>Documentation URLs for an object type</td>
 </tr>
 <tr>
 <td><code>idfkit://simulation/results</code></td>
