@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import re
 from html.parser import HTMLParser
@@ -49,6 +50,55 @@ def _strip_html(html: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Pre-computed search index (module-level cache, survives session resets)
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass
+class _PrecomputedIndex:
+    """Pre-computed token sets and stripped texts for fast searching."""
+
+    version: str
+    title_tokens: list[frozenset[str]]
+    text_tokens: list[frozenset[str]]
+    stripped_texts: list[str]
+
+
+# Module-level cache — keyed by version string, survives session resets.
+_index_cache: dict[str, _PrecomputedIndex] = {}
+
+
+def _get_precomputed(items: list[dict[str, object]], separator: str, version: str) -> _PrecomputedIndex:
+    """Return pre-computed index, building it on first call per version."""
+    cached = _index_cache.get(version)
+    if cached is not None:
+        return cached
+
+    compiled = re.compile(separator)
+    title_tokens: list[frozenset[str]] = []
+    text_tokens: list[frozenset[str]] = []
+    stripped_texts: list[str] = []
+
+    for item in items:
+        title = str(item.get("title", "")).lower()
+        title_tokens.append(frozenset(t for t in compiled.split(title) if t))
+
+        raw_text = str(item.get("text", ""))
+        stripped = _strip_html(raw_text)
+        stripped_texts.append(stripped)
+        text_tokens.append(frozenset(t for t in compiled.split(stripped.lower()) if t))
+
+    pc = _PrecomputedIndex(
+        version=version,
+        title_tokens=title_tokens,
+        text_tokens=text_tokens,
+        stripped_texts=stripped_texts,
+    )
+    _index_cache[version] = pc
+    return pc
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -75,25 +125,61 @@ def _tokenize(text: str, separator: str) -> list[str]:
     return [t for t in re.split(separator, text.lower()) if t]
 
 
-def _score_item(item: dict[str, object], query_tokens: list[str], separator: str) -> float:
-    """Score an item against query tokens. Title matches 3x, text matches 1x."""
-    if not query_tokens:
-        return 0.0
+def _rank_items(
+    items: list[dict[str, object]],
+    query_tokens: list[str],
+    pc: _PrecomputedIndex,
+    tags: str | None,
+) -> list[tuple[float, int]]:
+    """Score and rank all items against query tokens, returning (score, index) pairs."""
+    n = len(query_tokens)
+    scored: list[tuple[float, int]] = []
+    for i, item in enumerate(items):
+        if tags:
+            item_tags: list[str] = item.get("tags", [])  # type: ignore[assignment]
+            if tags not in item_tags:
+                continue
 
-    title = str(item.get("title", "")).lower()
-    text = _strip_html(str(item.get("text", ""))).lower()
+        score = 0.0
+        for token in query_tokens:
+            if token in pc.title_tokens[i]:
+                score += 3.0
+            if token in pc.text_tokens[i]:
+                score += 1.0
+        score /= n
 
-    title_tokens = set(_tokenize(title, separator))
-    text_tokens = set(_tokenize(text, separator))
+        if score > 0:
+            scored.append((score, i))
 
-    score = 0.0
-    for token in query_tokens:
-        if token in title_tokens:
-            score += 3.0
-        if token in text_tokens:
-            score += 1.0
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored
 
-    return score / len(query_tokens)
+
+def _build_hits(
+    scored: list[tuple[float, int]],
+    items: list[dict[str, object]],
+    pc: _PrecomputedIndex,
+    docs_version: str,
+) -> list[DocSearchHit]:
+    """Convert scored (score, index) pairs into DocSearchHit results."""
+    results: list[DocSearchHit] = []
+    for score, idx in scored:
+        item = items[idx]
+        text = pc.stripped_texts[idx]
+        if len(text) > _MAX_SEARCH_TEXT:
+            text = text[:_MAX_SEARCH_TEXT] + "..."
+        results.append(
+            DocSearchHit(
+                location=str(item.get("location", "")),
+                title=str(item.get("title", "")),
+                path=item.get("path", []),  # type: ignore[arg-type]
+                tags=item.get("tags", []),  # type: ignore[arg-type]
+                text=text,
+                score=round(score, 4),
+                doc_url=_build_doc_url(docs_version, str(item.get("location", ""))),
+            )
+        )
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -145,37 +231,9 @@ def search_docs(
     if not query_tokens:
         return SearchDocsResult(query=query, version=docs_version, count=0, results=[])
 
-    scored: list[tuple[float, dict[str, object]]] = []
-    for item in items:
-        # Filter by tags if specified
-        if tags:
-            item_tags: list[str] = item.get("tags", [])  # type: ignore[assignment]
-            if tags not in item_tags:
-                continue
-
-        score = _score_item(item, query_tokens, separator)
-        if score > 0:
-            scored.append((score, item))
-
-    # Sort by score descending
-    scored.sort(key=lambda x: x[0], reverse=True)
-
-    results: list[DocSearchHit] = []
-    for score, item in scored[:limit]:
-        text = _strip_html(str(item.get("text", "")))
-        if len(text) > _MAX_SEARCH_TEXT:
-            text = text[:_MAX_SEARCH_TEXT] + "..."
-        results.append(
-            DocSearchHit(
-                location=str(item.get("location", "")),
-                title=str(item.get("title", "")),
-                path=item.get("path", []),  # type: ignore[arg-type]
-                tags=item.get("tags", []),  # type: ignore[arg-type]
-                text=text,
-                score=round(score, 4),
-                doc_url=_build_doc_url(docs_version, str(item.get("location", ""))),
-            )
-        )
+    pc = _get_precomputed(items, separator, docs_version)
+    scored = _rank_items(items, query_tokens, pc, tags)
+    results = _build_hits(scored[:limit], items, pc, docs_version)
 
     logger.debug("search_docs: query=%r version=%s matched=%d", query, docs_version, len(results))
     return SearchDocsResult(
@@ -194,12 +252,14 @@ def get_doc_section(
 ) -> GetDocSectionResult:
     """Read full content of a doc section from search_docs results."""
     state = get_state()
-    items, _separator, docs_version = state.get_or_load_docs_index(version)
+    items, separator, docs_version = state.get_or_load_docs_index(version)
+
+    pc = _get_precomputed(items, separator, docs_version)
 
     logger.debug("get_doc_section: location=%r version=%s", location, version)
-    for item in items:
+    for i, item in enumerate(items):
         if item.get("location") == location:
-            text = _strip_html(str(item.get("text", "")))
+            text = pc.stripped_texts[i]
             truncated = len(text) > max_length
             if truncated:
                 text = text[:max_length] + "..."

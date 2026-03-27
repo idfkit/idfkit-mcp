@@ -59,7 +59,6 @@ pythonVersion = "3.10"
 typeCheckingMode = "strict"
 # Functions decorated with @mcp.tool() inside register() appear unused
 reportUnusedFunction = "warning"
-# Tests access private tool internals for testing
 include = ["src"]
 
 [tool.pytest.ini_options]
