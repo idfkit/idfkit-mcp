@@ -319,7 +319,9 @@ function getValueRange(schedule) {
 
 // ── Rendering ───────────────────────────────────────────────────────
 
-let heatmapRect = { x: 0, y: 0, w: 0, h: 0, rows: 0, cols: 24 };
+// Axes: Y = hours (24 rows), X = days/day-of-week (cols).
+// Data is [day][hour], so we draw data[col][row] at position (col, row).
+let heatmapRect = { x: 0, y: 0, w: 0, h: 0, numDays: 0, numHours: 24 };
 
 function render() {
   const schedule = getSchedule();
@@ -340,43 +342,32 @@ function render() {
 
   const { min, max } = getValueRange(schedule);
   const data = viewMode === 'week' ? getWeekData(schedule) : getYearData(schedule);
-  const rows = data.length;
-  const cols = 24;
+  const numDays = data.length;    // columns (x-axis)
+  const numHours = 24;            // rows (y-axis)
 
   // Compute heatmap area
   const x0 = PAD + LABEL_W;
   const y0 = STRIP_H + PAD;
   const x1 = W - PAD;
   const y1 = H - PAD - LABEL_H;
-  const cellW = (x1 - x0) / cols;
-  const cellH = (y1 - y0) / rows;
+  const cellW = (x1 - x0) / numDays;
+  const cellH = (y1 - y0) / numHours;
 
-  heatmapRect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0, rows, cols };
+  heatmapRect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0, numDays, numHours };
 
-  // Draw cells
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const val = data[r][c];
+  // Draw cells: col = day index, row = hour
+  for (let day = 0; day < numDays; day++) {
+    for (let hour = 0; hour < numHours; hour++) {
+      const val = data[day][hour];
       ctx.fillStyle = valueToColor(val, min, max);
-      ctx.fillRect(x0 + c * cellW, y0 + r * cellH, cellW + 0.5, cellH + 0.5);
+      ctx.fillRect(x0 + day * cellW, y0 + hour * cellH, cellW + 0.5, cellH + 0.5);
     }
   }
 
-  // Hour separators (whisper-thin)
+  // Day/column separators (whisper-thin)
   ctx.strokeStyle = 'rgba(255,255,255,0.04)';
   ctx.lineWidth = 0.5;
-  for (let c = 1; c < cols; c++) {
-    const x = x0 + c * cellW;
-    ctx.beginPath();
-    ctx.moveTo(x, y0);
-    ctx.lineTo(x, y1);
-    ctx.stroke();
-  }
-
-  // Day/row separators (slightly stronger)
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 0.5;
-  for (let r = 1; r < rows; r++) {
+  for (let day = 1; day < numDays; day++) {
     // In year view, draw stronger lines at month boundaries
     if (viewMode === 'year') {
       let dayCount = 0;
@@ -386,11 +377,22 @@ function render() {
       if (isLeap) mDays[1] = 29;
       for (let m = 0; m < 12; m++) {
         dayCount += mDays[m];
-        if (r === dayCount) { isMonthBoundary = true; break; }
+        if (day === dayCount) { isMonthBoundary = true; break; }
       }
       ctx.strokeStyle = isMonthBoundary ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.03)';
     }
-    const y = y0 + r * cellH;
+    const x = x0 + day * cellW;
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
+  }
+
+  // Hour/row separators (slightly stronger)
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.5;
+  for (let hour = 1; hour < numHours; hour++) {
+    const y = y0 + hour * cellH;
     ctx.beginPath();
     ctx.moveTo(x0, y);
     ctx.lineTo(x1, y);
@@ -402,22 +404,22 @@ function render() {
   ctx.lineWidth = 1;
   ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
 
-  // X-axis labels (hours)
+  // Y-axis labels (hours)
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.font = '10px "SF Mono", "Cascadia Code", "JetBrains Mono", monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  const hourStep = cellW < 20 ? 3 : cellW < 35 ? 2 : 1;
-  for (let c = 0; c < cols; c += hourStep) {
-    ctx.fillText(String(c).padStart(2, '0'), x0 + c * cellW + cellW / 2, y1 + 4);
-  }
-
-  // Y-axis labels
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
+  const hourStep = cellH < 14 ? 3 : cellH < 22 ? 2 : 1;
+  for (let hour = 0; hour < numHours; hour += hourStep) {
+    ctx.fillText(String(hour).padStart(2, '0'), x0 - 6, y0 + hour * cellH + cellH / 2);
+  }
+
+  // X-axis labels (days or months)
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
   if (viewMode === 'week') {
-    for (let r = 0; r < 7; r++) {
-      ctx.fillText(DAY_ABBR[r], x0 - 6, y0 + r * cellH + cellH / 2);
+    for (let day = 0; day < 7; day++) {
+      ctx.fillText(DAY_ABBR[day], x0 + day * cellW + cellW / 2, y1 + 4);
     }
   } else {
     // Month labels at midpoints
@@ -427,8 +429,8 @@ function render() {
     if (isLeap) mDays[1] = 29;
     for (let m = 0; m < 12; m++) {
       const midDay = dayCount + Math.floor(mDays[m] / 2);
-      if (midDay < rows) {
-        ctx.fillText(MONTH_NAMES[m], x0 - 6, y0 + midDay * cellH + cellH / 2);
+      if (midDay < numDays) {
+        ctx.fillText(MONTH_NAMES[m], x0 + midDay * cellW + cellW / 2, y1 + 4);
       }
       dayCount += mDays[m];
     }
@@ -464,16 +466,16 @@ function onPointerMove(event) {
   const mx = event.clientX - rect.left;
   const my = event.clientY - rect.top;
 
-  const { x, y, w, h, rows, cols } = heatmapRect;
-  const cellW = w / cols;
-  const cellH = h / rows;
+  const { x, y, w, h, numDays, numHours } = heatmapRect;
+  const cellW = w / numDays;
+  const cellH = h / numHours;
 
-  const col = Math.floor((mx - x) / cellW);
-  const row = Math.floor((my - y) / cellH);
+  const day = Math.floor((mx - x) / cellW);   // column = day
+  const hour = Math.floor((my - y) / cellH);   // row = hour
 
   const strip = document.getElementById('time-strip');
 
-  if (col < 0 || col >= cols || row < 0 || row >= rows) {
+  if (day < 0 || day >= numDays || hour < 0 || hour >= numHours) {
     strip.classList.remove('active');
     document.getElementById('ts-schedule').textContent = '';
     document.getElementById('ts-day').textContent = '';
@@ -485,13 +487,13 @@ function onPointerMove(event) {
   strip.classList.add('active');
 
   const data = viewMode === 'week' ? getWeekData(schedule) : getYearData(schedule);
-  const value = data[row][col];
-  const hour = `${String(col).padStart(2, '0')}:00`;
+  const value = data[day][hour];
+  const hourStr = `${String(hour).padStart(2, '0')}:00`;
 
   document.getElementById('ts-schedule').textContent = schedule.name;
 
   if (viewMode === 'week') {
-    document.getElementById('ts-day').textContent = DAY_NAMES[row];
+    document.getElementById('ts-day').textContent = DAY_NAMES[day];
   } else {
     // Compute date from day-of-year
     const isLeap = modelData.year % 4 === 0 && (modelData.year % 100 !== 0 || modelData.year % 400 === 0);
@@ -500,19 +502,19 @@ function onPointerMove(event) {
     let dayCount = 0;
     let month = 0;
     for (let m = 0; m < 12; m++) {
-      if (row < dayCount + mDays[m]) {
+      if (day < dayCount + mDays[m]) {
         month = m;
         break;
       }
       dayCount += mDays[m];
     }
-    const dayOfMonth = row - dayCount + 1;
-    const dow = (modelData.startDayOfWeek + row) % 7;
+    const dayOfMonth = day - dayCount + 1;
+    const dow = (modelData.startDayOfWeek + day) % 7;
     document.getElementById('ts-day').textContent =
       `${DAY_ABBR[dow]} ${dayOfMonth} ${MONTH_NAMES[month]}`;
   }
 
-  document.getElementById('ts-hour').textContent = hour;
+  document.getElementById('ts-hour').textContent = hourStr;
   document.getElementById('ts-value').textContent = value.toFixed(2);
 
   // Highlight cell
@@ -521,7 +523,7 @@ function onPointerMove(event) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(x + col * cellW + 0.5, y + row * cellH + 0.5, cellW - 1, cellH - 1);
+  ctx.strokeRect(x + day * cellW + 0.5, y + hour * cellH + 0.5, cellW - 1, cellH - 1);
 }
 
 canvas.addEventListener('pointermove', onPointerMove);
