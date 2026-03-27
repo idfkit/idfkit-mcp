@@ -2,97 +2,99 @@
 
 from __future__ import annotations
 
-from tests.tool_helpers import get_tool_sync
+from fastmcp.client import Client
+from fastmcp.client.transports import FastMCPTransport
 
-
-def _tool(name: str):
-    from idfkit_mcp.server import mcp
-
-    return get_tool_sync(mcp, name)
+from idfkit_mcp.models import (
+    BatchAddResult,
+    CheckReferencesResult,
+    DescribeObjectTypeResult,
+    ListObjectsResult,
+    ModelSummary,
+    NewModelResult,
+    RemoveObjectResult,
+    RenameObjectResult,
+    SaveModelResult,
+    SearchObjectsResult,
+    ValidationResult,
+)
+from tests.conftest import call_tool
 
 
 class TestCreateEditValidateSave:
     """Full workflow: create model → add objects → validate → save."""
 
-    def test_full_workflow(self, tmp_path: object) -> None:
+    async def test_full_workflow(self, client: Client[FastMCPTransport], tmp_path: object) -> None:
         import tempfile
 
-        # 1. Create new model
-        result = _tool("new_model").fn()
+        result = await call_tool(client, "new_model", model=NewModelResult)
         assert result.status == "created"
 
-        # 2. Describe Zone type before creating
-        desc = _tool("describe_object_type").fn(object_type="Zone")
+        desc = await call_tool(client, "describe_object_type", {"object_type": "Zone"}, DescribeObjectTypeResult)
         assert desc.object_type == "Zone"
 
-        # 3. Batch add objects
         objects = [
             {"object_type": "Zone", "name": "Office"},
             {"object_type": "Zone", "name": "Corridor"},
             {"object_type": "Zone", "name": "Storage"},
         ]
-        batch_result = _tool("batch_add_objects").fn(objects=objects)
+        batch_result = await call_tool(client, "batch_add_objects", {"objects": objects}, BatchAddResult)
         assert batch_result.success == 3
 
-        # 4. Get model summary
-        summary = _tool("get_model_summary").fn()
+        summary = await call_tool(client, "get_model_summary", model=ModelSummary)
         assert summary.zone_count == 3
         assert summary.total_objects >= 3
 
-        # 5. List zones
-        zones = _tool("list_objects").fn(object_type="Zone")
+        zones = await call_tool(client, "list_objects", {"object_type": "Zone"}, ListObjectsResult)
         assert zones.total == 3
 
-        # 6. Update a zone
-        updated = _tool("update_object").fn(object_type="Zone", name="Office", fields={"x_origin": 10.0})
+        updated = await call_tool(
+            client, "update_object", {"object_type": "Zone", "name": "Office", "fields": {"x_origin": 10.0}}
+        )
         assert "x_origin" in updated
 
-        # 7. Search for objects
-        search = _tool("search_objects").fn(query="Office")
+        search = await call_tool(client, "search_objects", {"query": "Office"}, SearchObjectsResult)
         assert search.count >= 1
 
-        # 8. Validate
-        validation = _tool("validate_model").fn()
+        validation = await call_tool(client, "validate_model", model=ValidationResult)
         assert validation.is_valid is True
 
-        # 9. Check references
-        refs = _tool("check_references").fn()
+        refs = await call_tool(client, "check_references", model=CheckReferencesResult)
         assert refs.dangling_count is not None
 
-        # 10. Save
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
-            save_result = _tool("save_model").fn(file_path=f.name)
+            save_result = await call_tool(client, "save_model", {"file_path": f.name}, SaveModelResult)
         assert save_result.status == "saved"
 
-        # 11. Load it back
-        load_result = _tool("load_model").fn(file_path=f.name)
+        load_result = await call_tool(client, "load_model", {"file_path": f.name}, ModelSummary)
         assert load_result.zone_count == 3
 
-    def test_rename_and_duplicate(self) -> None:
-        # Create model with zones
-        _tool("new_model").fn()
-        _tool("add_object").fn(object_type="Zone", name="ZoneA")
+    async def test_rename_and_duplicate(self, client: object) -> None:
+        await call_tool(client, "new_model", model=NewModelResult)
+        await call_tool(client, "add_object", {"object_type": "Zone", "name": "ZoneA"})
 
-        # Duplicate
-        dup = _tool("duplicate_object").fn(object_type="Zone", name="ZoneA", new_name="ZoneB")
+        dup = await call_tool(client, "duplicate_object", {"object_type": "Zone", "name": "ZoneA", "new_name": "ZoneB"})
         assert dup["name"] == "ZoneB"
 
-        # Rename
-        renamed = _tool("rename_object").fn(object_type="Zone", old_name="ZoneA", new_name="ZoneC")
+        renamed = await call_tool(
+            client,
+            "rename_object",
+            {"object_type": "Zone", "old_name": "ZoneA", "new_name": "ZoneC"},
+            RenameObjectResult,
+        )
         assert renamed.status == "renamed"
 
-        # Verify
-        summary = _tool("get_model_summary").fn()
+        summary = await call_tool(client, "get_model_summary", model=ModelSummary)
         assert summary.zone_count == 2
 
-    def test_remove_workflow(self) -> None:
-        _tool("new_model").fn()
-        _tool("add_object").fn(object_type="Zone", name="TempZone")
+    async def test_remove_workflow(self, client: object) -> None:
+        await call_tool(client, "new_model", model=NewModelResult)
+        await call_tool(client, "add_object", {"object_type": "Zone", "name": "TempZone"})
 
-        # Remove
-        result = _tool("remove_object").fn(object_type="Zone", name="TempZone")
+        result = await call_tool(
+            client, "remove_object", {"object_type": "Zone", "name": "TempZone"}, RemoveObjectResult
+        )
         assert result.status == "removed"
 
-        # Verify empty
-        summary = _tool("get_model_summary").fn()
+        summary = await call_tool(client, "get_model_summary", model=ModelSummary)
         assert summary.zone_count == 0

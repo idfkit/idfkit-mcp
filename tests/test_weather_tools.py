@@ -5,43 +5,42 @@ from __future__ import annotations
 import pytest
 from fastmcp.exceptions import ToolError
 
-from tests.tool_helpers import get_tool_sync
-
-
-def _tool(name: str):
-    from idfkit_mcp.server import mcp
-
-    return get_tool_sync(mcp, name)
+from idfkit_mcp.models import SearchWeatherStationsResult
+from tests.conftest import call_tool
 
 
 class TestSearchWeatherStations:
-    def test_station_index_cached(self) -> None:
+    async def test_station_index_cached(self, client: object) -> None:
         from idfkit_mcp.state import get_state
 
         state = get_state()
         assert state.station_index is None
-        _tool("search_weather_stations").fn(query="Chicago")
+        await call_tool(client, "search_weather_stations", {"query": "Chicago"}, SearchWeatherStationsResult)
         assert state.station_index is not None
         cached = state.station_index
-        _tool("search_weather_stations").fn(query="Boston")
+        await call_tool(client, "search_weather_stations", {"query": "Boston"}, SearchWeatherStationsResult)
         assert state.station_index is cached
 
-    def test_text_search(self) -> None:
-        result = _tool("search_weather_stations").fn(query="Chicago")
+    async def test_text_search(self, client: object) -> None:
+        result = await call_tool(client, "search_weather_stations", {"query": "Chicago"}, SearchWeatherStationsResult)
         assert result.search_type == "text"
         assert result.count > 0
 
-    def test_spatial_search(self) -> None:
-        result = _tool("search_weather_stations").fn(latitude=41.88, longitude=-87.63)
+    async def test_spatial_search(self, client: object) -> None:
+        result = await call_tool(
+            client, "search_weather_stations", {"latitude": 41.88, "longitude": -87.63}, SearchWeatherStationsResult
+        )
         assert result.search_type == "spatial"
         assert result.count > 0
 
-    def test_no_params(self) -> None:
+    async def test_no_params(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("search_weather_stations").fn()
+            await call_tool(client, "search_weather_stations")
 
-    def test_country_filter(self) -> None:
-        result = _tool("search_weather_stations").fn(query="Chicago", country="USA")
+    async def test_country_filter(self, client: object) -> None:
+        result = await call_tool(
+            client, "search_weather_stations", {"query": "Chicago", "country": "USA"}, SearchWeatherStationsResult
+        )
         assert result.count > 0
         for station in result.stations:
             assert station["country"].upper() == "USA"
@@ -68,14 +67,14 @@ class TestStationModelValidation:
 
 
 class TestDownloadWeatherFile:
-    def test_no_params(self) -> None:
+    async def test_no_params(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("download_weather_file").fn()
+            await call_tool(client, "download_weather_file")
 
-    def test_query_no_match(self) -> None:
+    async def test_query_no_match(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("download_weather_file").fn(query="zzz_nonexistent_place_xyz")
+            await call_tool(client, "download_weather_file", {"query": "zzz_nonexistent_place_xyz"})
 
-    def test_wmo_no_match(self) -> None:
+    async def test_wmo_no_match(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("download_weather_file").fn(wmo="0000000")
+            await call_tool(client, "download_weather_file", {"wmo": "0000000"})

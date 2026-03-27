@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
+from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any, TypeVar
 
 import pytest
+from fastmcp import Client
+from fastmcp.client.transports import FastMCPTransport
 from idfkit import new_document
 from idfkit.simulation.result import SimulationResult
+from pydantic import BaseModel
 
 from idfkit_mcp.state import ServerState, get_state, reset_sessions
+
+T = TypeVar("T", bound=BaseModel)
 
 
 @pytest.fixture(autouse=True)
@@ -18,6 +26,15 @@ def _reset_state() -> None:
     reset_sessions()
     state = get_state()
     state.persistence_enabled = False
+
+
+@pytest.fixture()
+async def client() -> AsyncIterator[Client[FastMCPTransport]]:
+    """Yield an in-memory FastMCP client bound to the test server."""
+    from idfkit_mcp.server import mcp
+
+    async with Client(transport=mcp) as test_client:
+        yield test_client
 
 
 @pytest.fixture()
@@ -110,3 +127,39 @@ def state_with_sql_only_simulation(tmp_path: Path) -> ServerState:
         runtime_seconds=0.1,
     )
     return state
+
+
+async def call_tool(
+    client: Client[FastMCPTransport],
+    name: str,
+    arguments: dict[str, Any] | None = None,
+    model: type[T] | None = None,
+) -> T | dict[str, Any] | list[Any] | str:
+    """Call a tool over the MCP protocol and decode the result payload."""
+    result = await client.call_tool(name, arguments or {})
+    data: Any = result.structured_content
+
+    if data is None:
+        text_parts = [part.text for part in result.content if hasattr(part, "text")]
+        if len(text_parts) == 1:
+            try:
+                data = json.loads(text_parts[0])
+            except json.JSONDecodeError:
+                data = text_parts[0]
+        else:
+            data = text_parts
+
+    if model is None:
+        return data
+    if isinstance(data, str):
+        return model.model_validate_json(data)
+    return model.model_validate(data)
+
+
+async def read_resource_json(client: Client, uri: str) -> dict[str, Any]:
+    """Read a JSON resource over MCP and decode the first text part."""
+    contents = await client.read_resource(uri)
+    if not contents:
+        msg = f"Resource returned no content: {uri}"
+        raise AssertionError(msg)
+    return json.loads(contents[0].text)
