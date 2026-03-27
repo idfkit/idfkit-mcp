@@ -31,6 +31,8 @@ jobs:
 
       - name: Build documentation
         run: |
+          PREVIEW_URL="https://mcp.idfkit.com/pr-preview/pr-${{ github.event.number }}/"
+          sed -i "s|^site_url:.*|site_url: ${PREVIEW_URL}|" mkdocs.yml
           uv run zensical build --clean
 
       - name: Fetch base branch for diff

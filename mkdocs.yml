@@ -1,11 +1,11 @@
 site_name: idfkit-mcp
 repo_url: https://github.com/idfkit/idfkit-mcp
-site_url: https://mcp.idfkit.com/docs/
+site_url: https://mcp.idfkit.com/
 site_description: MCP server for EnergyPlus model authoring, validation, weather workflows, and simulation via idfkit.
 site_author: Samuel Letellier-Duchesne
 edit_uri: edit/main/docs/
 repo_name: idfkit/idfkit-mcp
-copyright: Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+copyright: Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
 
 nav:
   - Home: index.md
