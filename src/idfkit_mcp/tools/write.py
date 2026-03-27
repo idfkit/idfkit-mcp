@@ -34,7 +34,7 @@ _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 def new_model(
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z" (default: latest).')] = None,
 ) -> NewModelResult:
-    """Create a new empty EnergyPlus model."""
+    """Create an empty model."""
     from idfkit import LATEST_VERSION, new_document, version_string
 
     ver = LATEST_VERSION
@@ -59,7 +59,7 @@ def add_object(
     name: Annotated[str, Field(description="Object name (empty for unnamed types).")] = "",
     fields: Annotated[dict[str, Any] | None, Field(description="Field values as {field_name: value}.")] = None,
 ) -> dict[str, Any]:
-    """Add a new object. Call describe_object_type first to see valid fields."""
+    """Add one object. Use batch_add_objects for multiple."""
     state = get_state()
     doc = state.require_model()
     kwargs = fields or {}
@@ -73,7 +73,7 @@ def add_object(
 def batch_add_objects(
     objects: Annotated[list[dict[str, Any]], Field(description="List of dicts with keys: object_type, name, fields.")],
 ) -> BatchAddResult:
-    """Add multiple objects in one call. Continues on failures and reports per-object results."""
+    """Add multiple objects in one call. Continues on errors."""
     state = get_state()
     doc = state.require_model()
 
@@ -129,7 +129,7 @@ def remove_object(
     name: Annotated[str, Field(description="Object name.")],
     force: Annotated[bool, Field(description="Remove even if referenced by other objects.")] = False,
 ) -> RemoveObjectResult:
-    """Remove an object. Refuses if other objects reference it unless force=True."""
+    """Delete an object. Blocked if referenced unless force=True."""
     state = get_state()
     doc = state.require_model()
     obj = resolve_object(doc, object_type, name)
@@ -154,7 +154,7 @@ def rename_object(
     old_name: Annotated[str, Field(description="Current object name.")],
     new_name: Annotated[str, Field(description="New object name.")],
 ) -> RenameObjectResult:
-    """Rename an object and update all references to it."""
+    """Rename and auto-update all references."""
     state = get_state()
     doc = state.require_model()
 
@@ -179,7 +179,7 @@ def duplicate_object(
     name: Annotated[str, Field(description="Source object name.")],
     new_name: Annotated[str, Field(description="Name for the duplicate.")],
 ) -> dict[str, Any]:
-    """Duplicate an existing object with a new name."""
+    """Copy an object with a new name."""
     state = get_state()
     doc = state.require_model()
     source = resolve_object(doc, object_type, name)
@@ -194,7 +194,7 @@ def save_model(
     file_path: Annotated[str | None, Field(description="Output path (default: original load path).")] = None,
     output_format: Annotated[Literal["idf", "epjson"], Field(description="Output format.")] = "idf",
 ) -> SaveModelResult:
-    """Save the model to disk in IDF or epJSON format."""
+    """Write model to disk as IDF or epJSON."""
     from pathlib import Path
 
     from idfkit import write_epjson, write_idf
@@ -225,7 +225,7 @@ def save_model(
 
 @mcp.tool(annotations=_DESTRUCTIVE)
 def clear_session() -> ClearSessionResult:
-    """Clear the persisted session and reset all state. Does not delete files on disk."""
+    """Reset session state. Does not delete files on disk."""
     state = get_state()
     state.clear_session()
     return ClearSessionResult(status="cleared")

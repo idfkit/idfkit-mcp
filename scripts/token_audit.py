@@ -123,7 +123,6 @@ async def setup_simulation_sql(tmp_path: Path) -> None:
         "(2, 0, 'Zone', 'Facility', 'Zone', '*', 'Site Outdoor Air Drybulb Temperature', 'Hourly', '', 'C'),"
         "(3, 1, 'Zone', 'Facility', 'Zone', '', 'Electricity:Facility', 'Hourly', '', 'J')"
     )
-    # Create ReportData and Time tables for timeseries queries
     cur.execute(
         "CREATE TABLE Time ("
         "  TimeIndex INTEGER PRIMARY KEY,"
@@ -246,19 +245,13 @@ async def main() -> None:  # noqa: C901
                 ))
 
         # --- Read tools ---
-        await call_and_measure("get_model_summary")
         await call_and_measure("list_objects", {"object_type": "Zone"})
         await call_and_measure("list_objects", {"object_type": "Zone", "limit": 200}, "list_objects(Zone, limit=200)")
-        await call_and_measure("get_object", {"object_type": "Zone", "name": "Office"})
-        await call_and_measure("get_object", {"object_type": "BuildingSurface:Detailed", "name": "Office_Wall"})
         await call_and_measure("search_objects", {"query": "office"})
         await call_and_measure("search_objects", {"query": "a"}, "search_objects('a') [broad]")
-        await call_and_measure("get_references", {"name": "Office"})
-        await call_and_measure("get_references", {"name": "Concrete"})
 
         # --- Write tools ---
         await call_and_measure("new_model")
-        # Re-setup model after new_model
         await setup_model_with_zones()
         await call_and_measure("add_object", {"object_type": "Zone", "name": "Lobby"})
         await call_and_measure(
@@ -292,13 +285,11 @@ async def main() -> None:  # noqa: C901
         )
         await call_and_measure("remove_object", {"object_type": "Zone", "name": "Office_Renamed"})
 
-        # Save to temp file
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
             save_path = f.name
         await call_and_measure("save_model", {"file_path": save_path})
 
         await call_and_measure("clear_session")
-        # Re-setup after clear
         await setup_model_with_zones()
 
         # --- Schema tools ---
@@ -321,25 +312,18 @@ async def main() -> None:  # noqa: C901
         await call_and_measure(
             "get_available_references", {"object_type": "BuildingSurface:Detailed", "field_name": "zone_name"}
         )
-        await call_and_measure(
-            "get_available_references", {"object_type": "BuildingSurface:Detailed", "field_name": "construction_name"}
-        )
 
         # --- Validation tools ---
         await call_and_measure("validate_model")
         await call_and_measure("validate_model", {"check_references": False}, "validate_model(no refs)")
         await call_and_measure("validate_model", {"object_types": ["Zone"]}, "validate_model(Zone only)")
-        await call_and_measure("check_references")
 
         # --- Documentation tools ---
-        await call_and_measure("lookup_documentation", {"object_type": "Zone"})
-        await call_and_measure("lookup_documentation", {"object_type": "AirLoopHVAC"})
         await call_and_measure("search_docs", {"query": "zone heat balance"})
         await call_and_measure("search_docs", {"query": "material properties"})
         await call_and_measure("search_docs", {"query": "hvac"})
-        await call_and_measure("search_docs", {"query": "a", "limit": 20}, "search_docs('a', limit=20)")
+        await call_and_measure("search_docs", {"query": "a", "limit": 10}, "search_docs('a', limit=10)")
 
-        # search_docs then get_doc_section
         try:
             search_result = await client.call_tool("search_docs", {"query": "zone"})
             if search_result.structured_content:
@@ -351,7 +335,7 @@ async def main() -> None:  # noqa: C901
                         "get_doc_section", {"location": loc, "max_length": 2000}, "get_doc_section(max_length=2000)"
                     )
         except Exception:  # noqa: S110
-            pass  # search_docs may fail if docs index is not available
+            pass
 
         # --- Simulation tools (with mock SQL) ---
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -363,11 +347,6 @@ async def main() -> None:  # noqa: C901
             )
             await call_and_measure(
                 "query_timeseries", {"variable_name": "Zone Mean Air Temperature", "key_value": "OFFICE"}
-            )
-            await call_and_measure(
-                "query_timeseries",
-                {"variable_name": "Zone Mean Air Temperature", "key_value": "OFFICE", "limit": 100},
-                "query_timeseries(limit=100)",
             )
             with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
                 csv_path = f.name
@@ -388,8 +367,6 @@ async def main() -> None:  # noqa: C901
             {"latitude": 42.36, "longitude": -71.06},
             "search_weather_stations(lat/lon Boston)",
         )
-        await call_and_measure("search_weather_stations", {"query": "a"}, "search_weather_stations('a') [broad]")
-        # download_weather_file skipped (requires network)
 
         # --- Load model from file ---
         await call_and_measure("load_model", {"file_path": save_path})
@@ -416,6 +393,8 @@ async def main() -> None:  # noqa: C901
         await read_and_measure("idfkit://schema/AirLoopHVAC")
         await read_and_measure("idfkit://model/objects/Zone/Office")
         await read_and_measure("idfkit://model/objects/Material/Concrete")
+        await read_and_measure("idfkit://docs/Zone")
+        await read_and_measure("idfkit://model/references/Office")
 
         for uri, chars, err in resource_results:
             if err:

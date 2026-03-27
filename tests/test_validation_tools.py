@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastmcp.exceptions import ToolError
 
-from idfkit_mcp.models import CheckReferencesResult, ValidationResult
+from idfkit_mcp.models import ValidationResult
 from idfkit_mcp.state import ServerState
 from tests.conftest import call_tool
 
@@ -27,13 +27,3 @@ class TestValidateModel:
     async def test_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
             await call_tool(client, "validate_model")
-
-
-class TestCheckReferences:
-    async def test_no_dangling(self, client: object, state_with_zones: ServerState) -> None:
-        result = await call_tool(client, "check_references", model=CheckReferencesResult)
-        assert result.dangling_count is not None
-
-    async def test_without_model(self, client: object) -> None:
-        with pytest.raises(ToolError):
-            await call_tool(client, "check_references")

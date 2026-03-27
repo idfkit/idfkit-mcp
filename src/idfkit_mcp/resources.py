@@ -1,4 +1,4 @@
-"""MCP resources exposing read-only model, schema, and simulation data."""
+"""MCP resources exposing read-only model, schema, simulation, and documentation data."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ from idfkit_mcp.app import mcp
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools import resolve_object
-from idfkit_mcp.tools.read import build_model_summary
+from idfkit_mcp.tools.docs import build_documentation_urls
+from idfkit_mcp.tools.read import build_model_summary, build_references
 from idfkit_mcp.tools.schema import describe_object_type
 from idfkit_mcp.tools.simulation import get_results_summary
 
@@ -27,7 +28,7 @@ def _to_resource_json(value: BaseModel | dict[str, Any]) -> str:
     "idfkit://model/summary",
     name="model_summary",
     title="Model Summary",
-    description="Current model summary including version, zones, and object counts.",
+    description="Version, zones, object counts, and groups for the loaded model.",
     mime_type="application/json",
 )
 def model_summary() -> str:
@@ -68,9 +69,35 @@ def object_data(object_type: str, name: str) -> str:
     "idfkit://simulation/results",
     name="simulation_results",
     title="Simulation Results",
-    description="Summary of the most recent simulation results.",
+    description="Energy metrics, errors, and tables from the last simulation.",
     mime_type="application/json",
 )
 def simulation_results() -> str:
     """Latest simulation results summary as JSON."""
     return _to_resource_json(get_results_summary())
+
+
+@mcp.resource(
+    "idfkit://docs/{object_type}",
+    name="documentation_urls",
+    title="Documentation URLs",
+    description="I/O Reference, Engineering Reference, and search URLs for an object type.",
+    mime_type="application/json",
+)
+def documentation_urls(object_type: str) -> str:
+    """Documentation URLs for an EnergyPlus object type as JSON."""
+    return _to_resource_json(build_documentation_urls(object_type))
+
+
+@mcp.resource(
+    "idfkit://model/references/{name}",
+    name="object_references",
+    title="Object References",
+    description="Bidirectional references: who references this object and what it references.",
+    mime_type="application/json",
+)
+def object_references(name: str) -> str:
+    """Bidirectional reference graph for an object as JSON."""
+    state = get_state()
+    doc = state.require_model()
+    return _to_resource_json(build_references(doc, name))
