@@ -1633,6 +1633,8 @@
       
         
       
+        
+      
     
     
     
@@ -1805,6 +1807,34 @@
     
   
     Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
   
 
     
@@ -2070,8 +2100,8 @@ graph TB
     subgraph Server["idfkit-mcp Server"]
         Transport["Transport Layer&lt;br/&gt;&lt;small&gt;stdio | SSE | streamable-http&lt;/small&gt;"]
         Middleware["Middleware&lt;br/&gt;&lt;small&gt;logging, error handling, session binding&lt;/small&gt;"]
-        Tools["32 Tools&lt;br/&gt;&lt;small&gt;schema, read, write, validation,&lt;br/&gt;simulation, weather, docs&lt;/small&gt;"]
-        Resources["6 Resources&lt;br/&gt;&lt;small&gt;read-only model &amp; result state&lt;/small&gt;"]
+        Tools["27 Tools&lt;br/&gt;&lt;small&gt;schema, read, write, validation,&lt;br/&gt;simulation, geometry, weather, docs&lt;/small&gt;"]
+        Resources["7 Resources&lt;br/&gt;&lt;small&gt;read-only model &amp; result state&lt;/small&gt;"]
         Session["Session Manager&lt;br/&gt;&lt;small&gt;up to 20 concurrent sessions&lt;/small&gt;"]
         State["ServerState&lt;br/&gt;&lt;small&gt;document, schema, sim results,&lt;br/&gt;weather file, docs index&lt;/small&gt;"]
     end
@@ -2127,13 +2157,14 @@ block
     end
     block:tools_resources
         schema_t["Schema&lt;br/&gt;(4 tools)"]
-        read_t["Read&lt;br/&gt;(7 tools)"]
+        read_t["Read&lt;br/&gt;(4 tools)"]
         write_t["Write&lt;br/&gt;(9 tools)"]
-        val_t["Validation&lt;br/&gt;(2 tools)"]
-        sim_t["Simulation&lt;br/&gt;(5 tools)"]
+        val_t["Validation&lt;br/&gt;(1 tool)"]
+        sim_t["Simulation&lt;br/&gt;(4 tools)"]
         weather_t["Weather&lt;br/&gt;(2 tools)"]
-        docs_t["Docs&lt;br/&gt;(3 tools)"]
-        res["Resources&lt;br/&gt;(6)"]
+        geom_t["Geometry&lt;br/&gt;(1 tool)"]
+        docs_t["Docs&lt;br/&gt;(2 tools)"]
+        res["Resources&lt;br/&gt;(7)"]
     end
     block:state_layer["Session &amp; State"]
         state["ServerState — per-session document, schema, results, caches"]
@@ -2251,9 +2282,6 @@ block
         B2[convert_osm_to_idf]
         B3[list_objects]
         B4[search_objects]
-        B5[get_object]
-        B6[get_model_summary]
-        B7[get_references]
     end
 
     subgraph Write["Model Write"]
@@ -2268,7 +2296,6 @@ block
 
     subgraph Validation
         D1[validate_model]
-        D2[check_references]
     end
 
     subgraph Simulation
@@ -2283,10 +2310,13 @@ block
         F2[download_weather_file]
     end
 
+    subgraph Geometry
+        H1[view_geometry]
+    end
+
     subgraph Documentation
         G1[search_docs]
         G2[get_doc_section]
-        G3[lookup_documentation]
     end</code></pre>
 <h2 id="typical-workflow">Typical Workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
