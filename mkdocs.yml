@@ -52,6 +52,7 @@ nav:
       - Validation: api/tools-validation.md
       - Simulation: api/tools-simulation.md
       - Geometry: api/tools-geometry.md
+      - Schedule: api/tools-schedule.md
       - Weather: api/tools-weather.md
       - Documentation: api/tools-docs.md
 
