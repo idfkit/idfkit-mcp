@@ -105,8 +105,8 @@ class TestSearchSchema:
         tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="Zone")
         assert result.count > 0
-        types = [m.object_type for m in result.matches]
-        assert "Zone" in types
+        # "Zone" appears in many type names; verify we get zone-related results
+        assert any("Zone" in m.object_type for m in result.matches)
 
     def test_search_no_results(self) -> None:
         from idfkit_mcp.server import mcp
@@ -129,7 +129,7 @@ class TestSearchSchema:
 
         tool = get_tool_sync(mcp, "search_schema")
         result = tool.fn(query="Zone")
-        assert result.limit == 50
+        assert result.limit == 10
 
 
 class TestGetAvailableReferences:

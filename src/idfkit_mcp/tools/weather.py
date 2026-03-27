@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import DownloadWeatherFileResult, SearchWeatherStationsResult
@@ -21,30 +22,14 @@ _DOWNLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempoten
 
 @mcp.tool(annotations=_READ_ONLY_OPEN)
 def search_weather_stations(
-    query: str | None = None,
-    latitude: float | None = None,
-    longitude: float | None = None,
-    country: str | None = None,
-    state: str | None = None,
-    limit: int = 10,
+    query: Annotated[str | None, Field(description='City or airport name (e.g. "Boston"). Keep short.')] = None,
+    latitude: Annotated[float | None, Field(description="Latitude for nearest-station search.")] = None,
+    longitude: Annotated[float | None, Field(description="Longitude for nearest-station search.")] = None,
+    country: Annotated[str | None, Field(description='Country code (e.g. "USA").')] = None,
+    state: Annotated[str | None, Field(description='State/province code (e.g. "MA").')] = None,
+    limit: Annotated[int, Field(description="Maximum results.")] = 5,
 ) -> SearchWeatherStationsResult:
-    """Search for weather stations by name/location or coordinates.
-
-    Use this to find an EPW weather file for simulation. Provide either a text
-    query or latitude/longitude for spatial search.
-
-    IMPORTANT: Keep query short (just the city name). Use country/state params
-    to disambiguate. For example, use query="Boston", country="USA", state="MA"
-    instead of query="Boston MA USA".
-
-    Args:
-        query: Short search text — just the city or airport name (e.g. "Boston", "O'Hare").
-        latitude: Latitude for nearest-station search.
-        longitude: Longitude for nearest-station search.
-        country: Filter by country code (e.g. "USA").
-        state: Filter by state/province code (e.g. "MA", "IL").
-        limit: Maximum results (default 10).
-    """
+    """Search for weather stations by text query or lat/lon coordinates. Use country/state to disambiguate."""
     index = get_state().get_or_load_station_index()
 
     if latitude is not None and longitude is not None:
@@ -99,26 +84,12 @@ def _matches_filters(station: Any, country: str | None, state: str | None) -> bo
 
 @mcp.tool(annotations=_DOWNLOAD)
 def download_weather_file(
-    wmo: str | None = None,
-    query: str | None = None,
-    country: str | None = None,
-    state: str | None = None,
+    wmo: Annotated[str | None, Field(description="WMO station number to download directly.")] = None,
+    query: Annotated[str | None, Field(description='City or airport name (e.g. "Boston"). Keep short.')] = None,
+    country: Annotated[str | None, Field(description='Country code (e.g. "USA").')] = None,
+    state: Annotated[str | None, Field(description='State/province code (e.g. "MA").')] = None,
 ) -> DownloadWeatherFileResult:
-    """Download an EPW weather file for simulation.
-
-    Use this to get a weather file before running a simulation. The downloaded
-    file path is stored for reuse with run_simulation.
-
-    IMPORTANT: Keep query short (just the city name). Use country/state params
-    to disambiguate. For example, use query="Boston", country="USA", state="MA"
-    instead of query="Boston MA USA TMYx".
-
-    Args:
-        wmo: WMO station number to download directly.
-        query: Short search text — just the city or airport name (e.g. "Boston").
-        country: Filter by country code (e.g. "USA").
-        state: Filter by state/province code (e.g. "MA").
-    """
+    """Download an EPW weather file. Stored for reuse with run_simulation. Use country/state to disambiguate."""
     from idfkit.weather import WeatherDownloader
 
     index = get_state().get_or_load_station_index()
