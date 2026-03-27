@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from sqlite3 import OperationalError
 from typing import Any, Literal
 
@@ -28,6 +29,20 @@ _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentH
 
 # Valid EnergyPlus reporting frequencies for time series queries.
 ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPeriod", "Annual"]
+
+
+def _build_output_variable_result(
+    entries: list[dict[str, str | None]],
+    *,
+    total_available: int,
+    limit: int,
+) -> ListOutputVariablesResult:
+    """Serialize output-variable metadata into the MCP response model."""
+    return ListOutputVariablesResult.model_validate({
+        "total_available": total_available,
+        "returned": min(len(entries), limit),
+        "variables": entries[:limit],
+    })
 
 
 def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | None:
@@ -216,30 +231,42 @@ def list_output_variables(search: str | None = None, limit: int = 50) -> ListOut
     limit = min(limit, 200)
 
     variables = result.variables
-    if variables is None:
-        raise ToolError("No output variable index available. The simulation may not have produced .rdd/.mdd files.")
+    if variables is not None and (variables.variables or variables.meters):
+        from idfkit.simulation.parsers.rdd import OutputVariable
 
-    from idfkit.simulation.parsers.rdd import OutputVariable
+        all_items = variables.search(search) if search else [*variables.variables, *variables.meters]
+        serialized: list[dict[str, str | None]] = []
+        for item in all_items:
+            entry: dict[str, str | None] = {"name": item.name, "units": item.units}
+            if isinstance(item, OutputVariable):
+                entry["key"] = item.key
+                entry["type"] = "variable"
+            else:
+                entry["type"] = "meter"
+            serialized.append(entry)
 
-    all_items = variables.search(search) if search else [*variables.variables, *variables.meters]
+        total = len(variables.variables) + len(variables.meters)
+        return _build_output_variable_result(serialized, total_available=total, limit=limit)
 
-    limited = all_items[:limit]
-    serialized: list[dict[str, str]] = []
-    for item in limited:
-        entry: dict[str, str] = {"name": item.name, "units": item.units}
-        if isinstance(item, OutputVariable):
-            entry["key"] = item.key
-            entry["type"] = "variable"
-        else:
-            entry["type"] = "meter"
-        serialized.append(entry)
+    sql = result.sql
+    if sql is not None:
+        regex = re.compile(search, re.IGNORECASE) if search else None
+        all_items = sql.list_variables()
+        serialized = [
+            {
+                "name": item.name,
+                "units": item.units,
+                "key": item.key_value or None,
+                "type": "meter" if item.is_meter else "variable",
+            }
+            for item in all_items
+            if regex is None or regex.search(item.name)
+        ]
+        return _build_output_variable_result(serialized, total_available=len(all_items), limit=limit)
 
-    total = len(variables.variables) + len(variables.meters)
-    return ListOutputVariablesResult.model_validate({
-        "total_available": total,
-        "returned": len(serialized),
-        "variables": serialized,
-    })
+    raise ToolError(
+        "No output variable index available. The simulation may not have produced .rdd/.mdd files or SQL output."
+    )
 
 
 @mcp.tool(annotations=_READ_ONLY)

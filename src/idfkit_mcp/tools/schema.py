@@ -64,7 +64,7 @@ def list_object_types(group: str | None = None, version: str | None = None, limi
         groups.setdefault(g, []).append(obj_type)
 
     total_types = sum(len(v) for v in groups.values())
-    truncated = total_types > limit
+    truncated = group is None and total_types > limit
     logger.debug("list_object_types: group=%s total=%d truncated=%s", group, total_types, truncated)
 
     if truncated:

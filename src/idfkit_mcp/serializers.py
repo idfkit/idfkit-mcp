@@ -29,7 +29,24 @@ def serialize_object(obj: IDFObject, schema: EpJSONSchema | None = None, brief: 
                 if value is not None:
                     result[field_name] = value
         return result
-    return {"object_type": obj.obj_type, "name": obj.name, **obj.to_dict()}
+
+    result = {"object_type": obj.obj_type, "name": obj.name}
+
+    # Preserve schema field order and include blank trailing fields as None so
+    # the MCP response matches the "all field values" contract for get_object.
+    field_order = obj.field_order
+    if field_order is not None:
+        for field_name in field_order:
+            result[field_name] = obj.data.get(field_name)
+
+        # Include any populated extensible or non-schema keys that are present
+        # on the object but not listed in the base field order.
+        for field_name, value in obj.data.items():
+            if field_name not in result:
+                result[field_name] = value
+        return result
+
+    return {**result, **obj.to_dict()}
 
 
 def serialize_object_description(desc: ObjectDescription) -> dict[str, Any]:

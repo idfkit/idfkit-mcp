@@ -77,6 +77,10 @@ class TestGetObject:
         result = _tool("get_object").fn(object_type="Zone", name="Office")
         assert result["name"] == "Office"
         assert result["object_type"] == "Zone"
+        assert "x_origin" in result
+        assert "y_origin" in result
+        assert "z_origin" in result
+        assert result["x_origin"] is None
 
     def test_missing_object(self, state_with_zones: ServerState) -> None:
         with pytest.raises(ToolError):

@@ -61,7 +61,7 @@ def load_model(file_path: str, version: str | None = None) -> ModelSummary:
     state.save_session()
 
     logger.info("Loaded model %s (version=%s, objects=%d)", path, doc.version, len(list(doc.all_objects)))
-    return _build_summary(doc, state)
+    return build_model_summary(doc, state)
 
 
 @mcp.tool(annotations=_LOAD)
@@ -148,7 +148,7 @@ def convert_osm_to_idf(
     version_getter = getattr(openstudio, "openStudioVersion", None)
     openstudio_version = str(version_getter()) if callable(version_getter) else "unknown"
 
-    summary = _build_summary(doc, state)
+    summary = build_model_summary(doc, state)
     return ConvertOsmResult(
         **summary.model_dump(),
         status="converted",
@@ -170,7 +170,7 @@ def get_model_summary() -> ModelSummary:
     """
     state = get_state()
     doc = state.require_model()
-    return _build_summary(doc, state)
+    return build_model_summary(doc, state)
 
 
 @mcp.tool(annotations=_READ_ONLY)
@@ -213,7 +213,7 @@ def get_object(object_type: str, name: str) -> dict[str, Any]:
     state = get_state()
     doc = state.require_model()
     obj = resolve_object(doc, object_type, name)
-    return serialize_object(obj)
+    return serialize_object(obj, schema=state.schema)
 
 
 @mcp.tool(annotations=_READ_ONLY)
@@ -279,7 +279,7 @@ def get_references(name: str) -> ReferencesResult:
     })
 
 
-def _build_summary(doc: Any, state: Any) -> ModelSummary:
+def build_model_summary(doc: Any, state: Any) -> ModelSummary:
     """Build a model summary."""
     from idfkit import version_string
 
