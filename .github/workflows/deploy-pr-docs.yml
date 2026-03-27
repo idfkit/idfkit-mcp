@@ -69,9 +69,10 @@ jobs:
 
       - name: Deploy preview to gh-pages
         run: |
-          rm -rf "gh-pages-deploy/pr-preview/pr-${{ github.event.number }}"
-          mkdir -p "gh-pages-deploy/pr-preview/pr-${{ github.event.number }}"
-          cp -r site/. "gh-pages-deploy/pr-preview/pr-${{ github.event.number }}/"
+          DEST="gh-pages-deploy/docs/pr-preview/pr-${{ github.event.number }}"
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          cp -r site/. "$DEST/"
           printf 'mcp.idfkit.com\n' > gh-pages-deploy/CNAME
 
           cd gh-pages-deploy
@@ -141,10 +142,10 @@ jobs:
 
       - name: Remove preview directory
         run: |
-          if [ -d "pr-preview/pr-${{ github.event.number }}" ]; then
+          if [ -d "docs/pr-preview/pr-${{ github.event.number }}" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git rm -rf "pr-preview/pr-${{ github.event.number }}"
+            git rm -rf "docs/pr-preview/pr-${{ github.event.number }}"
             git commit -m "Remove docs preview for PR #${{ github.event.number }}"
             git pull --rebase origin gh-pages
             git push
