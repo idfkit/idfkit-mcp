@@ -80,16 +80,18 @@ block
     block:middleware["Middleware"]
         mw["ToolExecutionMiddleware — logging, error mapping, session binding"]
     end
-    block:tools_resources
-        schema_t["Schema<br/>(4 tools)"]
-        read_t["Read<br/>(4 tools)"]
-        write_t["Write<br/>(9 tools)"]
-        val_t["Validation<br/>(1 tool)"]
-        sim_t["Simulation<br/>(4 tools)"]
-        weather_t["Weather<br/>(2 tools)"]
-        geom_t["Geometry<br/>(1 tool)"]
-        docs_t["Docs<br/>(2 tools)"]
-        res["Resources<br/>(7)"]
+    block:tools["Tools (27)"]
+        schema_t["Schema (4)"]
+        read_t["Read (4)"]
+        write_t["Write (9)"]
+        val_t["Validation (1)"]
+        sim_t["Simulation (4)"]
+    end
+    block:tools2[" "]
+        weather_t["Weather (2)"]
+        geom_t["Geometry (1)"]
+        docs_t["Docs (2)"]
+        res["Resources (7)"]
     end
     block:state_layer["Session & State"]
         state["ServerState — per-session document, schema, results, caches"]
