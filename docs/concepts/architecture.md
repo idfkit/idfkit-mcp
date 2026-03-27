@@ -78,16 +78,14 @@ block
         http["streamable-http<br/>(multi-session)"]
     end
     block:middleware["Middleware"]
-        mw["ToolExecutionMiddleware — logging, error mapping, session binding"]
+        mw["Logging · Error mapping · Session binding"]
     end
-    block:tools["Tools (27)"]
+    block:tools_resources["Tools & Resources"]
         schema_t["Schema (4)"]
         read_t["Read (4)"]
         write_t["Write (9)"]
         val_t["Validation (1)"]
         sim_t["Simulation (4)"]
-    end
-    block:tools2[" "]
         weather_t["Weather (2)"]
         geom_t["Geometry (1)"]
         docs_t["Docs (2)"]
