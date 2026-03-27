@@ -32,11 +32,12 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 
 <div class="feature-chips" markdown>
 
-<span class="chip">:material-tools: 32 MCP tools</span>
+<span class="chip">:material-tools: 27 MCP tools</span>
 <span class="chip">:material-shape-outline: Schema-aware edits</span>
 <span class="chip">:material-shield-check-outline: Validation + references</span>
 <span class="chip">:material-weather-cloudy: Weather search + download</span>
 <span class="chip">:material-play-circle-outline: Simulation orchestration</span>
+<span class="chip">:material-cube-outline: 3D geometry viewer</span>
 <span class="chip">:material-robot-outline: Codex + Claude workflows</span>
 
 </div>
