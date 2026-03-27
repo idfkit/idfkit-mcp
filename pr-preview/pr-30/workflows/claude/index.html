@@ -1906,7 +1906,7 @@
 <p>Use this instruction style in Claude projects:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>When editing EnergyPlus models, use idfkit-mcp tools instead of raw file edits.
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Before writing: describe_object_type.
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>After writing: validate_model and check_references.
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>After writing: validate_model.
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>For simulation: ensure weather source first, then run_simulation.
 </span></code></pre></div>
 <h2 id="suggested-conversation-pattern">Suggested Conversation Pattern<a class="headerlink" href="#suggested-conversation-pattern" title="Permanent link">&para;</a></h2>
@@ -1914,7 +1914,7 @@
 <li><strong>Intent framing</strong></li>
 <li>"Target: reduce heating loads in perimeter zones"</li>
 <li><strong>Model context pull</strong></li>
-<li><code>get_model_summary</code></li>
+<li>Read <code>idfkit://model/summary</code> resource</li>
 <li><code>list_objects(object_type="Zone")</code></li>
 <li><strong>Schema-first changes</strong></li>
 <li><code>describe_object_type</code> for edited types</li>
@@ -1922,11 +1922,10 @@
 <li><code>batch_add_objects</code> and <code>update_object</code></li>
 <li><strong>Safety checks</strong></li>
 <li><code>validate_model</code></li>
-<li><code>check_references</code></li>
 <li><strong>Simulation + analysis</strong></li>
 <li><code>download_weather_file</code></li>
 <li><code>run_simulation</code></li>
-<li><code>get_results_summary</code></li>
+<li>Read <code>idfkit://simulation/results</code> resource</li>
 </ol>
 <h2 id="failure-recovery-pattern">Failure Recovery Pattern<a class="headerlink" href="#failure-recovery-pattern" title="Permanent link">&para;</a></h2>
 <p>When a call returns <code>{"error": ...}</code>:</p>

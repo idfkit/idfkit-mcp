@@ -984,17 +984,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get_results_summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_results_summary
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#list_output_variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1021,6 +1010,17 @@
     <span class="md-ellipsis">
       
         export_timeseries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-results-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation Results Resource
       
     </span>
   </a>
@@ -1870,17 +1870,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get_results_summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_results_summary
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#list_output_variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1907,6 +1896,17 @@
     <span class="md-ellipsis">
       
         export_timeseries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-results-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation Results Resource
       
     </span>
   </a>
@@ -1985,15 +1985,6 @@
 <li>Returns the resolved EnergyPlus executable, install directory, and version.</li>
 <li>Stores result in server state for follow-up tools.</li>
 </ul>
-<h2 id="get_results_summary"><code>get_results_summary</code><a class="headerlink" href="#get_results_summary" title="Permanent link">&para;</a></h2>
-<p>Summarizes the latest simulation result:</p>
-<ul>
-<li>success flag</li>
-<li>runtime</li>
-<li>fatal/severe/warning counts</li>
-<li>severe/fatal messages</li>
-<li>first batch of HTML report tables when available</li>
-</ul>
 <h2 id="list_output_variables"><code>list_output_variables</code><a class="headerlink" href="#list_output_variables" title="Permanent link">&para;</a></h2>
 <p>Lists available variables/meters from run output metadata.</p>
 <p>Parameters:</p>
@@ -2022,11 +2013,13 @@
 <li><code>environment</code>: filter by environment type (<code>"sizing"</code> or <code>"annual"</code>)</li>
 <li><code>output_path</code>: output CSV file path (defaults to a file in the simulation output directory)</li>
 </ul>
+<h2 id="simulation-results-resource">Simulation Results Resource<a class="headerlink" href="#simulation-results-resource" title="Permanent link">&para;</a></h2>
+<p>Simulation results are available via the <code>idfkit://simulation/results</code> MCP resource, which returns success flag, runtime, error counts and messages, and HTML report tables.</p>
 <h2 id="simulation-workflow">Simulation Workflow<a class="headerlink" href="#simulation-workflow" title="Permanent link">&para;</a></h2>
 <ol>
 <li><code>download_weather_file</code> or provide <code>weather_file</code></li>
 <li><code>run_simulation</code></li>
-<li><code>get_results_summary</code></li>
+<li>Read <code>idfkit://simulation/results</code> resource</li>
 <li><code>list_output_variables(search=...)</code></li>
 <li><code>query_timeseries(variable_name=...)</code> or <code>export_timeseries(...)</code></li>
 </ol>

@@ -1029,10 +1029,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#lookup_documentation" class="md-nav__link">
+  <a href="#documentation-urls-resource" class="md-nav__link">
     <span class="md-ellipsis">
       
-        lookup_documentation
+        Documentation URLs Resource
       
     </span>
   </a>
@@ -1876,10 +1876,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#lookup_documentation" class="md-nav__link">
+  <a href="#documentation-urls-resource" class="md-nav__link">
     <span class="md-ellipsis">
       
-        lookup_documentation
+        Documentation URLs Resource
       
     </span>
   </a>
@@ -2001,23 +2001,17 @@
 
 
 <h1 id="documentation-tools">Documentation Tools<a class="headerlink" href="#documentation-tools" title="Permanent link">&para;</a></h1>
-<p>Documentation tools provide URL lookup, full-text search, and section retrieval for the EnergyPlus documentation hosted on <a href="https://docs.idfkit.com">docs.idfkit.com</a>.</p>
-<h2 id="lookup_documentation"><code>lookup_documentation</code><a class="headerlink" href="#lookup_documentation" title="Permanent link">&para;</a></h2>
-<p>Get documentation URLs for an EnergyPlus object type.</p>
-<p>Returns links to:</p>
+<p>Documentation tools provide full-text search and section retrieval for the EnergyPlus documentation hosted on <a href="https://docs.idfkit.com">docs.idfkit.com</a>.</p>
+<h2 id="documentation-urls-resource">Documentation URLs Resource<a class="headerlink" href="#documentation-urls-resource" title="Permanent link">&para;</a></h2>
+<p>Documentation URLs for any object type are available via the <code>idfkit://docs/{object_type}</code> MCP resource. It returns links to:</p>
 <ul>
 <li>I/O Reference page (with anchor to the specific object)</li>
 <li>Engineering Reference landing page</li>
 <li>Search page</li>
 </ul>
-<p>Parameters:</p>
-<ul>
-<li><code>object_type</code> (required): e.g., <code>"Zone"</code>, <code>"Material"</code></li>
-<li><code>version</code>: EnergyPlus version as <code>"X.Y.Z"</code> (default: latest or loaded model version)</li>
-</ul>
 <h2 id="search_docs"><code>search_docs</code><a class="headerlink" href="#search_docs" title="Permanent link">&para;</a></h2>
 <p>Full-text search across the EnergyPlus documentation index (~20,000 sections).</p>
-<p>Results include HTML-stripped text truncated to 250 characters. Use <code>get_doc_section</code> to read full content.</p>
+<p>Results include HTML-stripped text truncated to 150 characters. Use <code>get_doc_section</code> to read full content.</p>
 <p>Parameters:</p>
 <ul>
 <li><code>query</code> (required): search terms (e.g., <code>"zone heat balance"</code>)</li>
@@ -2047,8 +2041,7 @@
 <p>Returns the text with HTML stripped, truncated to <code>max_length</code> characters.</p>
 <h2 id="typical-flows">Typical Flows<a class="headerlink" href="#typical-flows" title="Permanent link">&para;</a></h2>
 <h3 id="find-docs-for-an-object-type">Find docs for an object type<a class="headerlink" href="#find-docs-for-an-object-type" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>lookup_documentation(object_type=&quot;Zone&quot;)
-</span></code></pre></div>
+<p>Read the <code>idfkit://docs/Zone</code> resource.</p>
 <h3 id="search-and-read-documentation">Search and read documentation<a class="headerlink" href="#search-and-read-documentation" title="Permanent link">&para;</a></h3>
 <ol>
 <li><code>search_docs(query="zone heat balance", tags="Engineering Reference")</code></li>
@@ -2056,7 +2049,7 @@
 <li><code>get_doc_section(location="engineering-reference/.../#section")</code></li>
 </ol>
 <h3 id="browse-a-specific-documentation-set">Browse a specific documentation set<a class="headerlink" href="#browse-a-specific-documentation-set" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>search_docs(query=&quot;infiltration&quot;, tags=&quot;Input Output Reference&quot;, limit=10)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>search_docs(query=&quot;infiltration&quot;, tags=&quot;Input Output Reference&quot;, limit=10)
 </span></code></pre></div>
 <h2 id="first-use-download">First-Use Download<a class="headerlink" href="#first-use-download" title="Permanent link">&para;</a></h2>
 <p>On first use, <code>search_docs</code> and <code>get_doc_section</code> download the documentation search index from docs.idfkit.com (~2 MB) and cache it locally. The cache is refreshed automatically after 7 days.</p>

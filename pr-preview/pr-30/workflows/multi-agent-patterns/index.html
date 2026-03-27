@@ -1920,13 +1920,12 @@
 <li>Author agent:</li>
 <li>performs <code>add_object</code>, <code>batch_add_objects</code>, <code>update_object</code></li>
 <li>Verifier agent:</li>
-<li>runs <code>validate_model</code>, <code>check_references</code></li>
+<li>runs <code>validate_model(check_references=true)</code></li>
 <li>blocks merge if invalid</li>
 </ul>
 <p>Gate criteria:</p>
 <ul>
 <li><code>is_valid == true</code></li>
-<li><code>dangling_count == 0</code></li>
 </ul>
 <h2 id="pattern-3-modeling-simulation-split">Pattern 3: Modeling + Simulation Split<a class="headerlink" href="#pattern-3-modeling-simulation-split" title="Permanent link">&para;</a></h2>
 <ul>

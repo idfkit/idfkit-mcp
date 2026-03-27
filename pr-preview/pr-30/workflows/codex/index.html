@@ -1927,7 +1927,7 @@
 <h2 id="recommended-system-prompt-fragment">Recommended System Prompt Fragment<a class="headerlink" href="#recommended-system-prompt-fragment" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Use idfkit-mcp to edit and simulate EnergyPlus models.
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Always:
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>1) call get_model_summary first,
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>1) read the idfkit://model/summary resource first,
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>2) call describe_object_type before create/update,
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>3) validate after each edit batch,
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>4) prefer batch_add_objects over repeated add_object calls,
@@ -1939,14 +1939,14 @@
 <li>Fetch type contract (<code>describe_object_type</code>)</li>
 <li>Create objects in bulk (<code>batch_add_objects</code>)</li>
 <li>Wire references (<code>get_available_references</code>, <code>update_object</code>)</li>
-<li>Run guards (<code>validate_model</code>, <code>check_references</code>)</li>
+<li>Run guards (<code>validate_model</code>)</li>
 <li>Persist (<code>save_model</code>)</li>
 </ol>
 <h2 id="simulation-loop">Simulation Loop<a class="headerlink" href="#simulation-loop" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Ensure weather (<code>download_weather_file</code> or explicit <code>weather_file</code>)</li>
 <li>Run (<code>run_simulation</code>)</li>
-<li>Inspect (<code>get_results_summary</code>)</li>
+<li>Inspect (<code>idfkit://simulation/results</code> resource)</li>
 <li>Query variables (<code>list_output_variables</code>)</li>
 <li>Iterate from schema + validation findings</li>
 </ol>
@@ -1961,7 +1961,7 @@
 </ul>
 <h2 id="example-task-brief">Example Task Brief<a class="headerlink" href="#example-task-brief" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Load ./models/baseline.idf, add 4 perimeter zones, update references,
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>run validation and dangling reference checks, save to ./models/revised.idf,
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>run validation, save to ./models/revised.idf,
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>then run design-day simulation and summarize severe/fatal messages.
 </span></code></pre></div>
 
