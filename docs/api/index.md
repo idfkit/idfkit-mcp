@@ -13,5 +13,6 @@ This section is generated from source docstrings.
 - [Tools: Write](tools-write.md)
 - [Tools: Validation](tools-validation.md)
 - [Tools: Simulation](tools-simulation.md)
+- [Tools: Geometry](tools-geometry.md)
 - [Tools: Weather](tools-weather.md)
 - [Tools: Documentation](tools-docs.md)

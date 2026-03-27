@@ -20,8 +20,8 @@ graph TB
     subgraph Server["idfkit-mcp Server"]
         Transport["Transport Layer<br/><small>stdio | SSE | streamable-http</small>"]
         Middleware["Middleware<br/><small>logging, error handling, session binding</small>"]
-        Tools["32 Tools<br/><small>schema, read, write, validation,<br/>simulation, weather, docs</small>"]
-        Resources["6 Resources<br/><small>read-only model & result state</small>"]
+        Tools["27 Tools<br/><small>schema, read, write, validation,<br/>simulation, geometry, weather, docs</small>"]
+        Resources["7 Resources<br/><small>read-only model & result state</small>"]
         Session["Session Manager<br/><small>up to 20 concurrent sessions</small>"]
         State["ServerState<br/><small>document, schema, sim results,<br/>weather file, docs index</small>"]
     end
@@ -82,13 +82,14 @@ block
     end
     block:tools_resources
         schema_t["Schema<br/>(4 tools)"]
-        read_t["Read<br/>(7 tools)"]
+        read_t["Read<br/>(4 tools)"]
         write_t["Write<br/>(9 tools)"]
-        val_t["Validation<br/>(2 tools)"]
-        sim_t["Simulation<br/>(5 tools)"]
+        val_t["Validation<br/>(1 tool)"]
+        sim_t["Simulation<br/>(4 tools)"]
         weather_t["Weather<br/>(2 tools)"]
-        docs_t["Docs<br/>(3 tools)"]
-        res["Resources<br/>(6)"]
+        geom_t["Geometry<br/>(1 tool)"]
+        docs_t["Docs<br/>(2 tools)"]
+        res["Resources<br/>(7)"]
     end
     block:state_layer["Session & State"]
         state["ServerState — per-session document, schema, results, caches"]
@@ -181,9 +182,6 @@ graph LR
         B2[convert_osm_to_idf]
         B3[list_objects]
         B4[search_objects]
-        B5[get_object]
-        B6[get_model_summary]
-        B7[get_references]
     end
 
     subgraph Write["Model Write"]
@@ -198,7 +196,6 @@ graph LR
 
     subgraph Validation
         D1[validate_model]
-        D2[check_references]
     end
 
     subgraph Simulation
@@ -213,10 +210,13 @@ graph LR
         F2[download_weather_file]
     end
 
+    subgraph Geometry
+        H1[view_geometry]
+    end
+
     subgraph Documentation
         G1[search_docs]
         G2[get_doc_section]
-        G3[lookup_documentation]
     end
 ```
 
