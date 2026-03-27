@@ -57,6 +57,22 @@ class TestListOutputVariables:
         with pytest.raises(ToolError):
             _tool("list_output_variables").fn()
 
+    def test_falls_back_to_sql_when_rdd_and_mdd_are_empty(self, state_with_sql_only_simulation: ServerState) -> None:
+        result = _tool("list_output_variables").fn()
+        assert result.total_available == 3
+        assert result.returned == 3
+        assert {item.name for item in result.variables} == {
+            "Zone Mean Air Temperature",
+            "Site Outdoor Air Drybulb Temperature",
+            "Electricity:Facility",
+        }
+
+    def test_sql_fallback_respects_search(self, state_with_sql_only_simulation: ServerState) -> None:
+        result = _tool("list_output_variables").fn(search="Drybulb")
+        assert result.total_available == 3
+        assert result.returned == 1
+        assert result.variables[0].name == "Site Outdoor Air Drybulb Temperature"
+
 
 class TestQueryTimeseries:
     def test_no_simulation(self) -> None:

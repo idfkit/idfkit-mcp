@@ -62,7 +62,8 @@ class TestListObjectTypes:
 
         tool = get_tool_sync(mcp, "list_object_types")
         result = tool.fn(group="Thermal Zones and Surfaces")
-        # A single group should fit within the default limit
+        # Group-filtered queries should return type names even if the group
+        # itself exceeds the default top-level discovery limit.
         assert result.truncated is False
         for group_data in result.groups.values():
             assert group_data.types is not None
