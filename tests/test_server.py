@@ -5,17 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from fastmcp import Client
 
 from idfkit_mcp.server import _parse_args, mcp
-from tests.tool_helpers import list_tools_sync
+from tests.conftest import read_resource_json
 
 
 class TestCreateServer:
     def test_returns_fastmcp_instance(self) -> None:
         assert mcp.name == "idfkit"
 
-    def test_registers_all_tool_groups(self) -> None:
-        tool_names = set(list_tools_sync(mcp))
+    async def test_registers_all_tool_groups(self, client: Client) -> None:
+        tool_names = {tool.name for tool in await client.list_tools()}
         expected = {
             "list_object_types",
             "describe_object_type",
@@ -47,6 +48,30 @@ class TestCreateServer:
             "download_weather_file",
         }
         assert expected.issubset(tool_names)
+
+    async def test_registers_resources(self, client: Client) -> None:
+        resource_uris = {str(resource.uri) for resource in await client.list_resources()}
+        template_uris = {str(template.uriTemplate) for template in await client.list_resource_templates()}
+
+        assert "idfkit://model/summary" in resource_uris
+        assert "idfkit://simulation/results" in resource_uris
+        assert "idfkit://schema/{object_type}" in template_uris
+        assert "idfkit://model/objects/{object_type}/{name}" in template_uris
+
+    async def test_reads_model_summary_resource(self, client: Client, state_with_zones: object) -> None:
+        payload = await read_resource_json(client, "idfkit://model/summary")
+        assert payload["zone_count"] == 2
+        assert payload["total_objects"] >= 3
+
+    async def test_reads_schema_resource_template(self, client: Client) -> None:
+        payload = await read_resource_json(client, "idfkit://schema/Zone")
+        assert payload["object_type"] == "Zone"
+        assert "fields" in payload
+
+    async def test_reads_object_resource_template(self, client: Client, state_with_zones: object) -> None:
+        payload = await read_resource_json(client, "idfkit://model/objects/Zone/Office")
+        assert payload["object_type"] == "Zone"
+        assert payload["name"] == "Office"
 
 
 class TestParseArgs:
@@ -106,25 +131,25 @@ class TestToolSchemas:
     """Verify that all tool schemas are well-formed for broad client compatibility."""
 
     @pytest.fixture()
-    def tools(self) -> dict[str, Any]:
-        return list_tools_sync(mcp)
+    async def tools(self, client: Client) -> list[Any]:
+        return await client.list_tools()
 
-    def test_all_tools_have_properties_key(self, tools: dict[str, Any]) -> None:
+    async def test_all_tools_have_properties_key(self, tools: list[Any]) -> None:
         """Every tool's inputSchema must include a 'properties' key.
 
         OpenAI's Agents SDK and other strict consumers require this key to be
         present, even for tools with no parameters (where it should be ``{}``).
         """
-        for name, tool in tools.items():
-            schema = tool.parameters
-            assert "properties" in schema, f"Tool '{name}' inputSchema missing 'properties' key: {schema}"
+        for tool in tools:
+            schema = tool.inputSchema
+            assert "properties" in schema, f"Tool '{tool.name}' inputSchema missing 'properties' key: {schema}"
 
-    def test_all_tools_have_annotations(self, tools: dict[str, Any]) -> None:
+    async def test_all_tools_have_annotations(self, tools: list[Any]) -> None:
         """Every tool should have ToolAnnotations set (readOnlyHint, etc.)."""
-        for name, tool in tools.items():
-            assert tool.annotations is not None, f"Tool '{name}' is missing annotations"
+        for tool in tools:
+            assert tool.annotations is not None, f"Tool '{tool.name}' is missing annotations"
 
-    def test_schemas_support_additional_properties_false(self, tools: dict[str, Any]) -> None:
+    async def test_schemas_support_additional_properties_false(self, tools: list[Any]) -> None:
         """Verify schemas can accept additionalProperties: false without conflict.
 
         OpenAI's ``convert_schemas_to_strict`` applies this constraint. Tools
@@ -136,28 +161,27 @@ class TestToolSchemas:
         # constrained to a static schema.
         dynamic_schema_tools = {"add_object", "batch_add_objects", "update_object"}
 
-        for name, tool in tools.items():
-            if name in dynamic_schema_tools:
+        for tool in tools:
+            if tool.name in dynamic_schema_tools:
                 continue
-            schema = tool.parameters
+            schema = tool.inputSchema
             properties = schema.get("properties", {})
             for prop_name, prop_schema in properties.items():
-                # Nested object schemas should not conflict with additionalProperties: false
                 if prop_schema.get("type") == "object" and "properties" not in prop_schema:
                     pytest.fail(
-                        f"Tool '{name}' param '{prop_name}' is an unstructured object "
+                        f"Tool '{tool.name}' param '{prop_name}' is an unstructured object "
                         f"(no 'properties' key) — incompatible with strict mode."
                     )
 
-    def test_structured_output_tools_have_output_schema(self, tools: dict[str, Any]) -> None:
+    async def test_structured_output_tools_have_output_schema(self, tools: list[Any]) -> None:
         """Tools with Pydantic return types must have an output schema defined."""
         # Tools that return dynamic dicts (no Pydantic model) — intentionally unstructured.
         unstructured_tools = {"add_object", "update_object", "duplicate_object", "get_object"}
 
-        for name, tool in tools.items():
-            if name in unstructured_tools:
-                assert tool.output_schema is None, f"Tool '{name}' should be unstructured but has an output schema"
+        for tool in tools:
+            if tool.name in unstructured_tools:
+                assert tool.outputSchema is None, f"Tool '{tool.name}' should be unstructured but has an output schema"
             else:
-                assert tool.output_schema is not None, (
-                    f"Tool '{name}' is missing an output schema — add a Pydantic return type"
+                assert tool.outputSchema is not None, (
+                    f"Tool '{tool.name}' is missing an output schema — add a Pydantic return type"
                 )

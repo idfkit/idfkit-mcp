@@ -5,8 +5,14 @@ from __future__ import annotations
 import pytest
 from fastmcp.exceptions import ToolError
 
+from idfkit_mcp.models import (
+    AvailableReferencesResult,
+    DescribeObjectTypeResult,
+    ListObjectTypesResult,
+    SearchSchemaResult,
+)
 from idfkit_mcp.tools.schema import _parse_version
-from tests.tool_helpers import get_tool_sync
+from tests.conftest import call_tool
 
 
 class TestParseVersion:
@@ -22,135 +28,98 @@ class TestParseVersion:
 
 
 class TestListObjectTypes:
-    def test_returns_groups(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "list_object_types")
-        result = tool.fn()
+    async def test_returns_groups(self, client: object) -> None:
+        result = await call_tool(client, "list_object_types", model=ListObjectTypesResult)
         assert result.total_types > 0
         assert result.groups
 
-    def test_filter_by_group(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "list_object_types")
-        result = tool.fn(group="Thermal Zones and Surfaces")
+    async def test_filter_by_group(self, client: object) -> None:
+        result = await call_tool(
+            client, "list_object_types", {"group": "Thermal Zones and Surfaces"}, ListObjectTypesResult
+        )
         assert result.total_types > 0
-        # All returned items should be in the filtered group
         assert "Thermal Zones and Surfaces" in result.groups
 
-    def test_returns_error_for_bad_version(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "list_object_types")
+    async def test_returns_error_for_bad_version(self, client: object) -> None:
         with pytest.raises(ToolError):
-            tool.fn(version="1.0.0")
+            await call_tool(client, "list_object_types", {"version": "1.0.0"})
 
-    def test_truncated_when_over_limit(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "list_object_types")
-        result = tool.fn()
+    async def test_truncated_when_over_limit(self, client: object) -> None:
+        result = await call_tool(client, "list_object_types", model=ListObjectTypesResult)
         assert result.truncated is True
-        # Truncated response should have counts but no type lists
         for group_data in result.groups.values():
             assert group_data.count > 0
             assert group_data.types is None
 
-    def test_not_truncated_with_group_filter(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "list_object_types")
-        result = tool.fn(group="Thermal Zones and Surfaces")
-        # Group-filtered queries should return type names even if the group
-        # itself exceeds the default top-level discovery limit.
+    async def test_not_truncated_with_group_filter(self, client: object) -> None:
+        result = await call_tool(
+            client, "list_object_types", {"group": "Thermal Zones and Surfaces"}, ListObjectTypesResult
+        )
         assert result.truncated is False
         for group_data in result.groups.values():
             assert group_data.types is not None
 
-    def test_high_limit_is_capped(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "list_object_types")
-        # limit is hard-capped to 100 regardless of caller request
-        result = tool.fn(limit=10000)
+    async def test_high_limit_is_capped(self, client: object) -> None:
+        result = await call_tool(client, "list_object_types", {"limit": 10000}, ListObjectTypesResult)
         assert result.total_types > 100
         assert result.truncated is True
 
 
 class TestDescribeObjectType:
-    def test_zone(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "describe_object_type")
-        result = tool.fn(object_type="Zone")
+    async def test_zone(self, client: object) -> None:
+        result = await call_tool(client, "describe_object_type", {"object_type": "Zone"}, DescribeObjectTypeResult)
         assert result.object_type == "Zone"
         assert result.has_name is True
         assert len(result.fields) > 0
         field_names = [f.name for f in result.fields]
         assert "x_origin" in field_names
 
-    def test_unknown_type(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "describe_object_type")
+    async def test_unknown_type(self, client: object) -> None:
         with pytest.raises(ToolError):
-            tool.fn(object_type="NonExistent")
+            await call_tool(client, "describe_object_type", {"object_type": "NonExistent"})
 
 
 class TestSearchSchema:
-    def test_search_zone(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "search_schema")
-        result = tool.fn(query="Zone")
+    async def test_search_zone(self, client: object) -> None:
+        result = await call_tool(client, "search_schema", {"query": "Zone", "limit": 30}, SearchSchemaResult)
         assert result.count > 0
-        # "Zone" appears in many type names; verify we get zone-related results
-        assert any("Zone" in m.object_type for m in result.matches)
+        types = [m.object_type for m in result.matches]
+        assert "Zone" in types
 
-    def test_search_no_results(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "search_schema")
-        result = tool.fn(query="xyznonexistent123")
+    async def test_search_no_results(self, client: object) -> None:
+        result = await call_tool(client, "search_schema", {"query": "xyznonexistent123"}, SearchSchemaResult)
         assert result.count == 0
 
-    def test_limit_caps_results(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "search_schema")
-        result = tool.fn(query="Zone", limit=5)
+    async def test_limit_caps_results(self, client: object) -> None:
+        result = await call_tool(client, "search_schema", {"query": "Zone", "limit": 5}, SearchSchemaResult)
         assert result.count <= 5
         assert len(result.matches) <= 5
         assert result.limit == 5
 
-    def test_default_limit_in_response(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "search_schema")
-        result = tool.fn(query="Zone")
+    async def test_default_limit_in_response(self, client: object) -> None:
+        result = await call_tool(client, "search_schema", {"query": "Zone"}, SearchSchemaResult)
         assert result.limit == 10
 
 
 class TestGetAvailableReferences:
-    def test_without_model(self) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "get_available_references")
+    async def test_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
-            tool.fn(object_type="BuildingSurface:Detailed", field_name="zone_name")
+            await call_tool(
+                client,
+                "get_available_references",
+                {"object_type": "BuildingSurface:Detailed", "field_name": "zone_name"},
+            )
 
-    def test_with_model(self, state_with_zones: object) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "get_available_references")
-        result = tool.fn(object_type="BuildingSurface:Detailed", field_name="zone_name")
+    async def test_with_model(self, client: object, state_with_zones: object) -> None:
+        result = await call_tool(
+            client,
+            "get_available_references",
+            {"object_type": "BuildingSurface:Detailed", "field_name": "zone_name"},
+            AvailableReferencesResult,
+        )
         assert "Office" in result.available_names
         assert "Corridor" in result.available_names
 
-    def test_non_reference_field(self, state_with_model: object) -> None:
-        from idfkit_mcp.server import mcp
-
-        tool = get_tool_sync(mcp, "get_available_references")
+    async def test_non_reference_field(self, client: object, state_with_model: object) -> None:
         with pytest.raises(ToolError):
-            tool.fn(object_type="Zone", field_name="x_origin")
+            await call_tool(client, "get_available_references", {"object_type": "Zone", "field_name": "x_origin"})

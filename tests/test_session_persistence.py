@@ -9,13 +9,7 @@ import pytest
 from idfkit import new_document, write_idf
 
 from idfkit_mcp.state import get_state
-from tests.tool_helpers import get_tool_sync
-
-
-def _tool(name: str):
-    from idfkit_mcp.server import mcp
-
-    return get_tool_sync(mcp, name)
+from tests.conftest import call_tool
 
 
 @pytest.fixture()
@@ -273,15 +267,14 @@ class TestRequireAutoRestore:
 
 
 class TestNewModelNoSession:
-    def test_new_model_does_not_persist(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_new_model_does_not_persist(
+        self, client: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         session_file = tmp_path / "session.json"
         monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: session_file)
         state = get_state()
         state.persistence_enabled = True
         state._session_restored = False
 
-        # new_model sets file_path=None, so save_session writes no file_path
-        _tool("new_model").fn()
-        # Session might be written by a future save_model, but new_model
-        # doesn't call save_session itself, so no file should exist
+        await call_tool(client, "new_model")
         assert not session_file.exists()

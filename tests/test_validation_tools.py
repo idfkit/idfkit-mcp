@@ -5,42 +5,35 @@ from __future__ import annotations
 import pytest
 from fastmcp.exceptions import ToolError
 
+from idfkit_mcp.models import CheckReferencesResult, ValidationResult
 from idfkit_mcp.state import ServerState
-from tests.tool_helpers import get_tool_sync
-
-
-def _tool(name: str):
-    from idfkit_mcp.server import mcp
-
-    return get_tool_sync(mcp, name)
+from tests.conftest import call_tool
 
 
 class TestValidateModel:
-    def test_valid_model(self, state_with_model: ServerState) -> None:
+    async def test_valid_model(self, client: object, state_with_model: ServerState) -> None:
         state_with_model.document.add("Zone", "TestZone")  # type: ignore[union-attr]
-        result = _tool("validate_model").fn()
+        result = await call_tool(client, "validate_model", model=ValidationResult)
         assert result.is_valid is True
 
-    def test_with_zones(self, state_with_zones: ServerState) -> None:
-        result = _tool("validate_model").fn()
+    async def test_with_zones(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "validate_model", model=ValidationResult)
         assert result.is_valid is not None
 
-    def test_filter_by_type(self, state_with_zones: ServerState) -> None:
-        result = _tool("validate_model").fn(object_types=["Zone"])
+    async def test_filter_by_type(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "validate_model", {"object_types": ["Zone"]}, ValidationResult)
         assert result.is_valid is not None
 
-    def test_without_model(self) -> None:
+    async def test_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("validate_model").fn()
+            await call_tool(client, "validate_model")
 
 
 class TestCheckReferences:
-    def test_no_dangling(self, state_with_zones: ServerState) -> None:
-        result = _tool("check_references").fn()
-        # The surface references "Office" zone which exists
-        # construction_name is empty so it shouldn't count as dangling
+    async def test_no_dangling(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "check_references", model=CheckReferencesResult)
         assert result.dangling_count is not None
 
-    def test_without_model(self) -> None:
+    async def test_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
-            _tool("check_references").fn()
+            await call_tool(client, "check_references")
