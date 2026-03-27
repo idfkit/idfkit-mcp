@@ -103,6 +103,8 @@ idfkit-mcp --transport stdio
 idfkit-mcp --transport streamable-http --host 127.0.0.1 --port 8000
 ```
 
+`--transport http` is also accepted as a shorter alias.
+
 ### Environment Variable Configuration
 
 ```bash

@@ -11,6 +11,7 @@ Parameters:
 - `annual`: annual run
 - `energyplus_dir`: optional explicit EnergyPlus directory or executable path
 - `energyplus_version`: optional EnergyPlus version filter (for example `25.1.0`)
+- `output_directory`: optional output directory for simulation results
 
 Behavior:
 

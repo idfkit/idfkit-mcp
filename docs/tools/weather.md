@@ -12,7 +12,8 @@ Two query modes:
 Optional filters:
 
 - `country` (e.g., `USA`)
-- `limit`
+- `state` (e.g., `"MA"`, `"IL"`)
+- `limit` (default `5`)
 
 Returns station metadata, plus:
 

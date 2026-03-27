@@ -24,6 +24,7 @@ Performs explicit dangling-reference detection.
 Response:
 
 - `dangling_count`
+- `returned` (number of items in the response, may be less than total)
 - list of source object, field, and missing target
 
 ## Recommended Gate

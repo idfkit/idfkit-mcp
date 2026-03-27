@@ -4,8 +4,10 @@ This section is generated from source docstrings.
 
 ## Modules
 
+- [App](app.md)
 - [Server](server.md)
 - [State](state.md)
+- [Resources](resources.md)
 - [Tools: Schema](tools-schema.md)
 - [Tools: Read](tools-read.md)
 - [Tools: Write](tools-write.md)
