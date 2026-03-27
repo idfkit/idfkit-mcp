@@ -12,13 +12,13 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/concepts/server-state/">
+        <link rel="canonical" href="https://mcp.idfkit.com/docs/concepts/architecture/">
       
       
-        <link rel="prev" href="../architecture/">
+        <link rel="prev" href="../../tools/docs/">
       
       
-        <link rel="next" href="../error-semantics/">
+        <link rel="next" href="../server-state/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Server State - idfkit-mcp</title>
+        <title>System Architecture - idfkit-mcp</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#server-state" class="md-skip">
+        <a href="#system-architecture" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Server State
+              System Architecture
             
           </span>
         </div>
@@ -278,7 +278,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+        <a href="././" class="md-tabs__link">
           
   
   Concepts
@@ -1060,34 +1060,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Server Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -1107,7 +1079,7 @@
   <span class="md-ellipsis">
     
   
-    Server State
+    Server Architecture
   
 
     
@@ -1125,7 +1097,7 @@
   <span class="md-ellipsis">
     
   
-    Server State
+    Server Architecture
   
 
     
@@ -1152,10 +1124,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#state-fields" class="md-nav__link">
+  <a href="#high-level-overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        State Fields
+        High-Level Overview
       
     </span>
   </a>
@@ -1163,10 +1135,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#implications-for-agent-design" class="md-nav__link">
+  <a href="#layered-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Implications for Agent Design
+        Layered Architecture
       
     </span>
   </a>
@@ -1174,10 +1146,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#required-preconditions" class="md-nav__link">
+  <a href="#data-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Required Preconditions
+        Data Flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-data-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where data lives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-comes-from-the-internet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What comes from the internet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-requires-a-local-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What requires a local installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Management
       
     </span>
   </a>
@@ -1185,10 +1207,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#session-persistence" class="md-nav__link">
+  <a href="#tool-categories" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Session Persistence
+        Tool Categories
       
     </span>
   </a>
@@ -1196,21 +1218,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-resources" class="md-nav__link">
+  <a href="#typical-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MCP Resources
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#session-strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Session Strategy
+        Typical Workflow
       
     </span>
   </a>
@@ -1221,6 +1232,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../server-state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1878,10 +1917,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#state-fields" class="md-nav__link">
+  <a href="#high-level-overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        State Fields
+        High-Level Overview
       
     </span>
   </a>
@@ -1889,10 +1928,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#implications-for-agent-design" class="md-nav__link">
+  <a href="#layered-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Implications for Agent Design
+        Layered Architecture
       
     </span>
   </a>
@@ -1900,10 +1939,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#required-preconditions" class="md-nav__link">
+  <a href="#data-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Required Preconditions
+        Data Flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-data-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where data lives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-comes-from-the-internet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What comes from the internet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-requires-a-local-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What requires a local installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Management
       
     </span>
   </a>
@@ -1911,10 +2000,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#session-persistence" class="md-nav__link">
+  <a href="#tool-categories" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Session Persistence
+        Tool Categories
       
     </span>
   </a>
@@ -1922,21 +2011,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-resources" class="md-nav__link">
+  <a href="#typical-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MCP Resources
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#session-strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Session Strategy
+        Typical Workflow
       
     </span>
   </a>
@@ -1958,7 +2036,7 @@
                 
                   
   
-    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/concepts/server-state.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/concepts/architecture.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"/></svg>
     </a>
@@ -1967,103 +2045,283 @@
     
       
     
-    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/concepts/server-state.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/concepts/architecture.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0 8a5 5 0 0 1-5-5 5 5 0 0 1 5-5 5 5 0 0 1 5 5 5 5 0 0 1-5 5m0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5"/></svg>
     </a>
   
 
 
-<h1 id="server-state">Server State<a class="headerlink" href="#server-state" title="Permanent link">&para;</a></h1>
-<p><code>idfkit-mcp</code> keeps an in-memory state object across tool calls in a session.</p>
-<h2 id="state-fields">State Fields<a class="headerlink" href="#state-fields" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>document</code>: active EnergyPlus model</li>
-<li><code>schema</code>: active schema (usually from model)</li>
-<li><code>file_path</code>: current model path</li>
-<li><code>simulation_result</code>: last run result</li>
-<li><code>weather_file</code>: last downloaded EPW path</li>
-<li><code>docs_index</code>: cached documentation search index (loaded on first <code>search_docs</code> / <code>get_doc_section</code> call)</li>
-<li><code>docs_version</code>: version of the cached docs index</li>
-<li><code>docs_separator</code>: tokenization regex from the docs index config</li>
-</ul>
-<h2 id="implications-for-agent-design">Implications for Agent Design<a class="headerlink" href="#implications-for-agent-design" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Calls are stateful, not stateless RPC.</li>
-<li>Sequence matters.</li>
-<li>Loading a new model replaces prior context.</li>
-<li>Simulation and weather data are session-local.</li>
-</ul>
-<h2 id="required-preconditions">Required Preconditions<a class="headerlink" href="#required-preconditions" title="Permanent link">&para;</a></h2>
-<p>Some tools require prior state:</p>
-<ul>
-<li>model required: most read/write/validation/simulation tools</li>
-<li>simulation result required: <code>list_output_variables</code>, <code>query_timeseries</code>, <code>export_timeseries</code>, and the <code>idfkit://simulation/results</code> resource</li>
-</ul>
-<p>If missing, tools return descriptive errors such as:</p>
-<ul>
-<li><code>No model loaded. Use load_model or new_model first.</code></li>
-<li><code>No simulation results available. Use run_simulation first.</code></li>
-</ul>
-<h2 id="session-persistence">Session Persistence<a class="headerlink" href="#session-persistence" title="Permanent link">&para;</a></h2>
-<p>Server state is automatically persisted to a JSON file on disk so that clients that restart the server between turns (e.g. Codex) can resume transparently.</p>
-<p>Saved state:</p>
-<ul>
-<li><code>file_path</code> — reloaded via <code>load_model</code> on restore</li>
-<li><code>simulation_run_dir</code> — simulation result rebuilt from output directory</li>
-<li><code>weather_file</code> — weather file path restored</li>
-</ul>
-<p>Behavior:</p>
-<ul>
-<li>Auto-saved after <code>load_model</code>, <code>convert_osm_to_idf</code>, <code>save_model</code>, <code>run_simulation</code>, and <code>download_weather_file</code>.</li>
-<li>Auto-restored lazily on the first call that requires state (e.g. <code>require_model()</code>).</li>
-<li>Session file is keyed by working directory (SHA-256 hash) and stored in <code>~/.cache/idfkit/sessions/</code> (Linux) or <code>~/Library/Caches/idfkit/sessions/</code> (macOS).</li>
-<li>Use <code>clear_session</code> to delete the session file and reset all state.</li>
-</ul>
-<h2 id="mcp-resources">MCP Resources<a class="headerlink" href="#mcp-resources" title="Permanent link">&para;</a></h2>
-<p>In addition to tools, the server exposes read-only MCP resources that let clients subscribe to model state without making tool calls.</p>
+<h1 id="system-architecture">System Architecture<a class="headerlink" href="#system-architecture" title="Permanent link">&para;</a></h1>
+<p>This page describes how idfkit-mcp is structured, where data lives, and what crosses the network boundary.</p>
+<h2 id="high-level-overview">High-Level Overview<a class="headerlink" href="#high-level-overview" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>---
+config:
+  theme: 'neutral'
+---
+graph TB
+    subgraph Clients["MCP Clients"]
+        direction TB
+        Claude["Claude Desktop / Code"]
+        Cursor["Cursor / VS Code"]
+        Custom["Custom MCP Client"]
+    end
+
+    subgraph Server["idfkit-mcp Server"]
+        Transport["Transport Layer&lt;br/&gt;&lt;small&gt;stdio | SSE | streamable-http&lt;/small&gt;"]
+        Middleware["Middleware&lt;br/&gt;&lt;small&gt;logging, error handling, session binding&lt;/small&gt;"]
+        Tools["32 Tools&lt;br/&gt;&lt;small&gt;schema, read, write, validation,&lt;br/&gt;simulation, weather, docs&lt;/small&gt;"]
+        Resources["6 Resources&lt;br/&gt;&lt;small&gt;read-only model &amp; result state&lt;/small&gt;"]
+        Session["Session Manager&lt;br/&gt;&lt;small&gt;up to 20 concurrent sessions&lt;/small&gt;"]
+        State["ServerState&lt;br/&gt;&lt;small&gt;document, schema, sim results,&lt;br/&gt;weather file, docs index&lt;/small&gt;"]
+    end
+
+    subgraph Core["idfkit (core library)"]
+        Parser["IDF / epJSON Parser"]
+        Schema["Bundled Schemas&lt;br/&gt;&lt;small&gt;EnergyPlus 8.9 &amp;ndash; 25.2&lt;/small&gt;"]
+        Validator["Validator"]
+        SimRunner["Simulation Runner"]
+        WeatherIdx["Weather Station Index&lt;br/&gt;&lt;small&gt;16,000+ stations&lt;/small&gt;"]
+        Docs["Doc URL Builder"]
+    end
+
+    subgraph Local["Local Disk"]
+        ModelFiles["Model Files&lt;br/&gt;&lt;small&gt;IDF / epJSON&lt;/small&gt;"]
+        SimOutput["Simulation Output&lt;br/&gt;&lt;small&gt;SQL, HTML, CSV, error files&lt;/small&gt;"]
+        WeatherFiles["Weather Files&lt;br/&gt;&lt;small&gt;EPW / DDY&lt;/small&gt;"]
+        SessionCache["Session Cache&lt;br/&gt;&lt;small&gt;~/.cache/idfkit/sessions/&lt;/small&gt;"]
+        DocsCache["Docs Cache&lt;br/&gt;&lt;small&gt;~/.cache/idfkit/docs/&lt;/small&gt;"]
+    end
+
+    subgraph External["External (Internet)"]
+        DocsSite["docs.idfkit.com&lt;br/&gt;&lt;small&gt;search indexes&lt;/small&gt;"]
+        WeatherDL["EnergyPlus Weather&lt;br/&gt;&lt;small&gt;EPW downloads (climate.onebuilding.org)&lt;/small&gt;"]
+    end
+
+    Clients --&gt;|"JSON-RPC"| Transport
+    Transport --&gt; Middleware --&gt; Tools &amp; Resources
+    Tools --&gt; Session --&gt; State
+    Resources --&gt; State
+
+    State --&gt; Core
+    State --&gt;|"read / write"| Local
+    State -.-&gt;|"download &amp; cache"| DocsSite
+    Core -.-&gt;|"download"| WeatherDL
+    Core --&gt;|"read / write"| ModelFiles
+    SimRunner --&gt;|"write"| SimOutput</code></pre>
+<h2 id="layered-architecture">Layered Architecture<a class="headerlink" href="#layered-architecture" title="Permanent link">&para;</a></h2>
+<p>The server is organized in four layers:</p>
+<pre class="mermaid"><code>---
+config:
+  theme: 'neutral'
+---
+block
+    columns 1
+    block:transport["Transport"]
+        stdio["stdio&lt;br/&gt;(single client)"]
+        sse["SSE&lt;br/&gt;(HTTP streaming)"]
+        http["streamable-http&lt;br/&gt;(multi-session)"]
+    end
+    block:middleware["Middleware"]
+        mw["ToolExecutionMiddleware — logging, error mapping, session binding"]
+    end
+    block:tools_resources
+        schema_t["Schema&lt;br/&gt;(4 tools)"]
+        read_t["Read&lt;br/&gt;(7 tools)"]
+        write_t["Write&lt;br/&gt;(9 tools)"]
+        val_t["Validation&lt;br/&gt;(2 tools)"]
+        sim_t["Simulation&lt;br/&gt;(5 tools)"]
+        weather_t["Weather&lt;br/&gt;(2 tools)"]
+        docs_t["Docs&lt;br/&gt;(3 tools)"]
+        res["Resources&lt;br/&gt;(6)"]
+    end
+    block:state_layer["Session &amp; State"]
+        state["ServerState — per-session document, schema, results, caches"]
+    end
+    block:core["Core Library (idfkit)"]
+        idfkit["Parsing · Validation · Simulation · Weather · Schemas"]
+    end</code></pre>
+<h2 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
+<h3 id="where-data-lives">Where data lives<a class="headerlink" href="#where-data-lives" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>URI</th>
-<th>Description</th>
+<th>Data</th>
+<th>Location</th>
+<th>Lifetime</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>idfkit://model/summary</code></td>
-<td>Current model summary (version, zones, object counts)</td>
+<td>EnergyPlus schemas (IDD/epJSON)</td>
+<td>Bundled with idfkit</td>
+<td>Permanent (per idfkit version)</td>
 </tr>
 <tr>
-<td><code>idfkit://schema/{object_type}</code></td>
-<td>Full field schema for an object type</td>
+<td>Weather station index (16,000+ stations)</td>
+<td>Bundled with idfkit</td>
+<td>Permanent (per idfkit version)</td>
 </tr>
 <tr>
-<td><code>idfkit://model/objects/{object_type}/{name}</code></td>
-<td>All field values for a specific object</td>
+<td>Model files (IDF/epJSON)</td>
+<td>User's filesystem</td>
+<td>User-managed</td>
 </tr>
 <tr>
-<td><code>idfkit://model/references/{name}</code></td>
-<td>Inbound and outbound references for an object</td>
+<td>Weather files (EPW/DDY)</td>
+<td><code>~/.cache/idfkit/weather/</code> or user path</td>
+<td>Cached after download</td>
 </tr>
 <tr>
-<td><code>idfkit://docs/{object_type}</code></td>
-<td>Documentation URLs for an object type</td>
+<td>Session state</td>
+<td><code>~/.cache/idfkit/sessions/&lt;cwd-hash&gt;.json</code></td>
+<td>Persists across restarts; cleared with <code>clear_session</code></td>
 </tr>
 <tr>
-<td><code>idfkit://simulation/results</code></td>
-<td>Summary of the most recent simulation results</td>
+<td>Documentation search index</td>
+<td><code>~/.cache/idfkit/docs/v{X.Y}/search.json</code></td>
+<td>Cached 7 days after download</td>
+</tr>
+<tr>
+<td>Simulation output</td>
+<td>Temp directory or user-specified path</td>
+<td>Per-simulation run</td>
 </tr>
 </tbody>
 </table>
-<p>Resources return JSON (<code>application/json</code>) and are available whenever the corresponding state exists (e.g., <code>model/summary</code> requires a loaded model).</p>
-<h2 id="session-strategy">Session Strategy<a class="headerlink" href="#session-strategy" title="Permanent link">&para;</a></h2>
-<p>For deterministic automation:</p>
+<h3 id="what-comes-from-the-internet">What comes from the internet<a class="headerlink" href="#what-comes-from-the-internet" title="Permanent link">&para;</a></h3>
+<p>Only two things are fetched over the network:</p>
 <ol>
-<li>start with <code>load_model</code> or <code>new_model</code> (or let session persistence restore a previous model)</li>
-<li>complete one workflow at a time</li>
-<li>persist artifacts with <code>save_model</code></li>
+<li>
+<p><strong>Documentation search indexes</strong> from <code>docs.idfkit.com</code> -- full-text search data for EnergyPlus I/O Reference and Engineering Reference. Downloaded once per EnergyPlus version and cached locally for 7 days.</p>
+</li>
+<li>
+<p><strong>Weather files</strong> (EPW/DDY) from the EnergyPlus weather repository. Downloaded on demand via the <code>download_weather_file</code> tool and cached locally.</p>
+</li>
 </ol>
+<p>Everything else -- schemas, station indexes, parsing, validation -- is fully offline using data bundled with idfkit.</p>
+<h3 id="what-requires-a-local-installation">What requires a local installation<a class="headerlink" href="#what-requires-a-local-installation" title="Permanent link">&para;</a></h3>
+<p><strong>EnergyPlus</strong> must be installed locally to run simulations. The server discovers it by checking (in order):</p>
+<ol>
+<li><code>ENERGYPLUS_DIR</code> environment variable</li>
+<li>System <code>PATH</code></li>
+<li>Standard OS install locations (<code>/usr/local/EnergyPlus-*</code>, <code>C:\EnergyPlusV*</code>, etc.)</li>
+</ol>
+<p>Simulation is the only feature that requires EnergyPlus. All other tools (modeling, validation, schema exploration, weather search) work without it.</p>
+<h2 id="session-management">Session Management<a class="headerlink" href="#session-management" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant Client as MCP Client
+    participant Server as idfkit-mcp
+    participant Disk as Cache Directory
+
+    Client-&gt;&gt;Server: First tool call
+    Server-&gt;&gt;Disk: Check for persisted session&lt;br/&gt;(keyed by CWD hash)
+    alt Session file exists
+        Disk--&gt;&gt;Server: Restore file_path, sim_dir, weather_file
+        Server-&gt;&gt;Server: Lazy-load model &amp; results on access
+    end
+    Server--&gt;&gt;Client: Tool result
+
+    Note over Server: State mutating tools auto-persist
+
+    Client-&gt;&gt;Server: load_model("office.idf")
+    Server-&gt;&gt;Disk: Save session state
+    Client-&gt;&gt;Server: run_simulation(...)
+    Server-&gt;&gt;Disk: Save session state (+ sim_dir)
+
+    Client-&gt;&gt;Server: clear_session()
+    Server-&gt;&gt;Disk: Delete session file
+    Server-&gt;&gt;Server: Reset all in-memory state</code></pre>
+<p><strong>Transport behavior:</strong></p>
+<ul>
+<li><strong>stdio</strong> (Claude Desktop, Codex): Single session, persistence enabled. Session survives server restarts.</li>
+<li><strong>SSE / streamable-http</strong> (multi-client): Up to 20 concurrent sessions keyed by <code>mcp-session-id</code> header. LRU eviction when full. Persistence disabled (sessions are ephemeral).</li>
+</ul>
+<h2 id="tool-categories">Tool Categories<a class="headerlink" href="#tool-categories" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>graph LR
+    subgraph Schema["Schema Exploration"]
+        A1[list_object_types]
+        A2[describe_object_type]
+        A3[search_schema]
+        A4[get_available_references]
+    end
+
+    subgraph Read["Model Read"]
+        B1[load_model]
+        B2[convert_osm_to_idf]
+        B3[list_objects]
+        B4[search_objects]
+        B5[get_object]
+        B6[get_model_summary]
+        B7[get_references]
+    end
+
+    subgraph Write["Model Write"]
+        C1[new_model]
+        C2[add_object / batch_add_objects]
+        C3[update_object]
+        C4[remove_object]
+        C5[rename_object / duplicate_object]
+        C6[save_model]
+        C7[clear_session]
+    end
+
+    subgraph Validation
+        D1[validate_model]
+        D2[check_references]
+    end
+
+    subgraph Simulation
+        E1[run_simulation]
+        E2[list_output_variables]
+        E3[query_timeseries]
+        E4[export_timeseries]
+    end
+
+    subgraph Weather
+        F1[search_weather_stations]
+        F2[download_weather_file]
+    end
+
+    subgraph Documentation
+        G1[search_docs]
+        G2[get_doc_section]
+        G3[lookup_documentation]
+    end</code></pre>
+<h2 id="typical-workflow">Typical Workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant Agent as AI Agent
+    participant MCP as idfkit-mcp
+    participant EP as EnergyPlus
+
+    Agent-&gt;&gt;MCP: describe_object_type("Zone")
+    MCP--&gt;&gt;Agent: Field schema with constraints
+
+    Agent-&gt;&gt;MCP: new_model(version="24.2")
+    MCP--&gt;&gt;Agent: Empty model created
+
+    Agent-&gt;&gt;MCP: batch_add_objects([...zones, walls, windows...])
+    MCP--&gt;&gt;Agent: Objects added
+
+    Agent-&gt;&gt;MCP: validate_model()
+    MCP--&gt;&gt;Agent: Validation results (errors, warnings)
+
+    Agent-&gt;&gt;MCP: search_weather_stations("Chicago")
+    MCP--&gt;&gt;Agent: Matching stations with WMO IDs
+
+    Agent-&gt;&gt;MCP: download_weather_file("725300")
+    MCP--&gt;&gt;Agent: EPW path
+
+    Agent-&gt;&gt;MCP: run_simulation(design_day=true)
+    MCP-&gt;&gt;EP: Execute simulation
+    EP--&gt;&gt;MCP: Results (SQL, HTML, errors)
+    MCP--&gt;&gt;Agent: Success + runtime + error summary
+
+    Agent-&gt;&gt;MCP: query_timeseries("Zone Mean Air Temperature")
+    MCP--&gt;&gt;Agent: Hourly temperature data
+
+    Agent-&gt;&gt;MCP: save_model("office.idf")
+    MCP--&gt;&gt;Agent: File saved</code></pre>
 
 
 
@@ -2101,7 +2359,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../architecture/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Server Architecture">
+          <a href="../../tools/docs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Documentation Tools">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2111,20 +2369,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Server Architecture
+                Documentation Tools
               </div>
             </div>
           </a>
         
         
           
-          <a href="../error-semantics/" class="md-footer__link md-footer__link--next" aria-label="Next: Error Semantics">
+          <a href="../server-state/" class="md-footer__link md-footer__link--next" aria-label="Next: Server State">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Error Semantics
+                Server State
               </div>
             </div>
             <div class="md-footer__button md-icon">
