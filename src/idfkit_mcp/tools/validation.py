@@ -9,7 +9,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from idfkit_mcp.app import mcp
-from idfkit_mcp.models import CheckReferencesResult, ValidationResult
+from idfkit_mcp.models import ValidationResult
 from idfkit_mcp.serializers import serialize_validation_result
 from idfkit_mcp.state import get_state
 
@@ -23,7 +23,7 @@ def validate_model(
     object_types: Annotated[list[str] | None, Field(description="Only validate specific types (default: all).")] = None,
     check_references: Annotated[bool, Field(description="Check reference integrity.")] = True,
 ) -> ValidationResult:
-    """Validate the model against the EnergyPlus schema. Run after modifications."""
+    """Validate against schema and check references. Run after modifications."""
     from idfkit import validate_document
 
     state = get_state()
@@ -38,39 +38,3 @@ def validate_model(
         data.get("warning_count", 0),
     )
     return ValidationResult.model_validate(data)
-
-
-@mcp.tool(annotations=_READ_ONLY)
-def check_references(
-    limit: Annotated[int, Field(description="Maximum dangling references to return.")] = 100,
-) -> CheckReferencesResult:
-    """Find references that point to non-existent objects."""
-    state = get_state()
-    doc = state.require_model()
-
-    valid_names: set[str] = set()
-    for collection in doc.collections.values():
-        for obj in collection:
-            if obj.name:
-                valid_names.add(obj.name.upper())
-
-    dangling: list[dict[str, str]] = []
-    for obj, field_name, target in doc.references.get_dangling_references(valid_names):
-        dangling.append({
-            "source_type": obj.obj_type,
-            "source_name": obj.name,
-            "field": field_name,
-            "missing_target": target,
-        })
-
-    total = len(dangling)
-    if total:
-        logger.warning("Found %d dangling reference(s)", total)
-    else:
-        logger.info("No dangling references found")
-    limited = dangling[:limit]
-    return CheckReferencesResult.model_validate({
-        "dangling_count": total,
-        "returned": len(limited),
-        "dangling_references": limited,
-    })

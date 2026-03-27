@@ -9,7 +9,7 @@ Use this instruction style in Claude projects:
 ```text
 When editing EnergyPlus models, use idfkit-mcp tools instead of raw file edits.
 Before writing: describe_object_type.
-After writing: validate_model and check_references.
+After writing: validate_model.
 For simulation: ensure weather source first, then run_simulation.
 ```
 
@@ -18,7 +18,7 @@ For simulation: ensure weather source first, then run_simulation.
 1. **Intent framing**
    - "Target: reduce heating loads in perimeter zones"
 2. **Model context pull**
-   - `get_model_summary`
+   - Read `idfkit://model/summary` resource
    - `list_objects(object_type="Zone")`
 3. **Schema-first changes**
    - `describe_object_type` for edited types
@@ -26,11 +26,10 @@ For simulation: ensure weather source first, then run_simulation.
    - `batch_add_objects` and `update_object`
 5. **Safety checks**
    - `validate_model`
-   - `check_references`
 6. **Simulation + analysis**
    - `download_weather_file`
    - `run_simulation`
-   - `get_results_summary`
+   - Read `idfkit://simulation/results` resource
 
 ## Failure Recovery Pattern
 

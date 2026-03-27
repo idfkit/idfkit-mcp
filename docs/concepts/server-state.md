@@ -25,7 +25,7 @@
 Some tools require prior state:
 
 - model required: most read/write/validation/simulation tools
-- simulation result required: `get_results_summary`, `list_output_variables`
+- simulation result required: `list_output_variables`, `query_timeseries`, `export_timeseries`, and the `idfkit://simulation/results` resource
 
 If missing, tools return descriptive errors such as:
 
@@ -58,6 +58,8 @@ In addition to tools, the server exposes read-only MCP resources that let client
 | `idfkit://model/summary` | Current model summary (version, zones, object counts) |
 | `idfkit://schema/{object_type}` | Full field schema for an object type |
 | `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object |
+| `idfkit://model/references/{name}` | Inbound and outbound references for an object |
+| `idfkit://docs/{object_type}` | Documentation URLs for an object type |
 | `idfkit://simulation/results` | Summary of the most recent simulation results |
 
 Resources return JSON (`application/json`) and are available whenever the corresponding state exists (e.g., `model/summary` requires a loaded model).

@@ -1,27 +1,20 @@
 # Documentation Tools
 
-Documentation tools provide URL lookup, full-text search, and section retrieval for the EnergyPlus documentation hosted on [docs.idfkit.com](https://docs.idfkit.com).
+Documentation tools provide full-text search and section retrieval for the EnergyPlus documentation hosted on [docs.idfkit.com](https://docs.idfkit.com).
 
-## `lookup_documentation`
+## Documentation URLs Resource
 
-Get documentation URLs for an EnergyPlus object type.
-
-Returns links to:
+Documentation URLs for any object type are available via the `idfkit://docs/{object_type}` MCP resource. It returns links to:
 
 - I/O Reference page (with anchor to the specific object)
 - Engineering Reference landing page
 - Search page
 
-Parameters:
-
-- `object_type` (required): e.g., `"Zone"`, `"Material"`
-- `version`: EnergyPlus version as `"X.Y.Z"` (default: latest or loaded model version)
-
 ## `search_docs`
 
 Full-text search across the EnergyPlus documentation index (~20,000 sections).
 
-Results include HTML-stripped text truncated to 250 characters. Use `get_doc_section` to read full content.
+Results include HTML-stripped text truncated to 150 characters. Use `get_doc_section` to read full content.
 
 Parameters:
 
@@ -57,9 +50,7 @@ Returns the text with HTML stripped, truncated to `max_length` characters.
 
 ### Find docs for an object type
 
-```
-lookup_documentation(object_type="Zone")
-```
+Read the `idfkit://docs/Zone` resource.
 
 ### Search and read documentation
 

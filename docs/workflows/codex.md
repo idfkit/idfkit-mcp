@@ -7,7 +7,7 @@ This pattern optimizes `idfkit-mcp` usage for Codex-style autonomous coding sess
 ```text
 Use idfkit-mcp to edit and simulate EnergyPlus models.
 Always:
-1) call get_model_summary first,
+1) read the idfkit://model/summary resource first,
 2) call describe_object_type before create/update,
 3) validate after each edit batch,
 4) prefer batch_add_objects over repeated add_object calls,
@@ -20,14 +20,14 @@ Always:
 2. Fetch type contract (`describe_object_type`)
 3. Create objects in bulk (`batch_add_objects`)
 4. Wire references (`get_available_references`, `update_object`)
-5. Run guards (`validate_model`, `check_references`)
+5. Run guards (`validate_model`)
 6. Persist (`save_model`)
 
 ## Simulation Loop
 
 1. Ensure weather (`download_weather_file` or explicit `weather_file`)
 2. Run (`run_simulation`)
-3. Inspect (`get_results_summary`)
+3. Inspect (`idfkit://simulation/results` resource)
 4. Query variables (`list_output_variables`)
 5. Iterate from schema + validation findings
 
@@ -44,6 +44,6 @@ Always:
 
 ```text
 Load ./models/baseline.idf, add 4 perimeter zones, update references,
-run validation and dangling reference checks, save to ./models/revised.idf,
+run validation, save to ./models/revised.idf,
 then run design-day simulation and summarize severe/fatal messages.
 ```

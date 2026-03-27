@@ -22,6 +22,8 @@ Returns detailed field metadata:
 - reference lists
 - documentation URL (link to the object's page on docs.idfkit.com)
 
+Detailed field notes are omitted from the response to reduce token overhead. Use `search_docs` or `get_doc_section` for in-depth field documentation.
+
 Use this before any `add_object` or `update_object` call.
 
 ## `search_schema`

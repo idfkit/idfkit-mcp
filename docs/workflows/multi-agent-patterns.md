@@ -20,13 +20,12 @@ Best practice:
 - Author agent:
   - performs `add_object`, `batch_add_objects`, `update_object`
 - Verifier agent:
-  - runs `validate_model`, `check_references`
+  - runs `validate_model(check_references=true)`
   - blocks merge if invalid
 
 Gate criteria:
 
 - `is_valid == true`
-- `dangling_count == 0`
 
 ## Pattern 3: Modeling + Simulation Split
 

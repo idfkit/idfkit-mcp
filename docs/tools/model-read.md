@@ -32,18 +32,6 @@ Behavior:
 - Writes IDF, then loads it with the same state semantics as `load_model`.
 - Returns conversion metadata plus standard model summary fields.
 
-## `get_model_summary`
-
-Returns:
-
-- version
-- file path
-- object totals
-- zone count
-- grouped type counts
-
-Use this as your first inspection call.
-
 ## `list_objects`
 
 Returns brief serialized objects for one `object_type`.
@@ -53,21 +41,18 @@ Parameters:
 - `object_type` (required)
 - `limit` (default `50`)
 
-## `get_object`
-
-Fetches a specific object by type and name.
-
 ## `search_objects`
 
 Case-insensitive substring search across names and string fields.
 
 Optional `object_type` filter narrows results.
 
-## `get_references`
+## MCP Resources for Model Inspection
 
-Returns both:
+The following read-only data is available via MCP resources instead of tool calls:
 
-- objects that reference the target name
-- names referenced by the target object
-
-Use this before renaming or removing high-connectivity objects.
+| Resource URI | Purpose |
+|---|---|
+| `idfkit://model/summary` | Model version, zones, object counts (replaces `get_model_summary`) |
+| `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object (replaces `get_object`) |
+| `idfkit://model/references/{name}` | Inbound and outbound references (replaces `get_references`) |

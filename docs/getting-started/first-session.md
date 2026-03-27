@@ -79,12 +79,7 @@ Create a model, add zones, validate, save, reload, and inspect.
 }
 ```
 
-```json
-{
-  "tool": "get_model_summary",
-  "arguments": {}
-}
-```
+Read the `idfkit://model/summary` resource to verify the model was loaded correctly.
 
 ## Expected Outcome
 
@@ -96,4 +91,4 @@ Create a model, add zones, validate, save, reload, and inspect.
 
 1. `download_weather_file(query="Chicago")`
 2. `run_simulation(annual=true)`
-3. `get_results_summary()`
+3. Read the `idfkit://simulation/results` resource

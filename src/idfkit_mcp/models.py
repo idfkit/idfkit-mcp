@@ -27,7 +27,6 @@ class FieldDescriptionModel(BaseModel):
     maximum: float | None = None
     exclusive_minimum: float | None = None
     exclusive_maximum: float | None = None
-    note: str | None = None
     is_reference: bool | None = None
     object_list: list[str] | None = None
 
@@ -41,7 +40,6 @@ class ValidationErrorModel(BaseModel):
     field: str | None
     message: str
     code: str | None
-    doc_url: str | None = None
 
 
 class ObjectBrief(BaseModel):

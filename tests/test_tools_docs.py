@@ -14,41 +14,30 @@ from fastmcp.exceptions import ToolError
 from idfkit_mcp.models import (
     DescribeObjectTypeResult,
     GetDocSectionResult,
-    LookupDocumentationResult,
     SearchDocsResult,
     SearchSchemaResult,
 )
 from idfkit_mcp.state import ServerState, get_state
-from tests.conftest import call_tool
+from tests.conftest import call_tool, read_resource_json
 
 
-class TestLookupDocumentation:
+class TestDocumentationUrlsResource:
     async def test_known_object_type(self, client: object) -> None:
-        result = await call_tool(client, "lookup_documentation", {"object_type": "Zone"}, LookupDocumentationResult)
-        assert result.object_type == "Zone"
-        assert result.io_reference_url is not None
-        assert "docs.idfkit.com" in result.io_reference_url
-        assert "#zone" in result.io_reference_url
-        assert result.engineering_reference_url is not None
-        assert result.search_url is not None
-        assert result.version  # should be set
+        payload = await read_resource_json(client, "idfkit://docs/Zone")
+        assert payload["object_type"] == "Zone"
+        assert payload["io_reference_url"] is not None
+        assert "docs.idfkit.com" in payload["io_reference_url"]
+        assert "#zone" in payload["io_reference_url"]
+        assert payload["engineering_reference_url"] is not None
+        assert payload["search_url"] is not None
+        assert payload["version"]
 
     async def test_unknown_object_type(self, client: object) -> None:
-        result = await call_tool(
-            client, "lookup_documentation", {"object_type": "NotARealType"}, LookupDocumentationResult
-        )
-        assert result.object_type == "NotARealType"
-        assert result.io_reference_url is None
-        assert result.engineering_reference_url is not None
-        assert result.search_url is not None
-
-    async def test_with_explicit_version(self, client: object) -> None:
-        result = await call_tool(
-            client, "lookup_documentation", {"object_type": "Zone", "version": "24.1.0"}, LookupDocumentationResult
-        )
-        assert result.version == "24.1.0"
-        assert result.io_reference_url is not None
-        assert "/v24.1/" in result.io_reference_url
+        payload = await read_resource_json(client, "idfkit://docs/NotARealType")
+        assert payload["object_type"] == "NotARealType"
+        assert payload["io_reference_url"] is None
+        assert payload["engineering_reference_url"] is not None
+        assert payload["search_url"] is not None
 
 
 class TestDescribeObjectTypeDocUrl:
@@ -115,8 +104,8 @@ class TestSearchDocs:
     async def test_text_truncated(self, client: object) -> None:
         result = await call_tool(client, "search_docs", {"query": "zone", "limit": 20}, SearchDocsResult)
         for hit in result.results:
-            # Truncated text should be at most 500 chars + "..."
-            assert len(hit.text) <= 503
+            # Truncated text should be at most _MAX_SEARCH_TEXT chars + "..."
+            assert len(hit.text) <= 153
 
     async def test_index_cached(self, client: object) -> None:
         await call_tool(client, "search_docs", {"query": "zone"}, SearchDocsResult)

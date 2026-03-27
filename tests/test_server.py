@@ -23,11 +23,8 @@ class TestCreateServer:
             "search_schema",
             "load_model",
             "convert_osm_to_idf",
-            "get_model_summary",
             "list_objects",
-            "get_object",
             "search_objects",
-            "get_references",
             "get_available_references",
             "new_model",
             "add_object",
@@ -38,9 +35,7 @@ class TestCreateServer:
             "duplicate_object",
             "save_model",
             "validate_model",
-            "check_references",
             "run_simulation",
-            "get_results_summary",
             "list_output_variables",
             "query_timeseries",
             "export_timeseries",
@@ -57,6 +52,8 @@ class TestCreateServer:
         assert "idfkit://simulation/results" in resource_uris
         assert "idfkit://schema/{object_type}" in template_uris
         assert "idfkit://model/objects/{object_type}/{name}" in template_uris
+        assert "idfkit://docs/{object_type}" in template_uris
+        assert "idfkit://model/references/{name}" in template_uris
 
     async def test_reads_model_summary_resource(self, client: Client, state_with_zones: object) -> None:
         payload = await read_resource_json(client, "idfkit://model/summary")
@@ -176,7 +173,7 @@ class TestToolSchemas:
     async def test_structured_output_tools_have_output_schema(self, tools: list[Any]) -> None:
         """Tools with Pydantic return types must have an output schema defined."""
         # Tools that return dynamic dicts (no Pydantic model) — intentionally unstructured.
-        unstructured_tools = {"add_object", "update_object", "duplicate_object", "get_object"}
+        unstructured_tools = {"add_object", "update_object", "duplicate_object"}
 
         for tool in tools:
             if tool.name in unstructured_tools:

@@ -33,12 +33,6 @@ class TestRunSimulation:
             mock_find.assert_called_once_with(path=None, version=None)
 
 
-class TestGetResultsSummary:
-    async def test_no_simulation(self, client: object) -> None:
-        with pytest.raises(ToolError):
-            await call_tool(client, "get_results_summary")
-
-
 class TestListOutputVariables:
     async def test_no_simulation(self, client: object) -> None:
         with pytest.raises(ToolError):
