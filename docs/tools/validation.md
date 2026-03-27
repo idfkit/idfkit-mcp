@@ -15,23 +15,16 @@ Response highlights:
 
 - `is_valid`
 - counts by severity
-- structured error and warning entries (each may include a `doc_url` linking to the relevant object's documentation on docs.idfkit.com)
+- structured error and warning entries
 
-## `check_references`
-
-Performs explicit dangling-reference detection.
-
-Response:
-
-- `dangling_count`
-- `returned` (number of items in the response, may be less than total)
-- list of source object, field, and missing target
+Use the `idfkit://docs/{object_type}` resource to look up documentation for object types that appear in validation errors.
 
 ## Recommended Gate
 
-Run both tools after any mutation batch:
+Run after any mutation batch:
 
-1. `validate_model(check_references=true)`
-2. `check_references()`
+```
+validate_model(check_references=true)
+```
 
-Only proceed to simulation when both are clean.
+Only proceed to simulation when validation is clean.

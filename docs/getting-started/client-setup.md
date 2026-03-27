@@ -233,7 +233,7 @@ Recommended working directory:
 
 Recommended prompt behavior:
 
-- Start sessions with `get_model_summary`.
+- Start sessions by reading the `idfkit://model/summary` resource.
 - Call `describe_object_type` before object creation or updates.
 - Validate after every edit batch.
 

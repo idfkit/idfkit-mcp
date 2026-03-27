@@ -24,7 +24,7 @@
 
 ### Symptom
 
-`check_references` returns `dangling_count > 0`.
+`validate_model(check_references=true)` reports dangling references.
 
 ### Fix pattern
 
@@ -56,5 +56,5 @@
 
 ### Fix
 
-- Inspect `get_results_summary` errors first.
+- Inspect the `idfkit://simulation/results` resource errors first.
 - correct model issues and rerun simulation.

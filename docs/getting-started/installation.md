@@ -147,7 +147,7 @@ Use an MCP client and call:
 
 1. `list_object_types()`
 2. `new_model()`
-3. `get_model_summary()`
+3. Read the `idfkit://model/summary` resource
 
 If all three succeed, your server is healthy.
 

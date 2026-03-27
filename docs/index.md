@@ -56,12 +56,12 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 
 ## Recommended Tool Order
 
-1. `get_model_summary` or `new_model`
+1. `load_model` or `new_model` (or read `idfkit://model/summary` resource)
 2. `describe_object_type` before edits
 3. `batch_add_objects` for bulk creation
 4. `validate_model` after modifications
 5. `run_simulation`
-6. `get_results_summary` and `list_output_variables`
+6. Read `idfkit://simulation/results` resource, then `list_output_variables`
 
 ## Quick Workflow Example
 
@@ -72,7 +72,7 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 4) validate_model(check_references=True)
 5) download_weather_file(query="Chicago")
 6) run_simulation(annual=True)
-7) get_results_summary()
+7) read idfkit://simulation/results resource
 ```
 
 ---

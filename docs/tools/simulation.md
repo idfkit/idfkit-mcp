@@ -20,16 +20,6 @@ Behavior:
 - Returns the resolved EnergyPlus executable, install directory, and version.
 - Stores result in server state for follow-up tools.
 
-## `get_results_summary`
-
-Summarizes the latest simulation result:
-
-- success flag
-- runtime
-- fatal/severe/warning counts
-- severe/fatal messages
-- first batch of HTML report tables when available
-
 ## `list_output_variables`
 
 Lists available variables/meters from run output metadata.
@@ -65,11 +55,15 @@ Parameters:
 - `environment`: filter by environment type (`"sizing"` or `"annual"`)
 - `output_path`: output CSV file path (defaults to a file in the simulation output directory)
 
+## Simulation Results Resource
+
+Simulation results are available via the `idfkit://simulation/results` MCP resource, which returns success flag, runtime, error counts and messages, and HTML report tables.
+
 ## Simulation Workflow
 
 1. `download_weather_file` or provide `weather_file`
 2. `run_simulation`
-3. `get_results_summary`
+3. Read `idfkit://simulation/results` resource
 4. `list_output_variables(search=...)`
 5. `query_timeseries(variable_name=...)` or `export_timeseries(...)`
 
