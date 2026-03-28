@@ -14,5 +14,6 @@ This section is generated from source docstrings.
 - [Tools: Validation](tools-validation.md)
 - [Tools: Simulation](tools-simulation.md)
 - [Tools: Geometry](tools-geometry.md)
+- [Tools: Schedule](tools-schedule.md)
 - [Tools: Weather](tools-weather.md)
 - [Tools: Documentation](tools-docs.md)

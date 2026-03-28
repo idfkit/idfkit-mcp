@@ -32,6 +32,20 @@ _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentH
 ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPeriod", "Annual"]
 
 
+def _open_sql_result(result: Any) -> Any:
+    """Open a fresh SQLResult handle for the simulation output.
+
+    Avoid reusing ``SimulationResult.sql`` across tool calls because that
+    cached sqlite connection can be bound to a different worker thread.
+    """
+    from idfkit.simulation.parsers.sql import SQLResult
+
+    sql_path = result.sql_path
+    if sql_path is None:
+        raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
+    return SQLResult(sql_path)
+
+
 def _build_output_variable_result(
     entries: list[dict[str, str | None]],
     *,
@@ -230,8 +244,7 @@ def list_output_variables(
         total = len(variables.variables) + len(variables.meters)
         return _build_output_variable_result(serialized, total_available=total, limit=limit)
 
-    sql = result.sql
-    if sql is not None:
+    with _open_sql_result(result) as sql:
         regex = re.compile(search, re.IGNORECASE) if search else None
         all_items = sql.list_variables()
         serialized = [
@@ -244,11 +257,7 @@ def list_output_variables(
             for item in all_items
             if regex is None or regex.search(item.name)
         ]
-        return _build_output_variable_result(serialized, total_available=len(all_items), limit=limit)
-
-    raise ToolError(
-        "No output variable index available. The simulation may not have produced .rdd/.mdd files or SQL output."
-    )
+    return _build_output_variable_result(serialized, total_available=len(all_items), limit=limit)
 
 
 @mcp.tool(annotations=_READ_ONLY)
@@ -265,17 +274,14 @@ def query_timeseries(
     state = get_state()
     result = state.require_simulation_result()
 
-    sql = result.sql
-    if sql is None:
-        raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
-
     try:
-        ts = sql.get_timeseries(
-            variable_name=variable_name,
-            key_value=key_value,
-            frequency=frequency,
-            environment=environment,
-        )
+        with _open_sql_result(result) as sql:
+            ts = sql.get_timeseries(
+                variable_name=variable_name,
+                key_value=key_value,
+                frequency=frequency,
+                environment=environment,
+            )
     except OperationalError as e:
         raise ToolError(
             f"SQL query failed: {e}. "
@@ -322,17 +328,14 @@ def export_timeseries(
     state = get_state()
     result = state.require_simulation_result()
 
-    sql = result.sql
-    if sql is None:
-        raise ToolError("No SQL output available. The simulation may not have produced an .sql file.")
-
     try:
-        ts = sql.get_timeseries(
-            variable_name=variable_name,
-            key_value=key_value,
-            frequency=frequency,
-            environment=environment,
-        )
+        with _open_sql_result(result) as sql:
+            ts = sql.get_timeseries(
+                variable_name=variable_name,
+                key_value=key_value,
+                frequency=frequency,
+                environment=environment,
+            )
     except OperationalError as e:
         raise ToolError(
             f"SQL query failed: {e}. "

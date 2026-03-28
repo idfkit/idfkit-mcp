@@ -32,7 +32,7 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 
 <div class="feature-chips" markdown>
 
-<span class="chip">:material-tools: 27 MCP tools</span>
+<span class="chip">:material-tools: 28 MCP tools</span>
 <span class="chip">:material-shape-outline: Schema-aware edits</span>
 <span class="chip">:material-shield-check-outline: Validation + references</span>
 <span class="chip">:material-weather-cloudy: Weather search + download</span>

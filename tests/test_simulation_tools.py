@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from fastmcp.exceptions import ToolError
+from idfkit.simulation.result import SimulationResult
 
 from idfkit_mcp.models import ListOutputVariablesResult
 from idfkit_mcp.state import ServerState
@@ -58,14 +62,90 @@ class TestListOutputVariables:
         assert result.returned == 1
         assert result.variables[0].name == "Site Outdoor Air Drybulb Temperature"
 
+    async def test_sql_fallback_ignores_thread_bound_cached_sql(
+        self, client: object, state_with_sql_only_simulation: ServerState, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _raise_thread_error(_self: SimulationResult) -> object:
+            msg = "SQLite objects created in a thread can only be used in that same thread"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(SimulationResult, "sql", property(_raise_thread_error))
+
+        result = await call_tool(client, "list_output_variables", model=ListOutputVariablesResult)
+        assert result.total_available == 3
+        assert result.returned == 3
+
 
 class TestQueryTimeseries:
     async def test_no_simulation(self, client: object) -> None:
         with pytest.raises(ToolError):
             await call_tool(client, "query_timeseries", {"variable_name": "Zone Mean Air Temperature"})
 
+    async def test_meter_with_null_key_value(
+        self, client: object, state_with_sql_only_simulation: ServerState, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_ts = SimpleNamespace(
+            variable_name="DistrictCooling:Facility",
+            key_value=None,
+            units="J",
+            frequency="Hourly",
+            timestamps=[datetime(2013, 1, 1, 1, 0, 0)],
+            values=[123.0],
+        )
+        monkeypatch.setattr("idfkit.simulation.parsers.sql.SQLResult.get_timeseries", lambda *_args, **_kwargs: fake_ts)
+
+        result = await call_tool(
+            client,
+            "query_timeseries",
+            {
+                "variable_name": "DistrictCooling:Facility",
+                "key_value": "*",
+                "frequency": "Hourly",
+                "environment": "annual",
+            },
+        )
+
+        assert result["variable_name"] == "DistrictCooling:Facility"
+        assert result["key_value"] is None
+        assert result["returned"] == 1
+
 
 class TestExportTimeseries:
     async def test_no_simulation(self, client: object) -> None:
         with pytest.raises(ToolError):
             await call_tool(client, "export_timeseries", {"variable_name": "Zone Mean Air Temperature"})
+
+    async def test_meter_with_null_key_value(
+        self,
+        client: object,
+        state_with_sql_only_simulation: ServerState,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        fake_ts = SimpleNamespace(
+            variable_name="DistrictCooling:Facility",
+            key_value=None,
+            units="J",
+            frequency="Hourly",
+            timestamps=[datetime(2013, 1, 1, 1, 0, 0)],
+            values=[456.0],
+        )
+        monkeypatch.setattr("idfkit.simulation.parsers.sql.SQLResult.get_timeseries", lambda *_args, **_kwargs: fake_ts)
+
+        output_path = tmp_path / "district_cooling.csv"
+        result = await call_tool(
+            client,
+            "export_timeseries",
+            {
+                "variable_name": "DistrictCooling:Facility",
+                "key_value": "*",
+                "frequency": "Hourly",
+                "environment": "annual",
+                "output_path": str(output_path),
+            },
+        )
+
+        assert result["variable_name"] == "DistrictCooling:Facility"
+        assert result["key_value"] is None
+        assert result["rows"] == 1
+        assert output_path.exists()
