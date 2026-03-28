@@ -319,8 +319,8 @@ function getValueRange(schedule) {
 
 // ── Rendering ───────────────────────────────────────────────────────
 
-// Axes: Y = hours (24 rows), X = days/day-of-week (cols).
-// Data is [day][hour], so we draw data[col][row] at position (col, row).
+// Axes: Y = hours (24 rows, 00 at bottom, 23 at top), X = days/day-of-week.
+// Data is [day][hour], drawn at position (col=day, row=flipped hour).
 let heatmapRect = { x: 0, y: 0, w: 0, h: 0, numDays: 0, numHours: 24 };
 
 function render() {
@@ -355,12 +355,12 @@ function render() {
 
   heatmapRect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0, numDays, numHours };
 
-  // Draw cells: col = day index, row = hour
+  // Draw cells: col = day, row = hour (Y-axis flipped: hour 0 at bottom)
   for (let day = 0; day < numDays; day++) {
     for (let hour = 0; hour < numHours; hour++) {
       const val = data[day][hour];
       ctx.fillStyle = valueToColor(val, min, max);
-      ctx.fillRect(x0 + day * cellW, y0 + hour * cellH, cellW + 0.5, cellH + 0.5);
+      ctx.fillRect(x0 + day * cellW, y1 - (hour + 1) * cellH, cellW + 0.5, cellH + 0.5);
     }
   }
 
@@ -392,7 +392,7 @@ function render() {
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 0.5;
   for (let hour = 1; hour < numHours; hour++) {
-    const y = y0 + hour * cellH;
+    const y = y1 - hour * cellH;
     ctx.beginPath();
     ctx.moveTo(x0, y);
     ctx.lineTo(x1, y);
@@ -411,7 +411,7 @@ function render() {
   ctx.textBaseline = 'middle';
   const hourStep = cellH < 14 ? 3 : cellH < 22 ? 2 : 1;
   for (let hour = 0; hour < numHours; hour += hourStep) {
-    ctx.fillText(String(hour).padStart(2, '0'), x0 - 6, y0 + hour * cellH + cellH / 2);
+    ctx.fillText(String(hour).padStart(2, '0'), x0 - 6, y1 - (hour + 1) * cellH + cellH / 2);
   }
 
   // X-axis labels (days or months)
@@ -470,8 +470,8 @@ function onPointerMove(event) {
   const cellW = w / numDays;
   const cellH = h / numHours;
 
-  const day = Math.floor((mx - x) / cellW);   // column = day
-  const hour = Math.floor((my - y) / cellH);   // row = hour
+  const day = Math.floor((mx - x) / cellW);            // column = day
+  const hour = Math.floor((y + h - my) / cellH);       // row = hour (flipped: bottom=0)
 
   const strip = document.getElementById('time-strip');
 
@@ -523,7 +523,7 @@ function onPointerMove(event) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(x + day * cellW + 0.5, y + hour * cellH + 0.5, cellW - 1, cellH - 1);
+  ctx.strokeRect(x + day * cellW + 0.5, y + h - (hour + 1) * cellH + 0.5, cellW - 1, cellH - 1);
 }
 
 canvas.addEventListener('pointermove', onPointerMove);
