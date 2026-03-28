@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from fastmcp.exceptions import ToolError
+from idfkit.simulation.result import SimulationResult
 
 from idfkit_mcp.models import ListOutputVariablesResult
 from idfkit_mcp.state import ServerState
@@ -60,6 +61,19 @@ class TestListOutputVariables:
         assert result.total_available == 3
         assert result.returned == 1
         assert result.variables[0].name == "Site Outdoor Air Drybulb Temperature"
+
+    async def test_sql_fallback_ignores_thread_bound_cached_sql(
+        self, client: object, state_with_sql_only_simulation: ServerState, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _raise_thread_error(_self: SimulationResult) -> object:
+            msg = "SQLite objects created in a thread can only be used in that same thread"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(SimulationResult, "sql", property(_raise_thread_error))
+
+        result = await call_tool(client, "list_output_variables", model=ListOutputVariablesResult)
+        assert result.total_available == 3
+        assert result.returned == 3
 
 
 class TestQueryTimeseries:
