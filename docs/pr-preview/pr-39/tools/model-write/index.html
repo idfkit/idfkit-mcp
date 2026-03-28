@@ -2122,6 +2122,8 @@
 </ul>
 <h2 id="update_object"><code>update_object</code><a class="headerlink" href="#update_object" title="Permanent link">&para;</a></h2>
 <p>Updates specific fields on an existing object.</p>
+<p>Setting the <code>name</code> field is not allowed — use <code>rename_object</code> instead so
+that all references are updated automatically.</p>
 <p>Tip: only send changed fields to keep edits auditable.</p>
 <h2 id="remove_object"><code>remove_object</code><a class="headerlink" href="#remove_object" title="Permanent link">&para;</a></h2>
 <p>By default, guarded against deleting referenced objects.</p>
@@ -2139,7 +2141,10 @@
 <li><code>idf</code> (default)</li>
 <li><code>epjson</code></li>
 </ul>
-<p>If <code>file_path</code> is omitted, uses the original loaded path when available.</p>
+<p>If <code>file_path</code> is omitted, re-saves to the original loaded path (always
+allowed).  When an explicit <code>file_path</code> is given, the path must resolve
+within the current working directory and will not overwrite an existing
+file unless <code>overwrite=True</code> is set.</p>
 <h2 id="clear_session"><code>clear_session</code><a class="headerlink" href="#clear_session" title="Permanent link">&para;</a></h2>
 <p>Clears the persisted session file and resets all in-memory state (model, schema, simulation result, weather file).</p>
 <p>Use this to start fresh when restored state is stale or unwanted. Does not delete any model or simulation files on disk.</p>
