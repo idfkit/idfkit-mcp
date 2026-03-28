@@ -178,6 +178,9 @@ def search_objects(
     """Find objects by name or field value substring match."""
     limit = min(limit, 100)
 
+    if not query.strip():
+        return SearchObjectsResult.model_validate({"query": query, "count": 0, "matches": []})
+
     state = get_state()
     doc = state.require_model()
     query_lower = query.lower()

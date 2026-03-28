@@ -118,6 +118,9 @@ def search_schema(
 
     limit = min(limit, 30)
 
+    if not query.strip():
+        return SearchSchemaResult.model_validate({"query": query, "count": 0, "limit": limit, "matches": []})
+
     state = get_state()
     ver_tuple = _parse_version(version)
     schema = state.get_or_load_schema(ver_tuple)
