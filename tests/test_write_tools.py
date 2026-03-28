@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
-
 import pytest
 from fastmcp.exceptions import ToolError
 
@@ -85,6 +83,12 @@ class TestUpdateObject:
         )
         assert "x_origin" in result
 
+    async def test_update_blocks_name_field(self, client: object, state_with_zones: ServerState) -> None:
+        with pytest.raises(ToolError, match="rename_object"):
+            await call_tool(
+                client, "update_object", {"object_type": "Zone", "name": "Office", "fields": {"name": "Hacked"}}
+            )
+
     async def test_update_nonexistent(self, client: object, state_with_model: ServerState) -> None:
         with pytest.raises(ToolError):
             await call_tool(
@@ -156,20 +160,47 @@ class TestRemoveObjectSingleton:
 
 
 class TestSaveModel:
-    async def test_save_idf(self, client: object, state_with_zones: ServerState) -> None:
-        with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
-            result = await call_tool(client, "save_model", {"file_path": f.name}, SaveModelResult)
+    async def test_save_idf(
+        self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = await call_tool(client, "save_model", {"file_path": "output.idf"}, SaveModelResult)
         assert result.status == "saved"
         assert result.format == "idf"
 
-    async def test_save_epjson(self, client: object, state_with_zones: ServerState) -> None:
-        with tempfile.NamedTemporaryFile(suffix=".epjson", delete=False) as f:
-            result = await call_tool(
-                client, "save_model", {"file_path": f.name, "output_format": "epjson"}, SaveModelResult
-            )
+    async def test_save_epjson(
+        self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        result = await call_tool(
+            client, "save_model", {"file_path": "output.epjson", "output_format": "epjson"}, SaveModelResult
+        )
         assert result.status == "saved"
         assert result.format == "epjson"
 
     async def test_save_no_path(self, client: object, state_with_model: ServerState) -> None:
         with pytest.raises(ToolError):
             await call_tool(client, "save_model")
+
+    async def test_save_rejects_path_outside_cwd(
+        self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ToolError, match="working directory"):
+            await call_tool(client, "save_model", {"file_path": "/tmp/evil.idf"})  # noqa: S108
+
+    async def test_save_blocks_overwrite_by_default(
+        self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        await call_tool(client, "save_model", {"file_path": "model.idf"})
+        with pytest.raises(ToolError, match="already exists"):
+            await call_tool(client, "save_model", {"file_path": "model.idf"})
+
+    async def test_save_overwrite_true(
+        self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        await call_tool(client, "save_model", {"file_path": "model.idf"})
+        result = await call_tool(client, "save_model", {"file_path": "model.idf", "overwrite": True}, SaveModelResult)
+        assert result.status == "saved"
