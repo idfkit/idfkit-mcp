@@ -20,8 +20,8 @@ graph TB
     subgraph Server["idfkit-mcp Server"]
         Transport["Transport Layer<br/><small>stdio | SSE | streamable-http</small>"]
         Middleware["Middleware<br/><small>logging, error handling, session binding</small>"]
-        Tools["27 Tools<br/><small>schema, read, write, validation,<br/>simulation, geometry, weather, docs</small>"]
-        Resources["7 Resources<br/><small>read-only model & result state</small>"]
+        Tools["28 Tools<br/><small>schema, read, write, validation,<br/>simulation, geometry, schedules, weather, docs</small>"]
+        Resources["8 Resources<br/><small>read-only model & result state</small>"]
         Session["Session Manager<br/><small>up to 20 concurrent sessions</small>"]
         State["ServerState<br/><small>document, schema, sim results,<br/>weather file, docs index</small>"]
     end
@@ -88,8 +88,9 @@ block
         sim_t["Simulation (4)"]
         weather_t["Weather (2)"]
         geom_t["Geometry (1)"]
+        sched_t["Schedules (1)"]
         docs_t["Docs (2)"]
-        res["Resources (7)"]
+        res["Resources (8)"]
     end
     block:state_layer["Session & State"]
         state["ServerState — per-session document, schema, results, caches"]
@@ -212,6 +213,10 @@ graph LR
 
     subgraph Geometry
         H1[view_geometry]
+    end
+
+    subgraph Schedules
+        I1[view_schedules]
     end
 
     subgraph Documentation

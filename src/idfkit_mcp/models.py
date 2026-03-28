@@ -420,7 +420,7 @@ class QueryTimeseriesResult(BaseModel):
     """Response from ``query_timeseries``."""
 
     variable_name: str
-    key_value: str
+    key_value: str | None = None
     units: str
     frequency: str
     total_points: int
@@ -433,7 +433,7 @@ class ExportTimeseriesResult(BaseModel):
 
     path: str
     variable_name: str
-    key_value: str
+    key_value: str | None = None
     units: str
     frequency: str
     rows: int
