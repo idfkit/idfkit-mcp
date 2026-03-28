@@ -201,7 +201,12 @@ def save_model(
     output_format: Annotated[Literal["idf", "epjson"], Field(description="Output format.")] = "idf",
     overwrite: Annotated[bool, Field(description="Overwrite existing output.")] = False,
 ) -> SaveModelResult:
-    """Write model to disk as IDF or epJSON."""
+    """Write model to disk as IDF or epJSON.
+
+    When *file_path* is omitted the model is re-saved to its original load
+    path.  An explicit *file_path* must resolve within the working directory
+    and will not overwrite an existing file unless *overwrite* is ``True``.
+    """
     from pathlib import Path
 
     from idfkit import write_epjson, write_idf

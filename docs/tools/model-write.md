@@ -30,6 +30,9 @@ Why it matters:
 
 Updates specific fields on an existing object.
 
+Setting the `name` field is not allowed — use `rename_object` instead so
+that all references are updated automatically.
+
 Tip: only send changed fields to keep edits auditable.
 
 ## `remove_object`
@@ -54,7 +57,10 @@ Writes current model to disk as:
 - `idf` (default)
 - `epjson`
 
-If `file_path` is omitted, uses the original loaded path when available.
+If `file_path` is omitted, re-saves to the original loaded path (always
+allowed).  When an explicit `file_path` is given, the path must resolve
+within the current working directory and will not overwrite an existing
+file unless `overwrite=True` is set.
 
 ## `clear_session`
 

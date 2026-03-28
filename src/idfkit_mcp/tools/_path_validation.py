@@ -20,7 +20,6 @@ def validate_output_path(path: Path, *, label: str = "Output path") -> Path:
         resolved.relative_to(cwd)
     except ValueError:
         raise ToolError(
-            f"{label} must be within the working directory ({cwd}). "
-            f"Got: '{path}'. Use a relative path instead."
+            f"{label} must be within the working directory ({cwd}). Got: '{path}'. Use a relative path instead."
         ) from None
     return resolved

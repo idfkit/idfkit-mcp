@@ -26,7 +26,7 @@ Lists available variables/meters from run output metadata.
 
 Parameters:
 
-- `search`: optional regex
+- `search`: optional case-insensitive substring filter
 - `limit`: default `50`
 
 ## `query_timeseries`
@@ -53,7 +53,7 @@ Parameters:
 - `key_value`: zone or surface name, `"*"` for environment-level variables (default `"*"`)
 - `frequency`: reporting frequency filter
 - `environment`: filter by environment type (`"sizing"` or `"annual"`)
-- `output_path`: output CSV file path (defaults to a file in the simulation output directory)
+- `output_path`: output CSV file path (defaults to a file in the simulation output directory). Must resolve within the current working directory
 
 ## Simulation Results Resource
 
