@@ -2101,7 +2101,7 @@
 <li><code>key_value</code>: zone or surface name, <code>"*"</code> for environment-level variables (default <code>"*"</code>)</li>
 <li><code>frequency</code>: reporting frequency filter</li>
 <li><code>environment</code>: filter by environment type (<code>"sizing"</code> or <code>"annual"</code>)</li>
-<li><code>output_path</code>: output CSV file path (defaults to a file in the simulation output directory). Must resolve within the current working directory</li>
+<li><code>output_path</code>: output CSV file path (defaults to a file in the simulation output directory). Must resolve within an allowed output directory (see <code>IDFKIT_MCP_OUTPUT_DIRS</code>)</li>
 </ul>
 <h2 id="simulation-results-resource">Simulation Results Resource<a class="headerlink" href="#simulation-results-resource" title="Permanent link">&para;</a></h2>
 <p>Simulation results are available via the <code>idfkit://simulation/results</code> MCP resource, which returns success flag, runtime, error counts and messages, and HTML report tables.</p>

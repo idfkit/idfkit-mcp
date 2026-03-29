@@ -2141,8 +2141,11 @@
 </ul>
 <p>If <code>file_path</code> is omitted, re-saves to the original loaded path (always
 allowed).  When an explicit <code>file_path</code> is given, the path must resolve
-within the current working directory and will not overwrite an existing
+within an allowed output directory and will not overwrite an existing
 file unless <code>overwrite=True</code> is set.</p>
+<p>By default the only allowed output directory is CWD.  Set
+<code>IDFKIT_MCP_OUTPUT_DIRS</code> (colon-separated paths, semicolon on Windows)
+to allow additional directories such as mounted volumes.</p>
 <h2 id="clear_session"><code>clear_session</code><a class="headerlink" href="#clear_session" title="Permanent link">&para;</a></h2>
 <p>Clears the persisted session file and resets all in-memory state (model, schema, simulation result, weather file).</p>
 <p>Use this to start fresh when restored state is stale or unwanted. Does not delete any model or simulation files on disk.</p>
