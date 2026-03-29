@@ -217,7 +217,7 @@ def get_results_summary() -> GetResultsSummaryResult:
 
 @mcp.tool(annotations=_READ_ONLY)
 def list_output_variables(
-    search: Annotated[str | None, Field(description="Case-insensitive substring filter on name.")] = None,
+    search: Annotated[str | None, Field(description="Regex filter on name (case-insensitive).")] = None,
     limit: Annotated[int, Field(description="Max results.")] = 50,
 ) -> ListOutputVariablesResult:
     """List output variables and meters from last simulation."""
@@ -245,7 +245,13 @@ def list_output_variables(
         return _build_output_variable_result(serialized, total_available=total, limit=limit)
 
     with _open_sql_result(result) as sql:
-        search_lower = search.lower() if search else None
+        if search:
+            try:
+                regex = re.compile(search, re.IGNORECASE)
+            except re.error as exc:
+                raise ToolError(f"Invalid regex pattern: {exc}") from None
+        else:
+            regex = None
         all_items = sql.list_variables()
         serialized = [
             {
@@ -255,7 +261,7 @@ def list_output_variables(
                 "type": "meter" if item.is_meter else "variable",
             }
             for item in all_items
-            if search_lower is None or search_lower in item.name.lower()
+            if regex is None or regex.search(item.name)
         ]
     return _build_output_variable_result(serialized, total_available=len(all_items), limit=limit)
 

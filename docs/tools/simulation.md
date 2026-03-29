@@ -26,7 +26,7 @@ Lists available variables/meters from run output metadata.
 
 Parameters:
 
-- `search`: optional case-insensitive substring filter
+- `search`: optional regex filter (case-insensitive); invalid patterns are rejected
 - `limit`: default `50`
 
 ## `query_timeseries`

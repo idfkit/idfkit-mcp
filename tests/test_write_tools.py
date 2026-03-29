@@ -83,11 +83,15 @@ class TestUpdateObject:
         )
         assert "x_origin" in result
 
-    async def test_update_blocks_name_field(self, client: object, state_with_zones: ServerState) -> None:
-        with pytest.raises(ToolError, match="rename_object"):
-            await call_tool(
-                client, "update_object", {"object_type": "Zone", "name": "Office", "fields": {"name": "Hacked"}}
-            )
+    async def test_update_name_cascades_references(self, client: object, state_with_zones: ServerState) -> None:
+        """Renaming via update_object cascades references (idfkit handles this)."""
+        result = await call_tool(
+            client, "update_object", {"object_type": "Zone", "name": "Office", "fields": {"name": "MainOffice"}}
+        )
+        assert result["name"] == "MainOffice"
+        # Surface reference should have been updated automatically
+        surface = await call_tool(client, "list_objects", {"object_type": "BuildingSurface:Detailed"})
+        assert surface["objects"][0]["zone_name"] == "MainOffice"
 
     async def test_update_nonexistent(self, client: object, state_with_model: ServerState) -> None:
         with pytest.raises(ToolError):

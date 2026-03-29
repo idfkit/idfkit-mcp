@@ -115,12 +115,6 @@ def update_object(
     doc = state.require_model()
     obj = resolve_object(doc, object_type, name)
 
-    if "name" in fields:
-        raise ToolError(
-            "Cannot set 'name' via update_object — it would rename the object without "
-            "updating references. Use rename_object instead."
-        )
-
     for field_name, value in fields.items():
         setattr(obj, field_name, value)
 

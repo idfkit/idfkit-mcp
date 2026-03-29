@@ -30,9 +30,6 @@ Why it matters:
 
 Updates specific fields on an existing object.
 
-Setting the `name` field is not allowed — use `rename_object` instead so
-that all references are updated automatically.
-
 Tip: only send changed fields to keep edits auditable.
 
 ## `remove_object`

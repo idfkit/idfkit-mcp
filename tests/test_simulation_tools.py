@@ -62,10 +62,20 @@ class TestListOutputVariables:
         assert result.returned == 1
         assert result.variables[0].name == "Site Outdoor Air Drybulb Temperature"
 
-    async def test_search_redos_pattern_safe(self, client: object, state_with_sql_only_simulation: ServerState) -> None:
-        """A regex-catastrophic pattern is treated as a literal substring and returns instantly."""
-        result = await call_tool(client, "list_output_variables", {"search": "(a+)+$"}, ListOutputVariablesResult)
-        assert result.returned == 0
+    async def test_search_invalid_regex_raises(
+        self, client: object, state_with_sql_only_simulation: ServerState
+    ) -> None:
+        """An invalid regex pattern is rejected with a clear error."""
+        with pytest.raises(ToolError, match="Invalid regex"):
+            await call_tool(client, "list_output_variables", {"search": "[invalid"})
+
+    async def test_search_regex_works(self, client: object, state_with_sql_only_simulation: ServerState) -> None:
+        """Valid regex patterns still work as expected."""
+        result = await call_tool(
+            client, "list_output_variables", {"search": "^Zone.*Temperature$"}, ListOutputVariablesResult
+        )
+        assert result.returned == 1
+        assert result.variables[0].name == "Zone Mean Air Temperature"
 
     async def test_sql_fallback_ignores_thread_bound_cached_sql(
         self, client: object, state_with_sql_only_simulation: ServerState, monkeypatch: pytest.MonkeyPatch
