@@ -53,7 +53,7 @@ Parameters:
 - `key_value`: zone or surface name, `"*"` for environment-level variables (default `"*"`)
 - `frequency`: reporting frequency filter
 - `environment`: filter by environment type (`"sizing"` or `"annual"`)
-- `output_path`: output CSV file path (defaults to a file in the simulation output directory). Must resolve within the current working directory
+- `output_path`: output CSV file path (defaults to a file in the simulation output directory). Must resolve within an allowed output directory (see `IDFKIT_MCP_OUTPUT_DIRS`)
 
 ## Simulation Results Resource
 

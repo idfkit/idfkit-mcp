@@ -173,7 +173,7 @@ class TestExportTimeseries:
         tmp_path: Path,
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        with pytest.raises(ToolError, match="working directory"):
+        with pytest.raises(ToolError, match="allowed directory"):
             await call_tool(
                 client,
                 "export_timeseries",

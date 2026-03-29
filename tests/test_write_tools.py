@@ -186,12 +186,22 @@ class TestSaveModel:
         with pytest.raises(ToolError):
             await call_tool(client, "save_model")
 
-    async def test_save_rejects_path_outside_cwd(
+    async def test_save_rejects_path_outside_allowed_dirs(
         self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
     ) -> None:
         monkeypatch.chdir(tmp_path)
-        with pytest.raises(ToolError, match="working directory"):
+        with pytest.raises(ToolError, match="allowed directory"):
             await call_tool(client, "save_model", {"file_path": "/tmp/evil.idf"})  # noqa: S108
+
+    async def test_save_allows_configured_output_dir(
+        self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object
+    ) -> None:
+        output_dir = tmp_path / "mounted_volume"
+        output_dir.mkdir()
+        monkeypatch.setenv("IDFKIT_MCP_OUTPUT_DIRS", str(output_dir))
+        result = await call_tool(client, "save_model", {"file_path": str(output_dir / "model.idf")}, SaveModelResult)
+        assert result.status == "saved"
+        assert (output_dir / "model.idf").exists()
 
     async def test_save_blocks_overwrite_by_default(
         self, client: object, state_with_zones: ServerState, tmp_path: object, monkeypatch: object

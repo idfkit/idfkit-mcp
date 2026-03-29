@@ -56,8 +56,12 @@ Writes current model to disk as:
 
 If `file_path` is omitted, re-saves to the original loaded path (always
 allowed).  When an explicit `file_path` is given, the path must resolve
-within the current working directory and will not overwrite an existing
+within an allowed output directory and will not overwrite an existing
 file unless `overwrite=True` is set.
+
+By default the only allowed output directory is CWD.  Set
+`IDFKIT_MCP_OUTPUT_DIRS` (colon-separated paths, semicolon on Windows)
+to allow additional directories such as mounted volumes.
 
 ## `clear_session`
 

@@ -198,8 +198,9 @@ def save_model(
     """Write model to disk as IDF or epJSON.
 
     When *file_path* is omitted the model is re-saved to its original load
-    path.  An explicit *file_path* must resolve within the working directory
-    and will not overwrite an existing file unless *overwrite* is ``True``.
+    path.  An explicit *file_path* must resolve within an allowed output
+    directory (``IDFKIT_MCP_OUTPUT_DIRS``, defaults to CWD) and will not
+    overwrite an existing file unless *overwrite* is ``True``.
     """
     from pathlib import Path
 
