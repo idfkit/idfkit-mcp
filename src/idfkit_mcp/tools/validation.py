@@ -23,7 +23,20 @@ def validate_model(
     object_types: Annotated[list[str] | None, Field(description="Only validate specific types (default: all).")] = None,
     check_references: Annotated[bool, Field(description="Check reference integrity.")] = True,
 ) -> ValidationResult:
-    """Validate against schema and check references. Run after modifications."""
+    """Schema-based pre-flight check — run after any model modifications.
+
+    Checks field types, numeric ranges, required fields, enum values, singleton
+    constraints (codes E001-E010, W001-W003), and cross-object reference integrity.
+
+    IMPORTANT: This is schema validation only. It does not run EnergyPlus and cannot
+    detect runtime faults such as convergence failures, zone connectivity issues, or
+    autosizing problems. A model that passes this check may still fail to simulate.
+
+    Preconditions: model loaded (load_model or new_model).
+    Side effects: none — read-only.
+    Next steps: check_model_integrity for domain-level QA, then save_model,
+    then run_simulation for definitive runtime validation.
+    """
     from idfkit import validate_document
 
     state = get_state()
