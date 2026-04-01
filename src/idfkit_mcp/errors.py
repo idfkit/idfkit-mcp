@@ -16,6 +16,18 @@ logger = logging.getLogger("idfkit_mcp")
 _PAYLOAD_MAX_LEN = 500
 """Maximum characters for truncated payload logging."""
 
+_MUTATION_TOOLS: frozenset[str] = frozenset({
+    "add_object",
+    "batch_add_objects",
+    "update_object",
+    "remove_object",
+    "rename_object",
+    "duplicate_object",
+    "new_model",
+    "load_model",
+    "convert_osm_to_idf",
+})
+
 
 # ---------------------------------------------------------------------------
 # Logging helpers
@@ -49,6 +61,24 @@ def _summarize_tool_result(result: object) -> str:
     if content is not None:
         return _summarize_result(content)
     return _summarize_result(result)
+
+
+def _mutation_summary(tool_name: str, result: object) -> str | None:
+    """Extract a short human-readable summary from a mutation tool result."""
+    structured = getattr(result, "structured_content", None)
+    if structured is None:
+        return None
+    # Prefer named fields that identify what changed
+    for key in ("name", "new_name", "file_path", "version", "status"):
+        val = getattr(structured, key, None)
+        if val:
+            return f"{tool_name}: {key}={val}"
+    # Fall back to success/error counts for batch operations
+    success = getattr(structured, "success", None)
+    errors = getattr(structured, "errors", None)
+    if success is not None and errors is not None:
+        return f"{tool_name}: {success} succeeded, {errors} failed"
+    return None
 
 
 class ToolExecutionMiddleware(Middleware):
@@ -107,6 +137,13 @@ class ToolExecutionMiddleware(Middleware):
                 elapsed_ms,
                 _summarize_tool_result(result),
             )
+
+            if tool_name in _MUTATION_TOOLS:
+                from idfkit_mcp.state import get_state
+
+                summary = _mutation_summary(tool_name, result)
+                get_state().record_change(tool_name, summary)
+
             return result
 
 

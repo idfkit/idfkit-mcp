@@ -41,6 +41,9 @@ _sessions: OrderedDict[str, ServerState] = OrderedDict()
 _MAX_SESSIONS = 20
 """Maximum number of concurrent sessions before LRU eviction."""
 
+MAX_CHANGE_LOG = 100
+"""Maximum change-log entries retained per session."""
+
 
 def _cache_base_dir() -> Path:
     """Return the platform-appropriate idfkit cache base directory."""
@@ -161,6 +164,9 @@ class ServerState:
     # Informational — set when the session is created via get_state()
     session_id: str = dataclasses.field(default="stdio", repr=False)
 
+    # In-memory mutation log (not persisted; reset on clear_session)
+    change_log: list[dict[str, str]] = dataclasses.field(default_factory=lambda: [])
+
     def require_model(self) -> IDFDocument:
         """Return the active document, auto-restoring from session if needed."""
         if self.document is None:
@@ -263,6 +269,20 @@ class ServerState:
         which matches the latest version on docs.idfkit.com.
         """
         return f"{LATEST_VERSION[0]}.{LATEST_VERSION[1]}"
+
+    def record_change(self, tool_name: str, summary: str | None = None) -> None:
+        """Append a mutation entry to the in-memory change log, capped at MAX_CHANGE_LOG."""
+        from datetime import datetime, timezone
+
+        entry: dict[str, str] = {
+            "tool": tool_name,
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+        if summary is not None:
+            entry["summary"] = summary
+        self.change_log.append(entry)
+        if len(self.change_log) > MAX_CHANGE_LOG:
+            self.change_log = self.change_log[-MAX_CHANGE_LOG:]
 
     def require_simulation_result(self) -> SimulationResult:
         """Return the simulation result, auto-restoring from session if needed."""
@@ -382,6 +402,7 @@ class ServerState:
         self.file_path = None
         self.simulation_result = None
         self.weather_file = None
+        self.change_log.clear()
         self._session_restored = False
 
 

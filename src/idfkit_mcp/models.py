@@ -484,3 +484,23 @@ class ClearSessionResult(BaseModel):
     """Response from ``clear_session``."""
 
     status: str
+
+
+# ---------------------------------------------------------------------------
+# Change log tool responses
+# ---------------------------------------------------------------------------
+
+
+class ChangeLogEntry(BaseModel):
+    """A single recorded model mutation."""
+
+    tool: str
+    at: str  # ISO 8601 timestamp
+    summary: str | None = None
+
+
+class GetChangeLogResult(BaseModel):
+    """Response from ``get_change_log``."""
+
+    entry_count: int
+    entries: list[ChangeLogEntry]
