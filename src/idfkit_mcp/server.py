@@ -11,6 +11,7 @@ from idfkit_mcp import resources as _resources
 from idfkit_mcp.app import mcp
 from idfkit_mcp.tools import docs as _docs
 from idfkit_mcp.tools import geometry as _geometry
+from idfkit_mcp.tools import integrity as _integrity
 from idfkit_mcp.tools import read as _read
 from idfkit_mcp.tools import schedule as _schedule
 from idfkit_mcp.tools import schema as _schema
@@ -19,7 +20,7 @@ from idfkit_mcp.tools import validation as _validation
 from idfkit_mcp.tools import weather as _weather
 from idfkit_mcp.tools import write as _write
 
-_ = (_resources, _docs, _geometry, _read, _schedule, _schema, _simulation, _validation, _weather, _write)
+_ = (_resources, _docs, _geometry, _integrity, _read, _schedule, _schema, _simulation, _validation, _weather, _write)
 
 Transport = Literal["stdio", "sse", "http"]
 _TRANSPORT_CHOICES = ("stdio", "sse", "http", "streamable-http")
