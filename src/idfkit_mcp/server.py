@@ -19,8 +19,22 @@ from idfkit_mcp.tools import simulation as _simulation
 from idfkit_mcp.tools import validation as _validation
 from idfkit_mcp.tools import weather as _weather
 from idfkit_mcp.tools import write as _write
+from idfkit_mcp.tools import zone_properties as _zone_properties
 
-_ = (_resources, _docs, _geometry, _integrity, _read, _schedule, _schema, _simulation, _validation, _weather, _write)
+_ = (
+    _resources,
+    _docs,
+    _geometry,
+    _integrity,
+    _read,
+    _schedule,
+    _schema,
+    _simulation,
+    _validation,
+    _weather,
+    _write,
+    _zone_properties,
+)
 
 Transport = Literal["stdio", "sse", "http"]
 _TRANSPORT_CHOICES = ("stdio", "sse", "http", "streamable-http")
