@@ -17,8 +17,10 @@ from idfkit_mcp.models import (
     ExportTimeseriesResult,
     GetResultsSummaryResult,
     ListOutputVariablesResult,
+    QuerySimulationTableResult,
     QueryTimeseriesResult,
     RunSimulationResult,
+    TabularRow,
 )
 from idfkit_mcp.state import get_state
 
@@ -310,6 +312,97 @@ def query_timeseries(
         "returned": len(rows),
         "data": rows,
     })
+
+
+@mcp.tool(annotations=_READ_ONLY)
+def query_simulation_table(
+    report_name: Annotated[
+        str,
+        Field(
+            description="Report name (e.g. 'AnnualBuildingUtilityPerformanceSummary', 'SystemSummary'). Use list_simulation_reports to discover available names."
+        ),
+    ],
+    table_name: Annotated[
+        str | None,
+        Field(
+            description="Table name within the report (e.g. 'End Uses', 'Time Setpoint Not Met'). Omit to return all tables in the report."
+        ),
+    ] = None,
+    row_name: Annotated[str | None, Field(description="Filter to a specific row label.")] = None,
+    column_name: Annotated[str | None, Field(description="Filter to a specific column label.")] = None,
+) -> QuerySimulationTableResult:
+    """Query tabular report data from the last simulation's SQL output.
+
+    Use this for deeper analysis beyond the structured diagnostics in
+    ``idfkit://simulation/results``. Tabular data covers every EnergyPlus
+    summary report: energy use, envelope, HVAC sizing, comfort, and more.
+
+    Omit ``table_name`` to retrieve all tables within a report at once.
+    To discover available report names call ``list_simulation_reports`` first.
+    Common report names:
+      - ``AnnualBuildingUtilityPerformanceSummary`` — site/source energy, end uses, EUI
+      - ``SystemSummary`` — unmet hours, HVAC sizing
+      - ``EnvelopeSummary`` — U-values, areas, orientations
+      - ``EquipmentSummary`` — HVAC component sizing
+      - ``ZoneComponentLoadSummary`` — peak heating/cooling loads by zone
+      - ``LightingSummary`` — lighting power density
+
+    Preconditions: simulation completed with SQL output available (``sql_available: true``
+    in ``idfkit://simulation/results``).
+    Side effects: none — read-only.
+    """
+    state = get_state()
+    result = state.require_simulation_result()
+
+    with _open_sql_result(result) as sql:
+        raw_rows = sql.get_tabular_data(
+            report_name=report_name,
+            table_name=table_name,
+            row_name=row_name,
+            column_name=column_name,
+        )
+
+    if not raw_rows:
+        msg = f"No data found for report '{report_name}'"
+        if table_name is not None:
+            msg += f", table '{table_name}'"
+        msg += ". Use list_simulation_reports to see available reports."
+        raise ToolError(msg)
+
+    rows = [
+        TabularRow(
+            report_name=r.report_name,
+            report_for=r.report_for,
+            table_name=r.table_name,
+            row_name=r.row_name,
+            column_name=r.column_name,
+            units=r.units or "",
+            value=r.value.strip(),
+        )
+        for r in raw_rows
+    ]
+    return QuerySimulationTableResult(
+        report_name=report_name,
+        table_name=table_name,
+        row_count=len(rows),
+        rows=rows,
+    )
+
+
+@mcp.tool(annotations=_READ_ONLY)
+def list_simulation_reports() -> list[str]:
+    """List all tabular report names available in the last simulation's SQL output.
+
+    Use the returned names with ``query_simulation_table`` to retrieve specific tables.
+
+    Preconditions: simulation completed with SQL output available.
+    Side effects: none — read-only.
+    """
+    state = get_state()
+    result = state.require_simulation_result()
+
+    with _open_sql_result(result) as sql:
+        return sql.list_reports()
 
 
 @mcp.tool(annotations=_EXPORT)
