@@ -487,6 +487,31 @@ class ClearSessionResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Model integrity tool responses
+# ---------------------------------------------------------------------------
+
+
+class IntegrityIssue(BaseModel):
+    """A single domain-level integrity issue found by check_model_integrity."""
+
+    severity: str  # "error" | "warning" | "info"
+    category: str  # "geometry" | "controls" | "references" | "hvac" | "schedules"
+    object_type: str | None = None
+    object_name: str | None = None
+    message: str
+
+
+class ModelIntegrityResult(BaseModel):
+    """Response from ``check_model_integrity``."""
+
+    passed: bool
+    error_count: int
+    warning_count: int
+    issues: list[IntegrityIssue]
+    checks_run: list[str]
+
+
+# ---------------------------------------------------------------------------
 # Change log tool responses
 # ---------------------------------------------------------------------------
 
