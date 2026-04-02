@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastmcp import FastMCP
 
-from idfkit_mcp.errors import ToolExecutionMiddleware
+from idfkit_mcp.errors import SessionMiddleware
 
 _INSTRUCTIONS = (
     "EnergyPlus model authoring via idfkit.\n\n"
@@ -15,4 +15,4 @@ _INSTRUCTIONS = (
 )
 
 mcp = FastMCP("idfkit", instructions=_INSTRUCTIONS)
-mcp.add_middleware(ToolExecutionMiddleware())
+mcp.add_middleware(SessionMiddleware())
