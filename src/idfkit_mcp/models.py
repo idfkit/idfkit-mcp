@@ -487,6 +487,44 @@ class ClearSessionResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Zone properties tool responses
+# ---------------------------------------------------------------------------
+
+
+class SurfaceTypeCounts(BaseModel):
+    """Surface counts by type for a zone."""
+
+    walls: int = 0
+    floors: int = 0
+    ceilings: int = 0
+    roofs: int = 0
+    windows: int = 0
+    doors: int = 0
+    other: int = 0
+
+
+class ZoneProperties(BaseModel):
+    """Typed summary for one EnergyPlus zone."""
+
+    name: str
+    floor_area_m2: float | None = None
+    volume_m3: float | None = None
+    height_m: float | None = None
+    surface_counts: SurfaceTypeCounts
+    constructions: list[str]
+    schedules: list[str]
+    hvac_connections: list[str]
+    thermostats: list[str]
+
+
+class GetZonePropertiesResult(BaseModel):
+    """Response from ``get_zone_properties``."""
+
+    zone_count: int
+    zones: list[ZoneProperties]
+
+
+# ---------------------------------------------------------------------------
 # Model integrity tool responses
 # ---------------------------------------------------------------------------
 
