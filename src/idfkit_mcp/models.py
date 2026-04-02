@@ -439,6 +439,27 @@ class ExportTimeseriesResult(BaseModel):
     rows: int
 
 
+class TabularRow(BaseModel):
+    """A single row from an EnergyPlus tabular report."""
+
+    report_name: str
+    report_for: str
+    table_name: str
+    row_name: str
+    column_name: str
+    units: str
+    value: str
+
+
+class QuerySimulationTableResult(BaseModel):
+    """Response from ``query_simulation_table``."""
+
+    report_name: str
+    table_name: str | None
+    row_count: int
+    rows: list[TabularRow]
+
+
 # ---------------------------------------------------------------------------
 # Weather tool responses
 # ---------------------------------------------------------------------------
