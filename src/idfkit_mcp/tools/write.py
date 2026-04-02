@@ -193,24 +193,36 @@ def duplicate_object(
 def save_model(
     file_path: Annotated[str | None, Field(description="Output path (default: original load path).")] = None,
     output_format: Annotated[Literal["idf", "epjson"], Field(description="Output format.")] = "idf",
+    overwrite: Annotated[bool, Field(description="Overwrite existing output.")] = False,
 ) -> SaveModelResult:
-    """Write model to disk as IDF or epJSON."""
+    """Write model to disk as IDF or epJSON.
+
+    When *file_path* is omitted the model is re-saved to its original load
+    path.  An explicit *file_path* must resolve within an allowed output
+    directory (``IDFKIT_MCP_OUTPUT_DIRS``, defaults to CWD) and will not
+    overwrite an existing file unless *overwrite* is ``True``.
+    """
     from pathlib import Path
 
     from idfkit import write_epjson, write_idf
 
+    from idfkit_mcp.tools._path_validation import validate_output_path
+
     state = get_state()
     doc = state.require_model()
 
-    if file_path is not None:
-        path = Path(file_path)
+    # When an explicit path is given, validate it stays within CWD.
+    # Re-saving to the original load path (file_path=None) is always allowed.
+    explicit_path = file_path is not None
+    if explicit_path:
+        path = validate_output_path(Path(file_path), label="Save path")
     elif state.file_path is not None:
         path = state.file_path
     else:
         raise ToolError("No file path specified and no original path available.")
 
-    if path.exists():
-        logger.warning("Overwriting existing file: %s", path)
+    if explicit_path and path.exists() and not overwrite:
+        raise ToolError(f"File already exists: '{path}'. Set overwrite=True to replace it.")
 
     if output_format == "epjson":
         write_epjson(doc, path)

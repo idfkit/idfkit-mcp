@@ -217,7 +217,7 @@ def get_results_summary() -> GetResultsSummaryResult:
 
 @mcp.tool(annotations=_READ_ONLY)
 def list_output_variables(
-    search: Annotated[str | None, Field(description="Regex filter on name.")] = None,
+    search: Annotated[str | None, Field(description="Regex filter on name (case-insensitive).")] = None,
     limit: Annotated[int, Field(description="Max results.")] = 50,
 ) -> ListOutputVariablesResult:
     """List output variables and meters from last simulation."""
@@ -245,7 +245,13 @@ def list_output_variables(
         return _build_output_variable_result(serialized, total_available=total, limit=limit)
 
     with _open_sql_result(result) as sql:
-        regex = re.compile(search, re.IGNORECASE) if search else None
+        if search:
+            try:
+                regex = re.compile(search, re.IGNORECASE)
+            except re.error as exc:
+                raise ToolError(f"Invalid regex pattern: {exc}") from None
+        else:
+            regex = None
         all_items = sql.list_variables()
         serialized = [
             {
@@ -322,8 +328,14 @@ def export_timeseries(
 ) -> ExportTimeseriesResult:
     """Export time series to CSV."""
     import csv
-    import re
     from pathlib import Path
+
+    # Validate output path early, before the (potentially slow) SQL query.
+    validated_output_path: Path | None = None
+    if output_path is not None:
+        from idfkit_mcp.tools._path_validation import validate_output_path
+
+        validated_output_path = validate_output_path(Path(output_path), label="Export path")
 
     state = get_state()
     result = state.require_simulation_result()
@@ -343,8 +355,8 @@ def export_timeseries(
             "Check run_simulation results for errors."
         ) from e
 
-    if output_path is not None:
-        csv_path = Path(output_path)
+    if validated_output_path is not None:
+        csv_path = validated_output_path
     else:
         safe_name = re.sub(r"[^\w]+", "_", variable_name).strip("_").lower()
         csv_path = result.run_dir / f"timeseries_{safe_name}.csv"

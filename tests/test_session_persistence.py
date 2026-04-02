@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -159,6 +160,7 @@ class TestRestoreEdgeCases:
 
 
 class TestSaveSessionFailure:
+    @pytest.mark.skipif(os.getuid() == 0, reason="root bypasses file permission checks")
     def test_write_failure_does_not_raise(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         # Point to a path inside a read-only directory
         readonly_dir = tmp_path / "readonly"
