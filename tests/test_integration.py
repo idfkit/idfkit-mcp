@@ -23,8 +23,8 @@ from tests.conftest import call_tool, read_resource_json
 class TestCreateEditValidateSave:
     """Full workflow: create model -> add objects -> validate -> save."""
 
-    async def test_full_workflow(self, client: Client[FastMCPTransport], tmp_path: object) -> None:
-        import tempfile
+    async def test_full_workflow(self, client: Client[FastMCPTransport], tmp_path: object, monkeypatch: object) -> None:
+        monkeypatch.chdir(tmp_path)
 
         result = await call_tool(client, "new_model", model=NewModelResult)
         assert result.status == "created"
@@ -58,11 +58,10 @@ class TestCreateEditValidateSave:
         validation = await call_tool(client, "validate_model", model=ValidationResult)
         assert validation.is_valid is True
 
-        with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
-            save_result = await call_tool(client, "save_model", {"file_path": f.name}, SaveModelResult)
+        save_result = await call_tool(client, "save_model", {"file_path": "model.idf"}, SaveModelResult)
         assert save_result.status == "saved"
 
-        load_result = await call_tool(client, "load_model", {"file_path": f.name}, ModelSummary)
+        load_result = await call_tool(client, "load_model", {"file_path": save_result.file_path}, ModelSummary)
         assert load_result.zone_count == 3
 
     async def test_rename_and_duplicate(self, client: object) -> None:

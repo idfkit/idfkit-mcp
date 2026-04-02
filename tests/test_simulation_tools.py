@@ -62,6 +62,21 @@ class TestListOutputVariables:
         assert result.returned == 1
         assert result.variables[0].name == "Site Outdoor Air Drybulb Temperature"
 
+    async def test_search_invalid_regex_raises(
+        self, client: object, state_with_sql_only_simulation: ServerState
+    ) -> None:
+        """An invalid regex pattern is rejected with a clear error."""
+        with pytest.raises(ToolError, match="Invalid regex"):
+            await call_tool(client, "list_output_variables", {"search": "[invalid"})
+
+    async def test_search_regex_works(self, client: object, state_with_sql_only_simulation: ServerState) -> None:
+        """Valid regex patterns still work as expected."""
+        result = await call_tool(
+            client, "list_output_variables", {"search": "^Zone.*Temperature$"}, ListOutputVariablesResult
+        )
+        assert result.returned == 1
+        assert result.variables[0].name == "Zone Mean Air Temperature"
+
     async def test_sql_fallback_ignores_thread_bound_cached_sql(
         self, client: object, state_with_sql_only_simulation: ServerState, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -132,7 +147,7 @@ class TestExportTimeseries:
         )
         monkeypatch.setattr("idfkit.simulation.parsers.sql.SQLResult.get_timeseries", lambda *_args, **_kwargs: fake_ts)
 
-        output_path = tmp_path / "district_cooling.csv"
+        monkeypatch.chdir(tmp_path)
         result = await call_tool(
             client,
             "export_timeseries",
@@ -141,11 +156,26 @@ class TestExportTimeseries:
                 "key_value": "*",
                 "frequency": "Hourly",
                 "environment": "annual",
-                "output_path": str(output_path),
+                "output_path": "district_cooling.csv",
             },
         )
 
         assert result["variable_name"] == "DistrictCooling:Facility"
         assert result["key_value"] is None
         assert result["rows"] == 1
-        assert output_path.exists()
+        assert (tmp_path / "district_cooling.csv").exists()
+
+    async def test_export_rejects_path_outside_cwd(
+        self,
+        client: object,
+        state_with_sql_only_simulation: ServerState,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ToolError, match="allowed directory"):
+            await call_tool(
+                client,
+                "export_timeseries",
+                {"variable_name": "Test", "output_path": "/tmp/evil.csv"},  # noqa: S108
+            )

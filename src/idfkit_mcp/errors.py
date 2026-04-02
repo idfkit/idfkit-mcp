@@ -84,6 +84,13 @@ def _mutation_summary(tool_name: str, result: object) -> str | None:
 class ToolExecutionMiddleware(Middleware):
     """Bind session state, normalize errors, and log tool execution."""
 
+    async def on_read_resource(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
+        from idfkit_mcp.state import session_scope_from_context
+
+        with session_scope_from_context(context.fastmcp_context) as session_id:
+            logger.debug("READ resource | session=%s | %s", session_id, context.message.uri)
+            return await call_next(context)
+
     async def on_call_tool(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
         from idfkit_mcp.state import session_scope_from_context
 
