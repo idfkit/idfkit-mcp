@@ -16,6 +16,18 @@ logger = logging.getLogger("idfkit_mcp")
 _PAYLOAD_MAX_LEN = 500
 """Maximum characters for truncated payload logging."""
 
+_MUTATION_TOOLS: frozenset[str] = frozenset({
+    "add_object",
+    "batch_add_objects",
+    "update_object",
+    "remove_object",
+    "rename_object",
+    "duplicate_object",
+    "new_model",
+    "load_model",
+    "convert_osm_to_idf",
+})
+
 
 # ---------------------------------------------------------------------------
 # Logging helpers
@@ -51,8 +63,26 @@ def _summarize_tool_result(result: object) -> str:
     return _summarize_result(result)
 
 
-class SessionMiddleware(Middleware):
-    """Bind session state for all MCP operations (tools and resources)."""
+def _mutation_summary(tool_name: str, result: object) -> str | None:
+    """Extract a short human-readable summary from a mutation tool result."""
+    structured = getattr(result, "structured_content", None)
+    if structured is None:
+        return None
+    # Prefer named fields that identify what changed
+    for key in ("name", "new_name", "file_path", "version", "status"):
+        val = getattr(structured, key, None)
+        if val:
+            return f"{tool_name}: {key}={val}"
+    # Fall back to success/error counts for batch operations
+    success = getattr(structured, "success", None)
+    errors = getattr(structured, "errors", None)
+    if success is not None and errors is not None:
+        return f"{tool_name}: {success} succeeded, {errors} failed"
+    return None
+
+
+class ToolExecutionMiddleware(Middleware):
+    """Bind session state, normalize errors, and log tool execution."""
 
     async def on_read_resource(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
         from idfkit_mcp.state import session_scope_from_context
@@ -114,6 +144,13 @@ class SessionMiddleware(Middleware):
                 elapsed_ms,
                 _summarize_tool_result(result),
             )
+
+            if tool_name in _MUTATION_TOOLS:
+                from idfkit_mcp.state import get_state
+
+                summary = _mutation_summary(tool_name, result)
+                get_state().record_change(tool_name, summary)
+
             return result
 
 

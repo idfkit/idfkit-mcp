@@ -11,7 +11,9 @@ from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
+    ChangeLogEntry,
     ConvertOsmResult,
+    GetChangeLogResult,
     GroupSummary,
     ListObjectsResult,
     ModelSummary,
@@ -19,7 +21,7 @@ from idfkit_mcp.models import (
     SearchObjectsResult,
 )
 from idfkit_mcp.serializers import serialize_object
-from idfkit_mcp.state import get_state
+from idfkit_mcp.state import MAX_CHANGE_LOG, get_state
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +252,27 @@ def _matches_query(obj: Any, query_lower: str) -> bool:
     if query_lower in obj.name.lower():
         return True
     return any(isinstance(value, str) and query_lower in value.lower() for value in obj.data.values())
+
+
+@mcp.tool(annotations=_READ_ONLY)
+def get_change_log(
+    limit: Annotated[int, Field(description="Maximum entries to return.")] = 20,
+) -> GetChangeLogResult:
+    """Return recent model mutation history for this session.
+
+    Records add, update, remove, rename, duplicate, load, and new-model operations
+    in chronological order. Useful for auditing what the agent has changed and
+    verifying that edits were applied as intended.
+
+    The log is in-memory only and resets when clear_session is called.
+    """
+    state = get_state()
+    limit = min(limit, MAX_CHANGE_LOG)
+    entries = state.change_log[-limit:]
+    return GetChangeLogResult(
+        entry_count=len(entries),
+        entries=[ChangeLogEntry(**e) for e in entries],
+    )
 
 
 def _find_object_by_name(doc: Any, name: str) -> Any:
