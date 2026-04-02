@@ -319,6 +319,46 @@ class CheckReferencesResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Simulation diagnostics sub-models (used in GetResultsSummaryResult)
+# ---------------------------------------------------------------------------
+
+
+class UnmetHoursRow(BaseModel):
+    """Unmet heating/cooling hours for one zone."""
+
+    zone: str
+    heating_hours: float
+    cooling_hours: float
+
+
+class EndUseRow(BaseModel):
+    """Energy end-use broken down by fuel type (kWh, converted from GJ)."""
+
+    end_use: str
+    electricity_kwh: float | None = None
+    natural_gas_kwh: float | None = None
+    district_cooling_kwh: float | None = None
+    district_heating_kwh: float | None = None
+    other_kwh: float | None = None  # all remaining fuel types combined
+
+
+class ClassifiedWarning(BaseModel):
+    """A simulation warning classified by domain category."""
+
+    category: str  # "convergence" | "geometry" | "unusual_value" | "hvac" | "other"
+    message: str
+    details: list[str]
+
+
+class SimulationQAFlag(BaseModel):
+    """A high-level QA observation derived from simulation results."""
+
+    severity: str  # "info" | "warning" | "critical"
+    flag: str
+    message: str
+
+
+# ---------------------------------------------------------------------------
 # Simulation tool responses
 # ---------------------------------------------------------------------------
 
@@ -369,19 +409,12 @@ class ResultsErrorSummary(BaseModel):
     summary: str
 
 
-class TableSummary(BaseModel):
-    """A single HTML report table summary."""
-
-    title: str
-    report: str
-    # ``for`` is a Python keyword so we use an alias.
-    for_string: str
-    data: dict[str, object] | None = None
-    truncated: bool = False
-
-
 class GetResultsSummaryResult(BaseModel):
-    """Response from ``get_results_summary``."""
+    """Response from ``get_results_summary`` and ``idfkit://simulation/results`` resource.
+
+    Combines raw simulation output with structured QA diagnostics to drive the
+    agent QA loop: simulate → read this resource → identify issues → fix → repeat.
+    """
 
     success: bool
     runtime_seconds: float
@@ -389,7 +422,15 @@ class GetResultsSummaryResult(BaseModel):
     errors: ResultsErrorSummary
     fatal_messages: list[ErrorMessage] | None = None
     severe_messages: list[ErrorMessage] | None = None
-    tables: list[TableSummary] | None = None
+    # --- QA diagnostics (populated when SQL output is available) ---
+    sql_available: bool = False
+    unmet_hours: list[UnmetHoursRow] | None = None
+    total_unmet_heating_hours: float | None = None
+    total_unmet_cooling_hours: float | None = None
+    end_uses: list[EndUseRow] | None = None
+    classified_warnings: list[ClassifiedWarning] | None = None
+    qa_flags: list[SimulationQAFlag] | None = None
+    notes: list[str] | None = None
 
 
 class OutputVariableEntry(BaseModel):

@@ -79,7 +79,13 @@ def object_data(object_type: str, name: str) -> ResourceResult:
     "idfkit://simulation/results",
     name="simulation_results",
     title="Simulation Results",
-    description="Energy metrics, errors, and tables from the last simulation.",
+    description=(
+        "Full QA diagnostics from the last simulation — the primary feedback signal for the agent QA loop. "
+        "Includes: error counts and messages, unmet heating/cooling hours by zone, end-use energy breakdown "
+        "(electricity and natural gas in kWh), classified warnings by category (convergence, geometry, HVAC, etc.), "
+        "and actionable QA flags (fatal_errors, high_unmet_hours, convergence_warnings, no_sql_output). "
+        "Read this after every run_simulation call to assess result quality and decide what to fix next."
+    ),
     mime_type="application/json",
 )
 def simulation_results() -> ResourceResult:

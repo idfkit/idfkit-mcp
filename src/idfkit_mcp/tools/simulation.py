@@ -14,13 +14,17 @@ from pydantic import Field
 
 from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
+    ClassifiedWarning,
+    EndUseRow,
     ExportTimeseriesResult,
     GetResultsSummaryResult,
     ListOutputVariablesResult,
     QuerySimulationTableResult,
     QueryTimeseriesResult,
     RunSimulationResult,
+    SimulationQAFlag,
     TabularRow,
+    UnmetHoursRow,
 )
 from idfkit_mcp.state import get_state
 
@@ -121,7 +125,17 @@ async def run_simulation(
     output_directory: Annotated[str | None, Field(description="Output dir.")] = None,
     ctx: Context | None = None,
 ) -> RunSimulationResult:
-    """Run EnergyPlus on the loaded model."""
+    """Execute EnergyPlus on the loaded model — the authoritative runtime validation gate.
+
+    Fatal or severe errors mean the model did not simulate correctly. A clean exit does
+    not guarantee physically reasonable results. After this call, read the resource
+    ``idfkit://simulation/results`` for full QA diagnostics: unmet hours by zone,
+    end-use energy breakdown, classified warnings, and QA flags that drive the fix loop.
+
+    Preconditions: model loaded; weather file set via download_weather_file, or design_day=True.
+    Side effects: writes outputs to output_directory; updates session simulation result.
+    Next step: read idfkit://simulation/results to assess result quality.
+    """
     from idfkit.simulation import async_simulate
     from idfkit.simulation.config import find_energyplus
 
@@ -172,49 +186,253 @@ async def run_simulation(
     })
 
 
+_GJ_TO_KWH = 277.778
+"""Conversion factor: 1 GJ = 277.778 kWh (EnergyPlus tabular energy is in GJ by default)."""
+
+_ABUPS = "AnnualBuildingUtilityPerformanceSummary"
+"""EnergyPlus SQL report name for annual building utility performance."""
+
+_SYSTEM_SUMMARY = "SystemSummary"
+"""EnergyPlus SQL report name for system-level summaries including unmet hours."""
+
+# End-use fuel columns that map to district energy (combined into district_heating_kwh)
+_DISTRICT_HEATING_COLS = frozenset({"District Heating Water", "District Heating Steam"})
+# All other non-Electricity, non-Natural Gas, non-district fuel columns
+_OTHER_FUEL_COLS = frozenset({
+    "Coal",
+    "Diesel",
+    "Fuel Oil No 1",
+    "Fuel Oil No 2",
+    "Gasoline",
+    "Other Fuel 1",
+    "Other Fuel 2",
+    "Propane",
+})
+
+_WARNING_CATEGORIES: list[tuple[str, list[str]]] = [
+    ("convergence", ["converge", "did not converge", "warmup", "iteration"]),
+    ("geometry", ["surface", "vertices", "area", "normal", "tilt", "azimuth", "intersect"]),
+    ("unusual_value", ["unusual", "out of range", "extreme", "very large", "very small"]),
+    ("hvac", ["hvac", "air loop", "airloop", "coil", "zone equipment", "plant loop", "chiller"]),
+]
+
+
+def _try_float(s: str) -> float | None:
+    """Parse a string to float, returning None on failure."""
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def _classify_warnings(errors: Any) -> list[ClassifiedWarning]:
+    """Classify simulation warnings from the .err file by domain category."""
+    classified: list[ClassifiedWarning] = []
+    for msg in errors.warnings:
+        text = (msg.message + " " + " ".join(msg.details)).lower()
+        category = "other"
+        for cat, keywords in _WARNING_CATEGORIES:
+            if any(kw in text for kw in keywords):
+                category = cat
+                break
+        classified.append(ClassifiedWarning(category=category, message=msg.message, details=list(msg.details)))
+    return classified
+
+
+def _query_unmet_hours(sql: Any) -> tuple[list[UnmetHoursRow], float, float]:
+    """Query unmet heating/cooling hours by zone from SystemSummary SQL tabular data."""
+    from collections import defaultdict
+
+    # EnergyPlus stores "Time Setpoint Not Met" in SystemSummary, not ABUPS
+    rows = sql.get_tabular_data(report_name=_SYSTEM_SUMMARY, table_name="Time Setpoint Not Met")
+    zone_data: dict[str, dict[str, float]] = defaultdict(dict)
+    for row in rows:
+        val = _try_float(row.value)
+        if val is None or row.row_name.lower() in ("facility", "total"):
+            continue
+        zone_data[row.row_name][row.column_name] = val
+
+    result_rows: list[UnmetHoursRow] = []
+    total_heat = 0.0
+    total_cool = 0.0
+    for zone, cols in sorted(zone_data.items()):
+        # Use "During Heating"/"During Cooling"; fall back to occupied variants
+        heat = cols.get("During Heating", cols.get("During Occupied Heating", 0.0))
+        cool = cols.get("During Cooling", cols.get("During Occupied Cooling", 0.0))
+        result_rows.append(UnmetHoursRow(zone=zone, heating_hours=heat, cooling_hours=cool))
+        total_heat += heat
+        total_cool += cool
+    return result_rows, total_heat, total_cool
+
+
+def _query_end_uses(sql: Any) -> list[EndUseRow]:
+    """Query end-use energy breakdown from SQL tabular data (all major fuel types)."""
+    from collections import defaultdict
+
+    _SKIP_ROWS = {"total end uses", "total"}
+    rows = sql.get_tabular_data(report_name=_ABUPS, table_name="End Uses")
+
+    # Pivot: {end_use: {column_name: value_gj}}
+    pivot: dict[str, dict[str, float]] = defaultdict(dict)
+    for row in rows:
+        if row.row_name.lower() in _SKIP_ROWS:
+            continue
+        val = _try_float(row.value)
+        if val is not None and val > 0:
+            pivot[row.row_name][row.column_name] = val
+
+    result: list[EndUseRow] = []
+    for end_use, fuels in sorted(pivot.items()):
+        elec_gj = fuels.get("Electricity")
+        gas_gj = fuels.get("Natural Gas")
+        dc_gj = fuels.get("District Cooling")
+        dh_gj = sum(fuels[c] for c in _DISTRICT_HEATING_COLS if c in fuels) or None
+        other_gj = sum(fuels[c] for c in _OTHER_FUEL_COLS if c in fuels) or None
+        result.append(
+            EndUseRow(
+                end_use=end_use,
+                electricity_kwh=round(elec_gj * _GJ_TO_KWH, 1) if elec_gj is not None else None,
+                natural_gas_kwh=round(gas_gj * _GJ_TO_KWH, 1) if gas_gj is not None else None,
+                district_cooling_kwh=round(dc_gj * _GJ_TO_KWH, 1) if dc_gj is not None else None,
+                district_heating_kwh=round(dh_gj * _GJ_TO_KWH, 1) if dh_gj else None,
+                other_kwh=round(other_gj * _GJ_TO_KWH, 1) if other_gj else None,
+            )
+        )
+    return result
+
+
+def _build_qa_flags(
+    errors: Any,
+    total_unmet_heating: float,
+    total_unmet_cooling: float,
+    classified: list[ClassifiedWarning],
+    sql_available: bool,
+) -> list[SimulationQAFlag]:
+    """Derive high-level QA flags from simulation diagnostics."""
+    flags: list[SimulationQAFlag] = []
+
+    if errors.has_fatal:
+        flags.append(
+            SimulationQAFlag(
+                severity="critical",
+                flag="fatal_errors",
+                message=f"{errors.fatal_count} fatal error(s) — model did not simulate. Fix before proceeding.",
+            )
+        )
+    if errors.has_severe:
+        flags.append(
+            SimulationQAFlag(
+                severity="warning",
+                flag="severe_errors",
+                message=f"{errors.severe_count} severe error(s) — results may be unreliable.",
+            )
+        )
+
+    total_unmet = total_unmet_heating + total_unmet_cooling
+    if total_unmet > 1000:
+        flags.append(
+            SimulationQAFlag(
+                severity="critical",
+                flag="very_high_unmet_hours",
+                message=f"{total_unmet:.0f} total unmet hours — HVAC system is severely undersized or misconfigured.",
+            )
+        )
+    elif total_unmet > 300:
+        flags.append(
+            SimulationQAFlag(
+                severity="warning",
+                flag="high_unmet_hours",
+                message=f"{total_unmet:.0f} total unmet hours — review HVAC sizing and thermostat setpoints.",
+            )
+        )
+
+    convergence_count = sum(1 for w in classified if w.category == "convergence")
+    if convergence_count > 0:
+        flags.append(
+            SimulationQAFlag(
+                severity="warning",
+                flag="convergence_warnings",
+                message=f"{convergence_count} convergence warning(s) — check HVAC controls and timestep.",
+            )
+        )
+
+    if not sql_available:
+        flags.append(
+            SimulationQAFlag(
+                severity="info",
+                flag="no_sql_output",
+                message="SQL output not available. Add Output:SQLite to the model for energy diagnostics.",
+            )
+        )
+
+    return flags
+
+
 def get_results_summary() -> GetResultsSummaryResult:
-    """Build results summary from the last simulation."""
+    """Build results summary with QA diagnostics from the last simulation.
+
+    This function powers the ``idfkit://simulation/results`` resource — the primary
+    feedback signal for the agent QA loop.
+    """
     state = get_state()
     result = state.require_simulation_result()
 
-    summary: dict[str, Any] = {
+    errors = result.errors
+    fatal_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.fatal]
+    severe_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.severe[:10]]
+
+    classified = _classify_warnings(errors)
+
+    # --- SQL-based diagnostics (defensive: degrade gracefully if SQL unavailable) ---
+    sql_available = False
+    unmet_hours: list[UnmetHoursRow] = []
+    total_unmet_heating = 0.0
+    total_unmet_cooling = 0.0
+    end_uses: list[EndUseRow] = []
+    notes: list[str] = []
+
+    if result.sql_path is not None:
+        try:
+            from idfkit.simulation.parsers.sql import SQLResult
+
+            with SQLResult(result.sql_path) as sql:
+                sql_available = True
+                try:
+                    unmet_hours, total_unmet_heating, total_unmet_cooling = _query_unmet_hours(sql)
+                except Exception as e:
+                    notes.append(f"Unmet hours unavailable: {e}")
+                try:
+                    end_uses = _query_end_uses(sql)
+                except Exception as e:
+                    notes.append(f"End-use data unavailable: {e}")
+        except Exception as e:
+            notes.append(f"SQL data unavailable: {e}")
+    else:
+        notes.append("No SQL output file. Add Output:SQLite to the model for energy diagnostics.")
+
+    qa_flags = _build_qa_flags(errors, total_unmet_heating, total_unmet_cooling, classified, sql_available)
+
+    return GetResultsSummaryResult.model_validate({
         "success": result.success,
         "runtime_seconds": round(result.runtime_seconds, 2),
         "output_directory": str(result.run_dir),
-    }
-
-    errors = result.errors
-    summary["errors"] = {
-        "fatal": errors.fatal_count,
-        "severe": errors.severe_count,
-        "warnings": errors.warning_count,
-        "summary": errors.summary(),
-    }
-
-    if errors.has_fatal or errors.has_severe:
-        severe_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.severe[:10]]
-        fatal_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.fatal]
-        summary["fatal_messages"] = fatal_msgs
-        summary["severe_messages"] = severe_msgs
-
-    html = result.html
-    if html is not None:
-        tables_summary: list[dict[str, Any]] = []
-        for table in html.tables[:10]:
-            table_info: dict[str, Any] = {
-                "title": table.title,
-                "report": table.report_name,
-                "for_string": table.for_string,
-            }
-            table_dict = table.to_dict()
-            if table_dict and len(table_dict) <= 100:
-                table_info["data"] = table_dict
-            elif table_dict:
-                table_info["truncated"] = True
-            tables_summary.append(table_info)
-        summary["tables"] = tables_summary
-
-    return GetResultsSummaryResult.model_validate(summary)
+        "errors": {
+            "fatal": errors.fatal_count,
+            "severe": errors.severe_count,
+            "warnings": errors.warning_count,
+            "summary": errors.summary(),
+        },
+        "fatal_messages": fatal_msgs if fatal_msgs else None,
+        "severe_messages": severe_msgs if severe_msgs else None,
+        "sql_available": sql_available,
+        "unmet_hours": [u.model_dump() for u in unmet_hours] if unmet_hours else None,
+        "total_unmet_heating_hours": total_unmet_heating if sql_available else None,
+        "total_unmet_cooling_hours": total_unmet_cooling if sql_available else None,
+        "end_uses": [e.model_dump() for e in end_uses] if end_uses else None,
+        "classified_warnings": [w.model_dump() for w in classified] if classified else None,
+        "qa_flags": [f.model_dump() for f in qa_flags] if qa_flags else None,
+        "notes": notes if notes else None,
+    })
 
 
 @mcp.tool(annotations=_READ_ONLY)
