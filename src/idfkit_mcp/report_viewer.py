@@ -277,10 +277,13 @@ function handleToolResult(result) {
   } catch (e) { console.debug('[report-viewer] Could not parse tool result', e); }
 }
 
-const app = new App({ name: 'idfkit Report Viewer', version: '1.0.0' });
-app.ontoolresult = handleToolResult;
-await app.connect();
 if (window.__IDFKIT_DATA__) loadReport(window.__IDFKIT_DATA__);
+
+try {
+  const app = new App({ name: 'idfkit Report Viewer', version: '1.0.0' });
+  app.ontoolresult = handleToolResult;
+  await app.connect();
+} catch (e) { console.debug('[report-viewer] MCP Apps SDK not available', e); }
 </script>
 </body>
 </html>
