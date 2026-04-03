@@ -22,11 +22,11 @@ REPORT_VIEWER_HTML = r"""<!DOCTYPE html>
   --font: 'SF Mono','Cascadia Code','JetBrains Mono','Fira Code',monospace;
   --rail-w: 260px;
 }
-html, body { height: 100%; background: var(--bg); color: var(--text); font: 10.5px/1.5 var(--font); }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 10.5px/1.5 var(--font); }
 a { color: var(--accent); text-decoration: none; }
 
 /* layout */
-#app { display: flex; height: 100%; overflow: hidden; }
+#app { display: flex; position: absolute; inset: 0; overflow: hidden; }
 #rail {
   width: var(--rail-w); min-width: var(--rail-w); background: var(--rail);
   border-right: 1px solid var(--border); display: flex; flex-direction: column;
