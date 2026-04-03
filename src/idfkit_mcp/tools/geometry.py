@@ -91,12 +91,14 @@ def _extract_geometry(color_by: str) -> dict[str, object]:
 
 @tool(
     annotations=_READ_ONLY,
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            resourceUri="ui://idfkit/geometry-viewer.html",
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                resourceUri="ui://idfkit/geometry-viewer.html",
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def view_geometry(
     color_by: Annotated[
@@ -140,12 +142,14 @@ def view_geometry(
     name="geometry_viewer",
     title="3D Geometry Viewer",
     description="Interactive Three.js viewer for EnergyPlus building geometry.",
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            csp=ResourceCSP(resourceDomains=["https://cdn.jsdelivr.net", "https://unpkg.com"]),
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                csp=ResourceCSP(resourceDomains=["https://cdn.jsdelivr.net", "https://unpkg.com"]),
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def geometry_viewer_html() -> str:
     """Return the self-contained Three.js viewer HTML."""

@@ -166,12 +166,14 @@ def _extract_schedules(name: str | None, year: int) -> dict[str, object]:
 
 @tool(
     annotations=_READ_ONLY,
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            resourceUri="ui://idfkit/schedule-viewer.html",
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                resourceUri="ui://idfkit/schedule-viewer.html",
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def view_schedules(
     name: Annotated[
@@ -219,12 +221,14 @@ def view_schedules(
     name="schedule_viewer",
     title="Schedule Heatmap Viewer",
     description="Interactive heatmap viewer for EnergyPlus schedules.",
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def schedule_viewer_html() -> str:
     """Return the self-contained schedule viewer HTML."""
