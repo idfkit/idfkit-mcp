@@ -808,12 +808,14 @@ def build_simulation_report() -> SimulationReportResult:
 
 @tool(
     annotations=_READ_ONLY,
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            resourceUri="ui://idfkit/report-viewer.html",
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                resourceUri="ui://idfkit/report-viewer.html",
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def view_simulation_report() -> SimulationReportResult:
     """Browse the full EnergyPlus tabular report in an interactive viewer.
@@ -832,12 +834,14 @@ def view_simulation_report() -> SimulationReportResult:
     name="report_viewer",
     title="Simulation Report Viewer",
     description="Interactive browser for EnergyPlus tabular simulation reports.",
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def report_viewer_html() -> str:
     """Return the self-contained report viewer HTML."""

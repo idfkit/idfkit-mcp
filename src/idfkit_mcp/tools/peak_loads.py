@@ -373,12 +373,14 @@ def build_peak_load_analysis() -> PeakLoadAnalysisResult:
 
 @tool(
     annotations=_READ_ONLY,
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            resourceUri="ui://idfkit/peak-loads-viewer.html",
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                resourceUri="ui://idfkit/peak-loads-viewer.html",
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def analyze_peak_loads() -> PeakLoadAnalysisResult:
     """Analyze peak heating and cooling loads for QA/QC.
@@ -398,12 +400,14 @@ def analyze_peak_loads() -> PeakLoadAnalysisResult:
     name="peak_loads_viewer",
     title="Peak Load Viewer",
     description="Interactive peak load QA/QC viewer for heating and cooling load breakdowns.",
-    meta=app_config_to_meta_dict(
-        AppConfig(
-            csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-            prefersBorder=False,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+                prefersBorder=False,
+            )
         )
-    ),
+    },
 )
 def peak_loads_viewer_html() -> str:
     """Return the self-contained peak load viewer HTML."""
