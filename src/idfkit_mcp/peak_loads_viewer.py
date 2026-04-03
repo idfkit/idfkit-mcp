@@ -151,6 +151,9 @@ PEAK_LOADS_VIEWER_HTML = r"""<!DOCTYPE html>
     color: var(--text-primary);
     letter-spacing: -0.04em;
     line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .metric-note {
@@ -862,8 +865,8 @@ function drawWaterfall() {
 
   const left = 76;
   const right = 22;
-  const top = 18;
-  const bottom = 76;
+  const top = 24;
+  const bottom = 46;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
@@ -884,8 +887,9 @@ function drawWaterfall() {
   waterfallCtx.textAlign = 'right';
   waterfallCtx.textBaseline = 'middle';
 
-  for (let i = 0; i <= 4; i += 1) {
-    const value = minValue + (valueRange * i / 4);
+  const gridCount = plotHeight < 180 ? 2 : 4;
+  for (let i = 0; i <= gridCount; i += 1) {
+    const value = minValue + (valueRange * i / gridCount);
     const y = yFor(value);
     waterfallCtx.beginPath();
     waterfallCtx.moveTo(left, y);
@@ -912,12 +916,15 @@ function drawWaterfall() {
   waterfallCtx.restore();
 
   waterfallCtx.fillStyle = meta.total;
-  waterfallCtx.textAlign = 'left';
-  waterfallCtx.fillText('reported peak', left + 6, peakY - 10);
+  waterfallCtx.textAlign = 'right';
+  waterfallCtx.fillText(`peak ${formatWatts(summary.peak_w)}`, width - right - 6, peakY - 8);
 
   const slotCount = bars.length + 1;
   const step = plotWidth / Math.max(slotCount, 1);
   const barWidth = Math.min(74, step * 0.56);
+  // Estimate max label chars that fit in each slot (~6.6px per char at 10px mono)
+  const maxLabelChars = Math.max(4, Math.floor(step / 6.6));
+  const rotateLabels = step < 60;
 
   waterfallCtx.textAlign = 'center';
   waterfallCtx.textBaseline = 'alphabetic';
@@ -952,8 +959,19 @@ function drawWaterfall() {
     waterfallCtx.fillStyle = 'rgba(255, 255, 255, 0.86)';
     waterfallCtx.font = '10px "SF Mono", "Cascadia Code", "JetBrains Mono", monospace';
     waterfallCtx.fillText(formatSignedWatts(bar.value_w), centerX, rectY - 6);
+
     waterfallCtx.fillStyle = 'rgba(255, 255, 255, 0.56)';
-    waterfallCtx.fillText(truncate(bar.name, 15), centerX, height - 18);
+    const label = truncate(bar.name, maxLabelChars);
+    if (rotateLabels) {
+      waterfallCtx.save();
+      waterfallCtx.translate(centerX, height - bottom + 10);
+      waterfallCtx.rotate(-Math.PI / 4);
+      waterfallCtx.textAlign = 'right';
+      waterfallCtx.fillText(label, 0, 0);
+      waterfallCtx.restore();
+    } else {
+      waterfallCtx.fillText(label, centerX, height - bottom + 16);
+    }
   });
 
   const totalCenter = left + step * (bars.length + 0.5);
@@ -966,7 +984,16 @@ function drawWaterfall() {
   waterfallCtx.fillStyle = 'rgba(255, 255, 255, 0.90)';
   waterfallCtx.fillText(formatSignedWatts(signedTotal), totalCenter, Math.min(totalY, zeroY) - 6);
   waterfallCtx.fillStyle = 'rgba(255, 255, 255, 0.56)';
-  waterfallCtx.fillText('Net', totalCenter, height - 18);
+  if (rotateLabels) {
+    waterfallCtx.save();
+    waterfallCtx.translate(totalCenter, height - bottom + 10);
+    waterfallCtx.rotate(-Math.PI / 4);
+    waterfallCtx.textAlign = 'right';
+    waterfallCtx.fillText('Net', 0, 0);
+    waterfallCtx.restore();
+  } else {
+    waterfallCtx.fillText('Net', totalCenter, height - bottom + 16);
+  }
 }
 
 function drawZones() {
@@ -992,17 +1019,26 @@ function drawZones() {
 
   setText('zones-note', densityZones.length ? 'Ranked by W/m²' : 'Ranked by total W');
 
-  const left = 184;
-  const right = 74;
+  zonesCtx.font = '11px "SF Mono", "Cascadia Code", "JetBrains Mono", monospace';
+  zonesCtx.textBaseline = 'middle';
+
+  // Measure the widest zone name and value label to set dynamic margins
+  const maxNameChars = Math.min(24, Math.floor((width * 0.35) / 7));
+  const nameLabels = ranked.map(z => truncate(z.zone_name, maxNameChars));
+  const valueLabels = ranked.map(z => {
+    const v = densityZones.length ? (z.peak_w_per_m2 || 0) : z.peak_w;
+    return densityZones.length ? formatDensity(v) : formatWatts(v);
+  });
+  const maxNameWidth = Math.max(...nameLabels.map(l => zonesCtx.measureText(l).width), 40);
+  const maxValueWidth = Math.max(...valueLabels.map(l => zonesCtx.measureText(l).width), 40);
+  const left = Math.ceil(maxNameWidth + 14);
+  const right = Math.ceil(maxValueWidth + 14);
   const top = 18;
   const bottom = 20;
-  const plotWidth = width - left - right;
+  const plotWidth = Math.max(40, width - left - right);
   const rowHeight = Math.max(24, (height - top - bottom) / Math.max(ranked.length, 1));
   const barHeight = Math.min(16, rowHeight * 0.46);
   const maxValue = Math.max(...ranked.map(zone => densityZones.length ? (zone.peak_w_per_m2 || 0) : zone.peak_w), 1);
-
-  zonesCtx.font = '11px "SF Mono", "Cascadia Code", "JetBrains Mono", monospace';
-  zonesCtx.textBaseline = 'middle';
 
   ranked.forEach((zone, index) => {
     const value = densityZones.length ? (zone.peak_w_per_m2 || 0) : zone.peak_w;
@@ -1010,8 +1046,8 @@ function drawZones() {
     const barWidth = plotWidth * (value / maxValue);
 
     zonesCtx.fillStyle = 'rgba(255, 255, 255, 0.56)';
-    zonesCtx.textAlign = 'left';
-    zonesCtx.fillText(truncate(zone.zone_name, 28), 0, y);
+    zonesCtx.textAlign = 'right';
+    zonesCtx.fillText(nameLabels[index], left - 10, y);
 
     zonesCtx.fillStyle = 'rgba(255, 255, 255, 0.10)';
     drawRoundedRect(zonesCtx, left, y - (barHeight / 2), plotWidth, barHeight, 6);
@@ -1022,8 +1058,8 @@ function drawZones() {
     zonesCtx.fill();
 
     zonesCtx.fillStyle = 'rgba(255, 255, 255, 0.86)';
-    zonesCtx.textAlign = 'right';
-    zonesCtx.fillText(densityZones.length ? formatDensity(value) : formatWatts(value), width, y);
+    zonesCtx.textAlign = 'left';
+    zonesCtx.fillText(valueLabels[index], width - right + 10, y);
   });
 }
 
