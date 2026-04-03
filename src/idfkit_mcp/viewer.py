@@ -781,15 +781,17 @@ function handleToolResult({ content }) {
   }
 }
 
-// Connect via the official MCP Apps SDK.
-const app = new App({ name: 'idfkit Geometry Viewer', version: '1.0.0' });
-app.ontoolresult = handleToolResult;
-await app.connect();
-
-// Also check if data was embedded (for standalone testing).
+// Load embedded data immediately (for standalone testing / when connect stalls).
 if (window.__IDFKIT_DATA__) {
   buildModel(window.__IDFKIT_DATA__);
 }
+
+// Connect via the official MCP Apps SDK.
+try {
+  const app = new App({ name: 'idfkit Geometry Viewer', version: '1.0.0' });
+  app.ontoolresult = handleToolResult;
+  await app.connect();
+} catch (e) { console.debug('[idfkit-geometry-viewer] MCP Apps SDK not available', e); }
 </script>
 </body>
 </html>

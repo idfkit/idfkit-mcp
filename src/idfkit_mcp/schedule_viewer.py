@@ -610,14 +610,16 @@ function handleToolResult({ content }) {
   }
 }
 
-const app = new App({ name: 'idfkit Schedule Viewer', version: '1.0.0' });
-app.ontoolresult = handleToolResult;
-await app.connect();
-
-// Standalone testing fallback.
+// Standalone testing fallback — load immediately before connect stalls.
 if (window.__IDFKIT_DATA__) {
   loadModel(window.__IDFKIT_DATA__);
 }
+
+try {
+  const app = new App({ name: 'idfkit Schedule Viewer', version: '1.0.0' });
+  app.ontoolresult = handleToolResult;
+  await app.connect();
+} catch (e) { console.debug('[idfkit-schedule-viewer] MCP Apps SDK not available', e); }
 </script>
 </body>
 </html>

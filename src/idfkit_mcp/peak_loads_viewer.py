@@ -1109,13 +1109,15 @@ function handleToolResult(result) {
   }
 }
 
-const app = new App({ name: 'idfkit Peak Load Viewer', version: '1.0.0' });
-app.ontoolresult = handleToolResult;
-await app.connect();
-
 if (window.__IDFKIT_DATA__) {
   loadModel(window.__IDFKIT_DATA__);
 }
+
+try {
+  const app = new App({ name: 'idfkit Peak Load Viewer', version: '1.0.0' });
+  app.ontoolresult = handleToolResult;
+  await app.connect();
+} catch (e) { console.debug('[idfkit-peak-loads-viewer] MCP Apps SDK not available', e); }
 </script>
 </body>
 </html>
