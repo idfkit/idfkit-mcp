@@ -41,7 +41,7 @@ a { color: var(--accent); text-decoration: none; }
 }
 #topbar .building { color: var(--text); font-size: 11px; font-weight: 600; }
 #hamburger {
-  display: none; position: fixed; top: 8px; left: 8px; z-index: 20;
+  position: fixed; top: 8px; left: 8px; z-index: 20;
   background: var(--rail); border: 1px solid var(--border); color: var(--text);
   font-size: 16px; width: 32px; height: 32px; cursor: pointer; border-radius: 4px;
 }
@@ -108,17 +108,15 @@ td.hl { background: var(--hl); }
 #empty.hidden { display: none; }
 
 @media (max-width: 900px) {
-  #hamburger { display: block; }
   #rail { position: fixed; top: 0; left: 0; height: 100%; }
   #rail.collapsed { transform: translateX(calc(-1 * var(--rail-w))); }
-  #topbar { padding-left: 48px; }
 }
 </style>
 </head>
 <body>
 <div id="app">
   <button id="hamburger">&#9776;</button>
-  <nav id="rail" class="collapsed">
+  <nav id="rail">
     <div id="search-wrap"><input id="search" type="text" placeholder="Search reports..."></div>
     <div id="index"></div>
   </nav>
@@ -134,7 +132,7 @@ td.hl { background: var(--hl); }
 import { App } from '@modelcontextprotocol/ext-apps';
 
 const $ = s => document.querySelector(s);
-let railOpen = window.innerWidth > 900;
+let railOpen = true;
 const rail = $('#rail');
 const idx = $('#index');
 const content = $('#content');
