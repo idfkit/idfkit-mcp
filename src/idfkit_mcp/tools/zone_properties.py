@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Annotated, Any
 
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import GetZonePropertiesResult, SurfaceTypeCounts, ZoneProperties
 from idfkit_mcp.state import get_state
 
@@ -158,7 +158,7 @@ def _build_zone_properties(doc: Any, zone_name: str) -> ZoneProperties:
     )
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def get_zone_properties(
     zone_name: Annotated[str | None, Field(description="Zone name. Omit for all zones.")] = None,
 ) -> GetZonePropertiesResult:

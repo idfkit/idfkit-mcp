@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import IntegrityIssue, ModelIntegrityResult
 from idfkit_mcp.state import get_state
 
@@ -211,7 +211,7 @@ def _check_hvac_zone_references(doc: Any) -> list[IntegrityIssue]:
     return issues
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def check_model_integrity() -> ModelIntegrityResult:
     """Domain-level pre-simulation QA — catches issues schema validation cannot.
 

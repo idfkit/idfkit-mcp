@@ -9,10 +9,10 @@ from html.parser import HTMLParser
 from typing import Annotated
 
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import DocSearchHit, GetDocSectionResult, LookupDocumentationResult, SearchDocsResult
 from idfkit_mcp.state import DOCS_BASE_URL, get_state
 
@@ -211,7 +211,7 @@ def build_documentation_urls(object_type: str, version: str | None = None) -> Lo
     )
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def search_docs(
     query: Annotated[str, Field(description='Search query (e.g. "zone heat balance").')],
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y".')] = None,
@@ -244,7 +244,7 @@ def search_docs(
     )
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def get_doc_section(
     location: Annotated[str, Field(description="Section location key from search_docs results.")],
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y".')] = None,

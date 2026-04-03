@@ -7,10 +7,10 @@ import logging
 from typing import Annotated, Any, Literal
 
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
     BatchAddResult,
     ClearSessionResult,
@@ -21,7 +21,6 @@ from idfkit_mcp.models import (
 )
 from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
-from idfkit_mcp.tools import resolve_object
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempot
 _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-@mcp.tool(annotations=_MUTATE)
+@tool(annotations=_MUTATE)
 def new_model(
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z" (default: latest).')] = None,
 ) -> NewModelResult:
@@ -42,7 +41,7 @@ def new_model(
         parts = version.split(".")
         ver = (int(parts[0]), int(parts[1]), int(parts[2]))
 
-    doc = new_document(version=ver)
+    doc = new_document(version=ver, strict=True)
     state = get_state()
     state.document = doc
     state.schema = doc.schema
@@ -53,7 +52,7 @@ def new_model(
     return NewModelResult(status="created", version=version_string(ver))
 
 
-@mcp.tool(annotations=_MUTATE, output_schema=None)
+@tool(annotations=_MUTATE, output_schema=None)
 def add_object(
     object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone", "Material").')],
     name: Annotated[str, Field(description="Object name (empty for unnamed types).")] = "",
@@ -69,7 +68,7 @@ def add_object(
     return serialize_object(obj)
 
 
-@mcp.tool(annotations=_MUTATE)
+@tool(annotations=_MUTATE)
 def batch_add_objects(
     objects: Annotated[list[dict[str, Any]], Field(description="List of dicts with keys: object_type, name, fields.")],
 ) -> BatchAddResult:
@@ -104,7 +103,7 @@ def batch_add_objects(
     return BatchAddResult(total=len(objects), success=success_count, errors=error_count, results=results)
 
 
-@mcp.tool(annotations=_MUTATE, output_schema=None)
+@tool(annotations=_MUTATE, output_schema=None)
 def update_object(
     object_type: Annotated[str, Field(description="EnergyPlus object type.")],
     name: Annotated[str, Field(description="Object name.")],
@@ -113,7 +112,9 @@ def update_object(
     """Update fields on an existing object."""
     state = get_state()
     doc = state.require_model()
-    obj = resolve_object(doc, object_type, name)
+    obj = doc.get_collection(object_type).get(name)
+    if obj is None:
+        raise ToolError(f"Object '{name}' of type '{object_type}' not found.")
 
     for field_name, value in fields.items():
         setattr(obj, field_name, value)
@@ -123,7 +124,7 @@ def update_object(
     return serialize_object(obj)
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@tool(annotations=_DESTRUCTIVE)
 def remove_object(
     object_type: Annotated[str, Field(description="EnergyPlus object type.")],
     name: Annotated[str, Field(description="Object name.")],
@@ -132,7 +133,9 @@ def remove_object(
     """Delete an object. Blocked if referenced unless force=True."""
     state = get_state()
     doc = state.require_model()
-    obj = resolve_object(doc, object_type, name)
+    obj = doc.get_collection(object_type).get(name)
+    if obj is None:
+        raise ToolError(f"Object '{name}' of type '{object_type}' not found.")
 
     if not force:
         ref_name = obj.name or name
@@ -148,7 +151,7 @@ def remove_object(
     return RemoveObjectResult(status="removed", object_type=object_type, name=obj.name)
 
 
-@mcp.tool(annotations=_MUTATE)
+@tool(annotations=_MUTATE)
 def rename_object(
     object_type: Annotated[str, Field(description="EnergyPlus object type.")],
     old_name: Annotated[str, Field(description="Current object name.")],
@@ -173,7 +176,7 @@ def rename_object(
     )
 
 
-@mcp.tool(annotations=_MUTATE, output_schema=None)
+@tool(annotations=_MUTATE, output_schema=None)
 def duplicate_object(
     object_type: Annotated[str, Field(description="EnergyPlus object type.")],
     name: Annotated[str, Field(description="Source object name.")],
@@ -182,14 +185,16 @@ def duplicate_object(
     """Copy an object with a new name."""
     state = get_state()
     doc = state.require_model()
-    source = resolve_object(doc, object_type, name)
+    source = doc.get_collection(object_type).get(name)
+    if source is None:
+        raise ToolError(f"Object '{name}' of type '{object_type}' not found.")
 
     obj = doc.copyidfobject(source, new_name=new_name)
     logger.info("Duplicated %s %r as %r", object_type, name, new_name)
     return serialize_object(obj)
 
 
-@mcp.tool(annotations=_SAVE)
+@tool(annotations=_SAVE)
 def save_model(
     file_path: Annotated[str | None, Field(description="Output path (default: original load path).")] = None,
     output_format: Annotated[Literal["idf", "epjson"], Field(description="Output format.")] = "idf",
@@ -235,7 +240,7 @@ def save_model(
     return SaveModelResult(status="saved", file_path=str(path), format=output_format)
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@tool(annotations=_DESTRUCTIVE)
 def clear_session() -> ClearSessionResult:
     """Reset session state. Does not delete files on disk."""
     state = get_state()

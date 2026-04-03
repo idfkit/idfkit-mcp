@@ -538,6 +538,62 @@ class DownloadWeatherFileResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Peak load analysis
+# ---------------------------------------------------------------------------
+
+
+class PeakLoadComponent(BaseModel):
+    """A single component contributing to a peak load."""
+
+    name: str
+    value_w: float
+    percent: float | None = None
+
+
+class ZonePeakLoad(BaseModel):
+    """Peak load decomposition for a single zone."""
+
+    zone_name: str
+    peak_w: float
+    peak_w_per_m2: float | None = None
+    floor_area_m2: float | None = None
+    peak_timestamp: str | None = None
+    components: list[PeakLoadComponent] = []
+
+
+class FacilityPeakSummary(BaseModel):
+    """Facility-level peak load with component breakdown and zone ranking."""
+
+    peak_w: float
+    peak_w_per_m2: float | None = None
+    peak_timestamp: str | None = None
+    components: list[PeakLoadComponent] = []
+    zones: list[ZonePeakLoad] = []
+
+
+class DesignDaySizing(BaseModel):
+    """Design-day sizing result for a single zone."""
+
+    zone_name: str
+    calculated_load_w: float | None = None
+    user_load_w: float | None = None
+    load_w_per_m2: float | None = None
+    design_day: str | None = None
+    peak_timestamp: str | None = None
+
+
+class PeakLoadAnalysisResult(BaseModel):
+    """Complete peak load QA/QC analysis."""
+
+    cooling: FacilityPeakSummary
+    heating: FacilityPeakSummary
+    sizing_cooling: list[DesignDaySizing] = []
+    sizing_heating: list[DesignDaySizing] = []
+    total_floor_area_m2: float
+    flags: list[str] = []
+
+
+# ---------------------------------------------------------------------------
 # Session management
 # ---------------------------------------------------------------------------
 

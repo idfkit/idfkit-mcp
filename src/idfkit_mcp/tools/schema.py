@@ -6,10 +6,10 @@ import functools
 import logging
 from typing import Annotated
 
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.errors import tool_error
 from idfkit_mcp.models import (
     AvailableReferencesResult,
@@ -55,7 +55,7 @@ def _parse_version(version: str | None) -> tuple[int, int, int] | None:
     return (int(parts[0]), int(parts[1]), int(parts[2]))
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def list_object_types(
     group: Annotated[str | None, Field(description='Filter to a group (e.g. "Thermal Zones and Surfaces").')] = None,
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
@@ -86,7 +86,7 @@ def list_object_types(
     return ListObjectTypesResult(total_types=total_types, truncated=truncated, groups=groups_result)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def describe_object_type(
     object_type: Annotated[str, Field(description='Object type name (e.g. "Zone", "Material").')],
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
@@ -107,7 +107,7 @@ def describe_object_type(
     return DescribeObjectTypeResult.model_validate(data)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def search_schema(
     query: Annotated[str, Field(description="Case-insensitive substring match.")],
     version: Annotated[str | None, Field(description='EnergyPlus version as "X.Y.Z".')] = None,
@@ -150,7 +150,7 @@ def search_schema(
     })
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def get_available_references(
     object_type: Annotated[str, Field(description="Object type containing the reference field.")],
     field_name: Annotated[str, Field(description="Field name to check.")],

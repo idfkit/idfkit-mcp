@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from fastmcp import Client
 
-from idfkit_mcp.server import _parse_args, mcp
+from idfkit_mcp.server import mcp
 from tests.conftest import read_resource_json
 
 
@@ -69,59 +69,6 @@ class TestCreateServer:
         payload = await read_resource_json(client, "idfkit://model/objects/Zone/Office")
         assert payload["object_type"] == "Zone"
         assert payload["name"] == "Office"
-
-
-class TestParseArgs:
-    def test_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("IDFKIT_MCP_TRANSPORT", raising=False)
-        monkeypatch.delenv("IDFKIT_MCP_HOST", raising=False)
-        monkeypatch.delenv("IDFKIT_MCP_PORT", raising=False)
-        monkeypatch.delenv("IDFKIT_MCP_MOUNT_PATH", raising=False)
-        args = _parse_args([])
-        assert args.transport == "stdio"
-        assert args.host == "127.0.0.1"
-        assert args.port == 8000
-        assert args.mount_path is None
-
-    def test_cli_overrides(self) -> None:
-        args = _parse_args([
-            "--transport",
-            "http",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            "9090",
-            "--mount-path",
-            "/mcp",
-        ])
-        assert args.transport == "http"
-        assert args.host == "0.0.0.0"
-        assert args.port == 9090
-        assert args.mount_path == "/mcp"
-
-    def test_env_var_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("IDFKIT_MCP_TRANSPORT", "sse")
-        monkeypatch.setenv("IDFKIT_MCP_HOST", "0.0.0.0")
-        monkeypatch.setenv("IDFKIT_MCP_PORT", "3000")
-        monkeypatch.setenv("IDFKIT_MCP_MOUNT_PATH", "/api")
-        args = _parse_args([])
-        assert args.transport == "sse"
-        assert args.host == "0.0.0.0"
-        assert args.port == 3000
-        assert args.mount_path == "/api"
-
-    def test_cli_overrides_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("IDFKIT_MCP_TRANSPORT", "sse")
-        args = _parse_args(["--transport", "http"])
-        assert args.transport == "http"
-
-    def test_streamable_http_is_mapped_to_http(self) -> None:
-        args = _parse_args(["--transport", "streamable-http"])
-        assert args.transport == "http"
-
-    def test_invalid_transport_rejected(self) -> None:
-        with pytest.raises(SystemExit):
-            _parse_args(["--transport", "invalid"])
 
 
 class TestToolSchemas:

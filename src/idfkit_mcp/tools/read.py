@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import tool
+from idfkit import IDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
     ChangeLogEntry,
     ConvertOsmResult,
@@ -21,7 +22,7 @@ from idfkit_mcp.models import (
     SearchObjectsResult,
 )
 from idfkit_mcp.serializers import serialize_object
-from idfkit_mcp.state import MAX_CHANGE_LOG, get_state
+from idfkit_mcp.state import MAX_CHANGE_LOG, ServerState, get_state
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempoten
 _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-@mcp.tool(annotations=_LOAD)
+@tool(annotations=_LOAD)
 def load_model(
     file_path: Annotated[str, Field(description="Path to the IDF or epJSON file.")],
     version: Annotated[str | None, Field(description='Version override as "X.Y.Z".')] = None,
@@ -47,9 +48,9 @@ def load_model(
         ver = (int(parts[0]), int(parts[1]), int(parts[2]))
 
     if path.suffix.lower() in (".epjson", ".json"):
-        doc = load_epjson(str(path), version=ver)
+        doc = load_epjson(str(path), version=ver, strict=True)
     else:
-        doc = load_idf(str(path), version=ver)
+        doc = load_idf(str(path), version=ver, strict=True)
 
     state.document = doc
     state.schema = doc.schema
@@ -61,7 +62,7 @@ def load_model(
     return build_model_summary(doc, state)
 
 
-@mcp.tool(annotations=_LOAD)
+@tool(annotations=_LOAD)
 def convert_osm_to_idf(
     osm_path: Annotated[str, Field(description="Source .osm path.")],
     output_path: Annotated[str, Field(description="Output .idf path.")],
@@ -124,7 +125,7 @@ def convert_osm_to_idf(
         os.dup2(saved_fd, 1)
         os.close(saved_fd)
 
-    doc = load_idf(str(out_path))
+    doc = load_idf(str(out_path), strict=True)
     state = get_state()
     state.document = doc
     state.schema = doc.schema
@@ -149,7 +150,7 @@ def convert_osm_to_idf(
     )
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def list_objects(
     object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone").')],
     limit: Annotated[int, Field(description="Maximum objects to return.")] = 50,
@@ -171,7 +172,7 @@ def list_objects(
     return ListObjectsResult(object_type=object_type, total=total, returned=len(objects), objects=objects)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def search_objects(
     query: Annotated[str, Field(description="Case-insensitive substring match on name and string fields.")],
     object_type: Annotated[str | None, Field(description="Restrict search to a specific type.")] = None,
@@ -200,7 +201,7 @@ def search_objects(
     return SearchObjectsResult.model_validate({"query": query, "count": len(matches), "matches": matches})
 
 
-def build_references(doc: Any, name: str) -> ReferencesResult:
+def build_references(doc: IDFDocument[Literal[True]], name: str) -> ReferencesResult:
     """Build a bidirectional references result for a given object name."""
     referencing = doc.get_referencing(name)
     referenced_by = [{"object_type": obj.obj_type, "name": obj.name} for obj in referencing]
@@ -220,7 +221,7 @@ def build_references(doc: Any, name: str) -> ReferencesResult:
     })
 
 
-def build_model_summary(doc: Any, state: Any) -> ModelSummary:
+def build_model_summary(doc: IDFDocument[Literal[True]], state: ServerState) -> ModelSummary:
     """Build a model summary."""
     from idfkit import version_string
 
@@ -254,7 +255,7 @@ def _matches_query(obj: Any, query_lower: str) -> bool:
     return any(isinstance(value, str) and query_lower in value.lower() for value in obj.data.values())
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def get_change_log(
     limit: Annotated[int, Field(description="Maximum entries to return.")] = 20,
 ) -> GetChangeLogResult:
@@ -275,7 +276,7 @@ def get_change_log(
     )
 
 
-def _find_object_by_name(doc: Any, name: str) -> Any:
+def _find_object_by_name(doc: IDFDocument[Literal[True]], name: str) -> Any:
     """Find any object by name across all types using collection index."""
     name_upper = name.upper()
     for collection in doc.collections.values():

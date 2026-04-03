@@ -7,12 +7,12 @@ import logging
 from datetime import date
 from typing import Annotated
 
-from fastmcp.server.apps import AppConfig, ResourceCSP
-from fastmcp.tools import ToolResult
+from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
+from fastmcp.resources.function_resource import resource
+from fastmcp.tools import ToolResult, tool
 from mcp.types import TextContent, ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.schedule_viewer import SCHEDULE_VIEWER_HTML
 from idfkit_mcp.state import get_state
 
@@ -164,11 +164,13 @@ def _extract_schedules(name: str | None, year: int) -> dict[str, object]:
     }
 
 
-@mcp.tool(
+@tool(
     annotations=_READ_ONLY,
-    app=AppConfig(
-        resourceUri="ui://idfkit/schedule-viewer.html",
-        prefersBorder=False,
+    meta=app_config_to_meta_dict(
+        AppConfig(
+            resourceUri="ui://idfkit/schedule-viewer.html",
+            prefersBorder=False,
+        )
     ),
 )
 def view_schedules(
@@ -212,14 +214,16 @@ def view_schedules(
     )
 
 
-@mcp.resource(
+@resource(
     "ui://idfkit/schedule-viewer.html",
     name="schedule_viewer",
     title="Schedule Heatmap Viewer",
     description="Interactive heatmap viewer for EnergyPlus schedules.",
-    app=AppConfig(
-        csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-        prefersBorder=False,
+    meta=app_config_to_meta_dict(
+        AppConfig(
+            csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+            prefersBorder=False,
+        )
     ),
 )
 def schedule_viewer_html() -> str:
