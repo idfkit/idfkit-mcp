@@ -748,7 +748,7 @@ def _collect_tabular_sections(sql: Any) -> tuple[list[ReportSection], int]:
 
     for report_name in report_names:
         for r in sql.get_tabular_data(report_name=report_name):
-            for_str = r.for_string or "Entire Facility"
+            for_str = r.report_for or "Entire Facility"
             sections[(report_name, for_str)][r.table_name][r.row_name][r.column_name] = r.value.strip()
             table_key = (report_name, for_str, r.table_name)
             if r.column_name not in column_order[table_key]:

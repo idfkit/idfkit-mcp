@@ -117,7 +117,7 @@ td.hl { background: var(--hl); }
 </head>
 <body>
 <div id="app">
-  <button id="hamburger" onclick="toggleRail()">&#9776;</button>
+  <button id="hamburger">&#9776;</button>
   <nav id="rail" class="collapsed">
     <div id="search-wrap"><input id="search" type="text" placeholder="Search reports..."></div>
     <div id="index"></div>
@@ -142,6 +142,7 @@ const search = $('#search');
 let sectionEls = [], linkEls = [], groupState = {};
 
 function toggleRail() { railOpen = !railOpen; rail.classList.toggle('collapsed', !railOpen); }
+$('#hamburger').addEventListener('click', toggleRail);
 if (railOpen) rail.classList.remove('collapsed');
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
