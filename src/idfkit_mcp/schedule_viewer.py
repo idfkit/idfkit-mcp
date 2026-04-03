@@ -220,7 +220,7 @@ SCHEDULE_VIEWER_HTML = r"""<!DOCTYPE html>
 <script type="importmap">
 {
   "imports": {
-    "@modelcontextprotocol/ext-apps": "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps"
+    "@modelcontextprotocol/ext-apps": "https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps"
   }
 }
 </script>
