@@ -594,6 +594,46 @@ class PeakLoadAnalysisResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Simulation report viewer
+# ---------------------------------------------------------------------------
+
+
+class ReportTableRow(BaseModel):
+    """A single row in a tabular report table."""
+
+    label: str
+    values: list[str]
+
+
+class ReportTable(BaseModel):
+    """A single table within a report section."""
+
+    table_name: str
+    columns: list[str]
+    rows: list[ReportTableRow]
+
+
+class ReportSection(BaseModel):
+    """A report section (one report + for_string combination)."""
+
+    report_name: str
+    for_string: str
+    tables: list[ReportTable]
+
+
+class SimulationReportResult(BaseModel):
+    """Full simulation report for the interactive viewer."""
+
+    building_name: str
+    environment: str
+    energyplus_version: str
+    timestamp: str
+    report_count: int
+    table_count: int
+    reports: list[ReportSection]
+
+
+# ---------------------------------------------------------------------------
 # Session management
 # ---------------------------------------------------------------------------
 

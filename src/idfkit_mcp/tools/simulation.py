@@ -8,7 +8,9 @@ from sqlite3 import OperationalError
 from typing import Annotated, Any, Literal
 
 from fastmcp import Context
+from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
 from fastmcp.exceptions import ToolError
+from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from idfkit import IDFDocument
 from mcp.types import ToolAnnotations
@@ -22,8 +24,12 @@ from idfkit_mcp.models import (
     ListOutputVariablesResult,
     QuerySimulationTableResult,
     QueryTimeseriesResult,
+    ReportSection,
+    ReportTable,
+    ReportTableRow,
     RunSimulationResult,
     SimulationQAFlag,
+    SimulationReportResult,
     TabularRow,
     UnmetHoursRow,
 )
@@ -722,6 +728,122 @@ def list_simulation_reports() -> list[str]:
 
     with _open_sql_result(result) as sql:
         return sql.list_reports()
+
+
+# ---------------------------------------------------------------------------
+# Simulation report viewer
+# ---------------------------------------------------------------------------
+
+
+def _collect_tabular_sections(sql: Any) -> tuple[list[ReportSection], int]:
+    """Query all tabular data from SQL and organize into report sections."""
+    from collections import defaultdict
+
+    report_names = sql.list_reports()
+    sections: dict[tuple[str, str], dict[str, dict[str, dict[str, str]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(dict))
+    )
+    column_order: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    row_order: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+
+    for report_name in report_names:
+        for r in sql.get_tabular_data(report_name=report_name):
+            for_str = r.for_string or "Entire Facility"
+            sections[(report_name, for_str)][r.table_name][r.row_name][r.column_name] = r.value.strip()
+            table_key = (report_name, for_str, r.table_name)
+            if r.column_name not in column_order[table_key]:
+                column_order[table_key].append(r.column_name)
+            if r.row_name not in row_order[table_key]:
+                row_order[table_key].append(r.row_name)
+
+    result_sections: list[ReportSection] = []
+    table_count = 0
+    for (report_name, for_string), tables_dict in sections.items():
+        tables: list[ReportTable] = []
+        for table_name, rows_dict in tables_dict.items():
+            table_key = (report_name, for_string, table_name)
+            cols = column_order[table_key]
+            table_rows = [
+                ReportTableRow(label=rn, values=[rows_dict.get(rn, {}).get(c, "") for c in cols])
+                for rn in row_order[table_key]
+            ]
+            tables.append(ReportTable(table_name=table_name, columns=cols, rows=table_rows))
+            table_count += 1
+        result_sections.append(ReportSection(report_name=report_name, for_string=for_string, tables=tables))
+    return result_sections, table_count
+
+
+def build_simulation_report() -> SimulationReportResult:
+    """Build the full tabular report from the simulation SQL output."""
+    state = get_state()
+    result = state.require_simulation_result()
+
+    with _open_sql_result(result) as sql:
+        report_sections, table_count = _collect_tabular_sections(sql)
+
+    errors = result.errors
+    building = "Unknown"
+    doc = state.document
+    if doc is not None and "Building" in doc:
+        bldg = doc["Building"].first()
+        if bldg is not None:
+            building = bldg.name or "Unknown"
+
+    timestamp = ""
+    if errors.simulation_complete:
+        summary_text = errors.summary()
+        if summary_text:
+            timestamp = summary_text.split("\n")[0]
+
+    return SimulationReportResult(
+        building_name=building,
+        environment="",
+        energyplus_version="",
+        timestamp=timestamp,
+        report_count=len(report_sections),
+        table_count=table_count,
+        reports=report_sections,
+    )
+
+
+@tool(
+    annotations=_READ_ONLY,
+    meta=app_config_to_meta_dict(
+        AppConfig(
+            resourceUri="ui://idfkit/report-viewer.html",
+            prefersBorder=False,
+        )
+    ),
+)
+def view_simulation_report() -> SimulationReportResult:
+    """Browse the full EnergyPlus tabular report in an interactive viewer.
+
+    Returns all tabular data from the simulation SQL output organized by
+    report, section, and table. The companion viewer provides a searchable,
+    browsable interface with a table-of-contents sidebar.
+
+    Requires a completed simulation with SQL output.
+    """
+    return build_simulation_report()
+
+
+@resource(
+    "ui://idfkit/report-viewer.html",
+    name="report_viewer",
+    title="Simulation Report Viewer",
+    description="Interactive browser for EnergyPlus tabular simulation reports.",
+    meta=app_config_to_meta_dict(
+        AppConfig(
+            csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+            prefersBorder=False,
+        )
+    ),
+)
+def report_viewer_html() -> str:
+    """Return the self-contained report viewer HTML."""
+    from idfkit_mcp.report_viewer import REPORT_VIEWER_HTML
+
+    return REPORT_VIEWER_HTML
 
 
 @tool(annotations=_EXPORT)
