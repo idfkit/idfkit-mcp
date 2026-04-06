@@ -183,7 +183,7 @@ function buildContent(reports, q) {
       const matchSection = !q || matches(r.report_name, q) || matches(t.table_name, q);
       const cellMatch = q && !matchSection ? hasMatchingCell(t, q) : false;
       if (q && !matchSection && !cellMatch) return;
-      const forStr = t.for_string || r.for_string || '';
+      const forStr = r.for_string || '';
       html += `<div class="section" id="${id}">`;
       html += `<div class="eyebrow">${esc(r.report_name)}</div>`;
       html += `<h2>${esc(t.table_name)}</h2>`;

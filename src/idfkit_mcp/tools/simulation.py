@@ -751,16 +751,20 @@ def _collect_tabular_sections(sql: Any) -> tuple[list[ReportSection], int]:
         lambda: defaultdict(lambda: defaultdict(dict))
     )
     column_order: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    column_seen: dict[tuple[str, str, str], set[str]] = defaultdict(set)
     row_order: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    row_seen: dict[tuple[str, str, str], set[str]] = defaultdict(set)
 
     for report_name in report_names:
         for r in sql.get_tabular_data(report_name=report_name):
             for_str = r.report_for or "Entire Facility"
             sections[(report_name, for_str)][r.table_name][r.row_name][r.column_name] = r.value.strip()
             table_key = (report_name, for_str, r.table_name)
-            if r.column_name not in column_order[table_key]:
+            if r.column_name not in column_seen[table_key]:
+                column_seen[table_key].add(r.column_name)
                 column_order[table_key].append(r.column_name)
-            if r.row_name not in row_order[table_key]:
+            if r.row_name not in row_seen[table_key]:
+                row_seen[table_key].add(r.row_name)
                 row_order[table_key].append(r.row_name)
 
     result_sections: list[ReportSection] = []
@@ -785,8 +789,22 @@ def build_simulation_report() -> SimulationReportResult:
     state = get_state()
     result = state.require_simulation_result()
 
+    # Single SQL connection for both tabular data and metadata extraction.
+    energyplus_version = ""
+    environment = ""
+    timestamp = ""
     with _open_sql_result(result) as sql:
         report_sections, table_count = _collect_tabular_sections(sql)
+        try:
+            sim_rows = sql.query("SELECT EnergyPlusVersion, TimeStamp FROM Simulations LIMIT 1")
+            if sim_rows:
+                energyplus_version = str(sim_rows[0][0] or "")
+                timestamp = str(sim_rows[0][1] or "")
+            envs = sql.list_environments()
+            if envs:
+                environment = ", ".join(e.name for e in envs)
+        except Exception:
+            logger.debug("Could not extract simulation metadata from SQL", exc_info=True)
 
     building = "Unknown"
     doc = state.document
@@ -794,22 +812,6 @@ def build_simulation_report() -> SimulationReportResult:
         bldg = doc["Building"].first()
         if bldg is not None:
             building = bldg.name or "Unknown"
-
-    # Extract metadata from SQL Simulations table when available.
-    energyplus_version = ""
-    environment = ""
-    timestamp = ""
-    try:
-        with _open_sql_result(result) as meta_sql:
-            sim_rows = meta_sql.query("SELECT EnergyPlusVersion, TimeStamp FROM Simulations LIMIT 1")
-            if sim_rows:
-                energyplus_version = str(sim_rows[0][0] or "")
-                timestamp = str(sim_rows[0][1] or "")
-            envs = meta_sql.list_environments()
-            if envs:
-                environment = ", ".join(e.name for e in envs)
-    except Exception:
-        logger.debug("Could not extract simulation metadata from SQL", exc_info=True)
 
     return SimulationReportResult(
         building_name=building,

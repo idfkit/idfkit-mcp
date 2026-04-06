@@ -6,7 +6,7 @@ import logging
 from typing import Annotated
 
 from fastmcp.tools import tool
-from idfkit import IDFDocument
+from idfkit import IDFDocument, IDFObject
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -47,12 +47,12 @@ def _zone_geometry(
         return None, None, None
 
 
-def _surface_counts(doc: IDFDocument, zone_name: str) -> tuple[SurfaceTypeCounts, set[str]]:
+def _surface_counts(refs: set[IDFObject]) -> tuple[SurfaceTypeCounts, set[str]]:
     """Count surfaces by type for a zone; return counts and set of host surface names."""
     counts = SurfaceTypeCounts()
     host_surfaces: set[str] = set()
 
-    for surface in doc.get_referencing(zone_name):
+    for surface in refs:
         if surface.obj_type != "BuildingSurface:Detailed":
             continue
         host_surfaces.add(surface.name.lower())
@@ -77,10 +77,10 @@ def _fenestration_counts(doc: IDFDocument, host_surfaces: set[str]) -> tuple[int
     return windows, doors
 
 
-def _zone_constructions(doc: IDFDocument, zone_name: str) -> list[str]:
+def _zone_constructions(refs: set[IDFObject]) -> list[str]:
     """Unique construction names used by surfaces in this zone."""
     names: set[str] = set()
-    for surface in doc.get_referencing(zone_name):
+    for surface in refs:
         if surface.obj_type != "BuildingSurface:Detailed":
             continue
         cn = surface.data.get("construction_name", "")
@@ -89,17 +89,17 @@ def _zone_constructions(doc: IDFDocument, zone_name: str) -> list[str]:
     return sorted(names)
 
 
-def _zone_schedules(doc: IDFDocument, zone_name: str) -> list[str]:
+def _zone_schedules(refs: set[IDFObject]) -> list[str]:
     """Schedule names referenced by objects that themselves reference this zone."""
     schedules: set[str] = set()
-    for obj in doc.get_referencing(zone_name):
+    for obj in refs:
         for field, value in obj.data.items():
             if "schedule" in field and isinstance(value, str) and value:
                 schedules.add(value)
     return sorted(schedules)
 
 
-def _zone_hvac_connections(doc: IDFDocument, zone_name: str) -> list[str]:
+def _zone_hvac_connections(refs: set[IDFObject], zone_name: str) -> list[str]:
     """ZoneHVAC:EquipmentConnections names for this zone.
 
     Falls back to the zone_name field when the connection object itself is unnamed
@@ -107,22 +107,22 @@ def _zone_hvac_connections(doc: IDFDocument, zone_name: str) -> list[str]:
     name as its implicit identifier).
     """
     results: list[str] = []
-    for conn in doc.get_referencing(zone_name):
+    for conn in refs:
         if conn.obj_type != "ZoneHVAC:EquipmentConnections":
             continue
-        # Use explicit name if present; fall back to zone_name (the implicit key)
         results.append(conn.name or zone_name)
     return results
 
 
-def _zone_thermostats(doc: IDFDocument, zone_name: str) -> list[str]:
+def _zone_thermostats(refs: set[IDFObject]) -> list[str]:
     """Thermostat control names from ZoneControl:Thermostat for this zone."""
-    return [obj.name for obj in doc.get_referencing(zone_name) if obj.obj_type == "ZoneControl:Thermostat" and obj.name]
+    return [obj.name for obj in refs if obj.obj_type == "ZoneControl:Thermostat" and obj.name]
 
 
 def _build_zone_properties(doc: IDFDocument, zone_name: str) -> ZoneProperties:
     """Build a ZoneProperties summary for one zone."""
-    counts, host_surfaces = _surface_counts(doc, zone_name)
+    refs = doc.get_referencing(zone_name)
+    counts, host_surfaces = _surface_counts(refs)
     has_surfaces = len(host_surfaces) > 0
     windows, doors = _fenestration_counts(doc, host_surfaces)
     counts.windows = windows
@@ -136,10 +136,10 @@ def _build_zone_properties(doc: IDFDocument, zone_name: str) -> ZoneProperties:
         volume_m3=vol,
         height_m=height,
         surface_counts=counts,
-        constructions=_zone_constructions(doc, zone_name),
-        schedules=_zone_schedules(doc, zone_name),
-        hvac_connections=_zone_hvac_connections(doc, zone_name),
-        thermostats=_zone_thermostats(doc, zone_name),
+        constructions=_zone_constructions(refs),
+        schedules=_zone_schedules(refs),
+        hvac_connections=_zone_hvac_connections(refs, zone_name),
+        thermostats=_zone_thermostats(refs),
     )
 
 
