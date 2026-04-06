@@ -9,10 +9,11 @@ from typing import Annotated, Any, Literal
 
 from fastmcp import Context
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import tool
+from idfkit import IDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import (
     ClassifiedWarning,
     EndUseRow,
@@ -102,6 +103,98 @@ def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
     return error_detail
 
 
+def _ensure_sqlite_output(doc: IDFDocument[Literal[True]]) -> None:
+    """Ensure simulations produce SQLite tabular output for downstream tools.
+
+    Many read-only tools and embedded apps rely on the EnergyPlus SQLite file.
+    Upgrade an existing ``Output:SQLite`` object in place when possible rather
+    than adding duplicates.  Also override ``OutputControl:Files`` when it
+    explicitly suppresses SQLite or tabular output.
+    """
+    if "Output:SQLite" not in doc:
+        doc.add("Output:SQLite", "", option_type="SimpleAndTabular")
+        logger.info("Added Output:SQLite with option_type=SimpleAndTabular before simulation")
+    else:
+        obj = doc["Output:SQLite"].first()
+        if not obj:
+            doc.add("Output:SQLite", "", option_type="SimpleAndTabular")
+            logger.info("Added missing Output:SQLite entry to existing collection before simulation")
+        elif obj.option_type != "SimpleAndTabular":
+            obj.option_type = "SimpleAndTabular"
+            logger.info("Updated Output:SQLite to option_type=SimpleAndTabular before simulation")
+
+    # OutputControl:Files can suppress SQLite/tabular file generation even when
+    # Output:SQLite is present. Force the relevant flags to "Yes".
+    if "OutputControl:Files" in doc:
+        ctrl = doc["OutputControl:Files"].first()
+        if ctrl:
+            changed = False
+            if ctrl.output_sqlite != "Yes":
+                ctrl.output_sqlite = "Yes"
+                changed = True
+            if ctrl.output_tabular != "Yes":
+                ctrl.output_tabular = "Yes"
+                changed = True
+            if changed:
+                logger.info("Enabled output_sqlite and output_tabular in OutputControl:Files")
+
+
+# Summary reports that downstream tools and viewers require.
+_REQUIRED_SUMMARY_REPORTS = frozenset({
+    "SensibleHeatGainSummary",
+    "HVACSizingSummary",
+})
+
+
+def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
+    """Ensure ``Output:Table:SummaryReports`` includes reports needed by downstream tools."""
+    if "Output:Table:SummaryReports" not in doc:
+        doc.add(
+            "Output:Table:SummaryReports",
+            data={
+                f"report_name{'_' + str(i) if i > 1 else ''}": name
+                for i, name in enumerate(sorted(_REQUIRED_SUMMARY_REPORTS), 1)
+            },
+        )
+        logger.info("Added Output:Table:SummaryReports with %s", sorted(_REQUIRED_SUMMARY_REPORTS))
+        return
+
+    obj = doc["Output:Table:SummaryReports"].first()
+    if not obj:
+        return
+
+    # Collect existing report names and find the next available index.
+    existing: set[str] = set()
+    idx = 1
+    while True:
+        field = "report_name" if idx == 1 else f"report_name_{idx}"
+        val = getattr(obj, field, None)
+        if val is None:
+            break
+        existing.add(val)
+        idx += 1
+
+    # "AllSummary" or "AllSummaryAndMonthly" already include everything.
+    if existing & {
+        "All",
+        "AllSummary",
+        "AllSummaryAndMonthly",
+        "AllSummaryAndSizingPeriod",
+        "AllSummaryMonthlyAndSizingPeriod",
+    }:
+        return
+
+    missing = _REQUIRED_SUMMARY_REPORTS - existing
+    if not missing:
+        return
+
+    for name in sorted(missing):
+        field = "report_name" if idx == 1 else f"report_name_{idx}"
+        setattr(obj, field, name)
+        idx += 1
+    logger.info("Added missing summary reports: %s", sorted(missing))
+
+
 def _build_progress_handler(ctx: Context | None) -> Any:
     """Build an async progress callback for FastMCP context reporting."""
     from idfkit.simulation.progress import SimulationProgress
@@ -115,7 +208,7 @@ def _build_progress_handler(ctx: Context | None) -> Any:
     return on_progress
 
 
-@mcp.tool(annotations=_RUN)
+@tool(annotations=_RUN)
 async def run_simulation(
     weather_file: Annotated[str | None, Field(description="EPW path (default: last downloaded).")] = None,
     design_day: Annotated[bool, Field(description="Design-day only.")] = False,
@@ -142,6 +235,8 @@ async def run_simulation(
     state = get_state()
     doc = state.require_model()
     weather = _resolve_weather_path(weather_file, design_day)
+    _ensure_sqlite_output(doc)
+    _ensure_summary_reports(doc)
 
     config = find_energyplus(path=energyplus_dir, version=energyplus_version)
     logger.info(
@@ -435,7 +530,7 @@ def get_results_summary() -> GetResultsSummaryResult:
     })
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def list_output_variables(
     search: Annotated[str | None, Field(description="Regex filter on name (case-insensitive).")] = None,
     limit: Annotated[int, Field(description="Max results.")] = 50,
@@ -486,7 +581,7 @@ def list_output_variables(
     return _build_output_variable_result(serialized, total_available=len(all_items), limit=limit)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def query_timeseries(
     variable_name: Annotated[str, Field(description="Variable name.")],
     key_value: Annotated[str, Field(description='Zone/surface or "*".')] = "*",
@@ -538,7 +633,7 @@ def query_timeseries(
     })
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def query_simulation_table(
     report_name: Annotated[
         str,
@@ -613,7 +708,7 @@ def query_simulation_table(
     )
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def list_simulation_reports() -> list[str]:
     """List all tabular report names available in the last simulation's SQL output.
 
@@ -629,7 +724,7 @@ def list_simulation_reports() -> list[str]:
         return sql.list_reports()
 
 
-@mcp.tool(annotations=_EXPORT)
+@tool(annotations=_EXPORT)
 def export_timeseries(
     variable_name: Annotated[str, Field(description="Variable name.")],
     key_value: Annotated[str, Field(description='Zone/surface or "*".')] = "*",

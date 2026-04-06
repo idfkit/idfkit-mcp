@@ -2,13 +2,15 @@
 name = "idfkit-mcp"
 version = "0.5.1"
 description = "An MCP server exposing EnergyPlus model authoring, validation, and simulation via idfkit"
-authors = [{ name = "Samuel Letellier-Duchesne", email = "developers@idfkit.com" }]
+authors = [
+    { name = "Samuel Letellier-Duchesne", email = "developers@idfkit.com" },
+]
 readme = "README.md"
 keywords = ["energyplus", "mcp", "idfkit", "building-energy"]
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "idfkit>=0.6.4",
-    "fastmcp>=3.1.0",
+    "fastmcp>=3.2.0",
     "mcp>=1.2.0",
     "openstudio==3.11.0",
     "pydantic>=2.0.0",
@@ -91,7 +93,8 @@ select = [
     # mccabe
     "C90",
     # pycodestyle
-    "E", "W",
+    "E",
+    "W",
     # pyflakes
     "F",
     # pygrep-hooks

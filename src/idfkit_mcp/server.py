@@ -3,107 +3,109 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
-from collections.abc import Sequence
-from typing import Literal
+from collections.abc import AsyncIterator
+from pathlib import Path
 
-from idfkit_mcp import resources as _resources
-from idfkit_mcp.app import mcp
-from idfkit_mcp.tools import docs as _docs
-from idfkit_mcp.tools import geometry as _geometry
-from idfkit_mcp.tools import integrity as _integrity
-from idfkit_mcp.tools import read as _read
-from idfkit_mcp.tools import schedule as _schedule
-from idfkit_mcp.tools import schema as _schema
-from idfkit_mcp.tools import simulation as _simulation
-from idfkit_mcp.tools import validation as _validation
-from idfkit_mcp.tools import weather as _weather
-from idfkit_mcp.tools import write as _write
-from idfkit_mcp.tools import zone_properties as _zone_properties
+from fastmcp import FastMCP
+from fastmcp.server.lifespan import lifespan
+from fastmcp.server.providers import FileSystemProvider
 
-_ = (
-    _resources,
-    _docs,
-    _geometry,
-    _integrity,
-    _read,
-    _schedule,
-    _schema,
-    _simulation,
-    _validation,
-    _weather,
-    _write,
-    _zone_properties,
+from idfkit_mcp.errors import ToolExecutionMiddleware
+
+_INSTRUCTIONS = """\
+EnergyPlus model authoring via idfkit.
+
+VALIDATION LEVELS — two distinct gates, both required for confidence:
+  1. Schema validation (fast, no EnergyPlus required):
+       validate_model        — field types, ranges, required fields, reference integrity (schema only)
+       check_model_integrity — domain QA: orphan objects, missing controls, boundary mismatches
+     Passing these does NOT guarantee a successful simulation.
+  2. Runtime validation (requires EnergyPlus installation):
+       run_simulation        — executes EnergyPlus; fatal errors mean the model is not simulation-ready
+       idfkit://simulation/results — read this resource after every run for the full QA picture:
+         unmet hours by zone, end-use energy breakdown, classified warnings, and actionable QA flags
+
+QA LOOP — the recommended agent workflow:
+  describe_object_type -> batch_add_objects -> validate_model -> check_model_integrity
+  -> save_model -> run_simulation -> read idfkit://simulation/results
+  -> fix issues -> run_simulation again -> repeat until qa_flags is empty
+
+RESOURCES (read-only state, read any time):
+  idfkit://model/summary                     — version, zones, object counts
+  idfkit://model/objects/{type}/{name}       — all field values for one object
+  idfkit://model/references/{name}           — bidirectional reference graph
+  idfkit://docs/{type}                       — documentation URLs
+  idfkit://simulation/results                — post-run QA diagnostics (primary QA signal)
+  idfkit://simulation/peak-loads             — peak heating/cooling load decomposition
+
+TIPS:
+  - Prefer batch_add_objects over repeated add_object calls
+  - Call describe_object_type before adding any object to learn required fields
+  - get_zone_properties gives a typed summary of zone geometry, surfaces, constructions, and HVAC
+  - analyze_peak_loads decomposes facility/zone peaks into components and flags QA issues
+  - get_change_log shows recent mutations in the session
+"""
+
+
+@lifespan
+async def _configure_logging(_server: FastMCP) -> AsyncIterator[None]:
+    """Configure logging for idfkit and the MCP server."""
+    log_level = os.getenv("IDFKIT_MCP_LOG_LEVEL", "INFO")
+    level = getattr(logging, log_level)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    logging.getLogger("idfkit").setLevel(level)
+    yield
+
+
+mcp = FastMCP(
+    "idfkit",
+    instructions=_INSTRUCTIONS,
+    lifespan=_configure_logging,
+    providers=[FileSystemProvider(Path(__file__).parent / "tools")],
 )
-
-Transport = Literal["stdio", "sse", "http"]
-_TRANSPORT_CHOICES = ("stdio", "sse", "http", "streamable-http")
+mcp.add_middleware(ToolExecutionMiddleware())
 
 
-_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
-
-
-def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+def _parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for the idfkit MCP server."""
     parser = argparse.ArgumentParser(description="Run the idfkit MCP server.")
     parser.add_argument(
         "--transport",
-        choices=_TRANSPORT_CHOICES,
-        default=os.getenv("IDFKIT_MCP_TRANSPORT", "stdio"),
-        help="MCP transport to run.",
-    )
-    parser.add_argument(
-        "--log-level",
-        choices=_LOG_LEVELS,
-        default=os.getenv("IDFKIT_MCP_LOG_LEVEL", "INFO"),
-        help="Log verbosity (default: INFO, env: IDFKIT_MCP_LOG_LEVEL).",
+        choices=("stdio", "sse", "http", "streamable-http"),
+        default=os.getenv("IDFKIT_MCP_TRANSPORT", "http"),
+        help="MCP transport (default: http, env: IDFKIT_MCP_TRANSPORT).",
     )
     parser.add_argument(
         "--host",
         default=os.getenv("IDFKIT_MCP_HOST", "127.0.0.1"),
-        help="Host for HTTP/SSE transports.",
+        help="Host for HTTP/SSE transports (env: IDFKIT_MCP_HOST).",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=int(os.getenv("IDFKIT_MCP_PORT", "8000")),
-        help="Port for HTTP/SSE transports.",
+        help="Port for HTTP/SSE transports (env: IDFKIT_MCP_PORT).",
     )
-    parser.add_argument(
-        "--mount-path",
-        default=os.getenv("IDFKIT_MCP_MOUNT_PATH"),
-        help="Optional mount path for SSE transport.",
-    )
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
     if args.transport == "streamable-http":
         args.transport = "http"
     return args
 
 
 def main() -> None:
-    """Run the MCP server with configurable transport."""
-    import logging
-
+    """CLI entry point with configurable transport."""
     args = _parse_args()
-    level = getattr(logging, args.log_level)
-
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",
-        datefmt="%H:%M:%S",
-    )
-
-    # Capture idfkit core library logs (parser, schema, validation, geometry).
-    # The library installs a NullHandler by default; setting a level here lets
-    # its messages propagate through to the root handler configured above.
-    logging.getLogger("idfkit").setLevel(level)
-    transport: Transport = args.transport
-    if transport == "stdio":
-        mcp.run(transport=transport)
-        return
-    if args.mount_path is None:
-        mcp.run(transport=transport, host=args.host, port=args.port)
-        return
-    mcp.run(transport=transport, host=args.host, port=args.port, mount_path=args.mount_path)
+    kwargs: dict[str, object] = {"transport": args.transport}
+    if args.transport != "stdio":
+        kwargs["host"] = args.host
+        kwargs["port"] = args.port
+    mcp.run(**kwargs)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

@@ -7,12 +7,12 @@ import json
 import logging
 from typing import Annotated, Literal
 
-from fastmcp.server.apps import AppConfig, ResourceCSP
-from fastmcp.tools import ToolResult
+from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
+from fastmcp.resources.function_resource import resource
+from fastmcp.tools import ToolResult, tool
 from mcp.types import TextContent, ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.state import get_state
 from idfkit_mcp.viewer import VIEWER_HTML
 
@@ -89,11 +89,13 @@ def _extract_geometry(color_by: str) -> dict[str, object]:
     }
 
 
-@mcp.tool(
+@tool(
     annotations=_READ_ONLY,
-    app=AppConfig(
-        resourceUri="ui://idfkit/geometry-viewer.html",
-        prefersBorder=False,
+    meta=app_config_to_meta_dict(
+        AppConfig(
+            resourceUri="ui://idfkit/geometry-viewer.html",
+            prefersBorder=False,
+        )
     ),
 )
 def view_geometry(
@@ -133,14 +135,16 @@ def view_geometry(
     )
 
 
-@mcp.resource(
+@resource(
     "ui://idfkit/geometry-viewer.html",
     name="geometry_viewer",
     title="3D Geometry Viewer",
     description="Interactive Three.js viewer for EnergyPlus building geometry.",
-    app=AppConfig(
-        csp=ResourceCSP(resourceDomains=["https://cdn.jsdelivr.net", "https://unpkg.com"]),
-        prefersBorder=False,
+    meta=app_config_to_meta_dict(
+        AppConfig(
+            csp=ResourceCSP(resourceDomains=["https://cdn.jsdelivr.net", "https://unpkg.com"]),
+            prefersBorder=False,
+        )
     ),
 )
 def geometry_viewer_html() -> str:

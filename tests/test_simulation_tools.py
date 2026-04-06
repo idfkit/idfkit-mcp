@@ -36,6 +36,94 @@ class TestRunSimulation:
                 await call_tool(client, "run_simulation", {"design_day": True})
             mock_find.assert_called_once_with(path=None, version=None)
 
+    async def test_adds_output_sqlite_when_missing(
+        self, client: object, state_with_model: ServerState, tmp_path: Path
+    ) -> None:
+        fake_config = SimpleNamespace(
+            version=(25, 2, 0),
+            install_dir=Path("/fake/energyplus"),
+            executable=Path("/fake/energyplus/energyplus"),
+        )
+        fake_errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=0,
+            warning_count=0,
+            has_fatal=False,
+            has_severe=False,
+            simulation_complete=True,
+        )
+        fake_result = SimpleNamespace(
+            success=True,
+            runtime_seconds=0.1,
+            run_dir=tmp_path / "fake-run",
+            errors=fake_errors,
+        )
+
+        async def _fake_simulate(doc: object, **_kwargs: object) -> object:
+            collection = doc.get_collection("Output:SQLite")  # type: ignore[union-attr]
+            sqlite_object = collection.first()
+            assert sqlite_object is not None
+            assert sqlite_object.option_type == "SimpleAndTabular"
+            return fake_result
+
+        with (
+            patch("idfkit.simulation.config.find_energyplus", return_value=fake_config),
+            patch("idfkit.simulation.async_simulate", side_effect=_fake_simulate),
+        ):
+            result = await call_tool(client, "run_simulation", {"design_day": True})
+
+        assert result["success"] is True
+        state = state_with_model
+        collection = state.document.get_collection("Output:SQLite")  # type: ignore[union-attr]
+        sqlite_object = collection.first()
+        assert sqlite_object is not None
+        assert sqlite_object.option_type == "SimpleAndTabular"
+
+    async def test_upgrades_existing_output_sqlite(
+        self, client: object, state_with_model: ServerState, tmp_path: Path
+    ) -> None:
+        doc = state_with_model.document
+        doc.add("Output:SQLite", "", option_type="Simple")  # type: ignore[union-attr]
+
+        fake_config = SimpleNamespace(
+            version=(25, 2, 0),
+            install_dir=Path("/fake/energyplus"),
+            executable=Path("/fake/energyplus/energyplus"),
+        )
+        fake_errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=0,
+            warning_count=0,
+            has_fatal=False,
+            has_severe=False,
+            simulation_complete=True,
+        )
+        fake_result = SimpleNamespace(
+            success=True,
+            runtime_seconds=0.1,
+            run_dir=tmp_path / "fake-run",
+            errors=fake_errors,
+        )
+
+        async def _fake_simulate(doc: object, **_kwargs: object) -> object:
+            collection = doc.get_collection("Output:SQLite")  # type: ignore[union-attr]
+            sqlite_object = collection.first()
+            assert sqlite_object is not None
+            assert sqlite_object.option_type == "SimpleAndTabular"
+            return fake_result
+
+        with (
+            patch("idfkit.simulation.config.find_energyplus", return_value=fake_config),
+            patch("idfkit.simulation.async_simulate", side_effect=_fake_simulate),
+        ):
+            result = await call_tool(client, "run_simulation", {"design_day": True})
+
+        assert result["success"] is True
+        collection = state_with_model.document.get_collection("Output:SQLite")  # type: ignore[union-attr]
+        sqlite_object = collection.first()
+        assert sqlite_object is not None
+        assert sqlite_object.option_type == "SimpleAndTabular"
+
 
 class TestListOutputVariables:
     async def test_no_simulation(self, client: object) -> None:
@@ -179,3 +267,114 @@ class TestExportTimeseries:
                 "export_timeseries",
                 {"variable_name": "Test", "output_path": "/tmp/evil.csv"},  # noqa: S108
             )
+
+
+class TestEnsureSqliteOutput:
+    """Unit tests for _ensure_sqlite_output pre-flight function."""
+
+    def test_adds_output_sqlite_when_missing(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = state_with_model.require_model()
+        assert "Output:SQLite" not in doc
+        _ensure_sqlite_output(doc)
+        obj = doc["Output:SQLite"].first()
+        assert obj is not None
+        assert obj.option_type == "SimpleAndTabular"
+
+    def test_upgrades_simple_to_simple_and_tabular(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = state_with_model.require_model()
+        doc.add("Output:SQLite", "", option_type="Simple")
+        _ensure_sqlite_output(doc)
+        assert doc["Output:SQLite"].first().option_type == "SimpleAndTabular"
+
+    def test_leaves_simple_and_tabular_unchanged(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = state_with_model.require_model()
+        doc.add("Output:SQLite", "", option_type="SimpleAndTabular")
+        _ensure_sqlite_output(doc)
+        assert len(list(doc["Output:SQLite"])) == 1
+
+    def test_overrides_output_control_files(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = state_with_model.require_model()
+        doc.add("OutputControl:Files", output_sqlite="No", output_tabular="No")
+        _ensure_sqlite_output(doc)
+        ctrl = doc["OutputControl:Files"].first()
+        assert ctrl.output_sqlite == "Yes"
+        assert ctrl.output_tabular == "Yes"
+
+    def test_leaves_output_control_files_yes_unchanged(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = state_with_model.require_model()
+        doc.add("OutputControl:Files", output_sqlite="Yes", output_tabular="Yes")
+        _ensure_sqlite_output(doc)
+        ctrl = doc["OutputControl:Files"].first()
+        assert ctrl.output_sqlite == "Yes"
+        assert ctrl.output_tabular == "Yes"
+
+
+class TestEnsureSummaryReports:
+    """Unit tests for _ensure_summary_reports pre-flight function."""
+
+    def test_adds_reports_when_missing(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_summary_reports
+
+        doc = state_with_model.require_model()
+        assert "Output:Table:SummaryReports" not in doc
+        _ensure_summary_reports(doc)
+        obj = doc["Output:Table:SummaryReports"].first()
+        assert obj is not None
+        assert obj.report_name in ("HVACSizingSummary", "SensibleHeatGainSummary")
+
+    def test_appends_missing_reports_to_existing(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_summary_reports
+
+        doc = state_with_model.require_model()
+        doc.add("Output:Table:SummaryReports", data={"report_name": "AnnualBuildingUtilityPerformanceSummary"})
+        _ensure_summary_reports(doc)
+        obj = doc["Output:Table:SummaryReports"].first()
+        # Original report preserved
+        assert obj.report_name == "AnnualBuildingUtilityPerformanceSummary"
+        # New ones appended
+        existing = set()
+        idx = 1
+        while True:
+            field = "report_name" if idx == 1 else f"report_name_{idx}"
+            val = getattr(obj, field, None)
+            if val is None:
+                break
+            existing.add(val)
+            idx += 1
+        assert "SensibleHeatGainSummary" in existing
+        assert "HVACSizingSummary" in existing
+        assert "AnnualBuildingUtilityPerformanceSummary" in existing
+
+    def test_skips_when_all_summary_present(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_summary_reports
+
+        doc = state_with_model.require_model()
+        doc.add("Output:Table:SummaryReports", data={"report_name": "AllSummary"})
+        _ensure_summary_reports(doc)
+        obj = doc["Output:Table:SummaryReports"].first()
+        # Should not append anything — AllSummary covers everything
+        assert obj.report_name == "AllSummary"
+        assert getattr(obj, "report_name_2", None) is None
+
+    def test_skips_when_already_present(self, state_with_model: ServerState) -> None:
+        from idfkit_mcp.tools.simulation import _ensure_summary_reports
+
+        doc = state_with_model.require_model()
+        doc.add(
+            "Output:Table:SummaryReports",
+            data={"report_name": "SensibleHeatGainSummary", "report_name_2": "HVACSizingSummary"},
+        )
+        _ensure_summary_reports(doc)
+        obj = doc["Output:Table:SummaryReports"].first()
+        # Nothing appended
+        assert getattr(obj, "report_name_3", None) is None

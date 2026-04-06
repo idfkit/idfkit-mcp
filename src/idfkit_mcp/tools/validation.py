@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import ValidationResult
 from idfkit_mcp.serializers import serialize_validation_result
 from idfkit_mcp.state import get_state
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@tool(annotations=_READ_ONLY)
 def validate_model(
     object_types: Annotated[list[str] | None, Field(description="Only validate specific types (default: all).")] = None,
     check_references: Annotated[bool, Field(description="Check reference integrity.")] = True,

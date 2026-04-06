@@ -15,13 +15,12 @@ from collections import OrderedDict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.request import urlopen
 
-from idfkit import LATEST_VERSION, get_schema
+from idfkit import LATEST_VERSION, IDFDocument, get_schema
 
 if TYPE_CHECKING:
-    from idfkit.document import IDFDocument
     from idfkit.schema import EpJSONSchema
     from idfkit.simulation.result import SimulationResult
     from idfkit.weather.index import StationIndex
@@ -147,7 +146,7 @@ class ServerState:
     session ID on every connection.
     """
 
-    document: IDFDocument | None = None
+    document: IDFDocument[Literal[True]] | None = None
     schema: EpJSONSchema | None = None
     file_path: Path | None = None
     simulation_result: SimulationResult | None = None
@@ -167,7 +166,7 @@ class ServerState:
     # In-memory mutation log (not persisted; reset on clear_session)
     change_log: list[dict[str, str]] = dataclasses.field(default_factory=lambda: [])
 
-    def require_model(self) -> IDFDocument:
+    def require_model(self) -> IDFDocument[Literal[True]]:
         """Return the active document, auto-restoring from session if needed."""
         if self.document is None:
             self._try_restore_session()
@@ -353,7 +352,11 @@ class ServerState:
         try:
             from idfkit import load_epjson, load_idf
 
-            doc = load_epjson(str(fp)) if fp.suffix.lower() in (".epjson", ".json") else load_idf(str(fp))
+            doc = (
+                load_epjson(str(fp), strict=True)
+                if fp.suffix.lower() in (".epjson", ".json")
+                else load_idf(str(fp), strict=True)
+            )
             self.document = doc
             self.schema = doc.schema
             self.file_path = fp

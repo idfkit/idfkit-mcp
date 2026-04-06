@@ -6,10 +6,10 @@ import logging
 from typing import Annotated, Any
 
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from idfkit_mcp.app import mcp
 from idfkit_mcp.models import DownloadWeatherFileResult, SearchWeatherStationsResult
 from idfkit_mcp.serializers import serialize_station
 from idfkit_mcp.state import get_state
@@ -20,7 +20,7 @@ _READ_ONLY_OPEN = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idem
 _DOWNLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 
 
-@mcp.tool(annotations=_READ_ONLY_OPEN)
+@tool(annotations=_READ_ONLY_OPEN)
 def search_weather_stations(
     query: Annotated[str | None, Field(description="City or airport name.")] = None,
     latitude: Annotated[float | None, Field(description="Latitude.")] = None,
@@ -82,7 +82,7 @@ def _matches_filters(station: Any, country: str | None, state: str | None) -> bo
     return not (state and station.state.upper() != state.upper())
 
 
-@mcp.tool(annotations=_DOWNLOAD)
+@tool(annotations=_DOWNLOAD)
 def download_weather_file(
     wmo: Annotated[str | None, Field(description="WMO station number.")] = None,
     query: Annotated[str | None, Field(description="City or airport name.")] = None,
