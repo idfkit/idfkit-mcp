@@ -75,6 +75,15 @@ def _open_sql(result: Any) -> Any:
     return SQLResult(sql_path)
 
 
+_ZONE_SUMMARY_AGGREGATE_ROWS = frozenset({
+    "CONDITIONED TOTAL",
+    "UNCONDITIONED TOTAL",
+    "NOT PART OF TOTAL",
+    "TOTAL",
+})
+"""Aggregate row names in the EnergyPlus Zone Summary table that must be excluded from per-zone area lookups."""
+
+
 def _get_zone_areas(sql: Any) -> dict[str, float]:
     """Return {zone_name: area_m2} from the InputVerification report."""
     rows = sql.get_tabular_data(
@@ -84,8 +93,11 @@ def _get_zone_areas(sql: Any) -> dict[str, float]:
     )
     areas: dict[str, float] = {}
     for r in rows:
+        key = r.row_name.upper()
+        if key in _ZONE_SUMMARY_AGGREGATE_ROWS:
+            continue
         with contextlib.suppress(ValueError, TypeError):
-            areas[r.row_name] = float(r.value)
+            areas[key] = float(r.value)
     return areas
 
 
@@ -117,7 +129,7 @@ def _parse_peak_components(
 
         components = _extract_components(columns)
         peak_w = sum(abs(c.value_w) for c in components if c.value_w > 0)
-        area = zone_areas.get(zone_name)
+        area = zone_areas.get(zone_name.upper())
 
         zones.append(
             ZonePeakLoad(
@@ -192,7 +204,7 @@ def _parse_sizing(sql: Any, table_name: str, zone_areas: dict[str, float]) -> li
     for zone_name, cols in by_zone.items():
         calc_load = _safe_float(cols.get("Calculated Design Load"))
         user_load = _safe_float(cols.get("User Design Load"))
-        area = zone_areas.get(zone_name)
+        area = zone_areas.get(zone_name.upper())
         load_per_m2 = None
         if user_load is not None and area and area > 0:
             load_per_m2 = round(user_load / area, 1)

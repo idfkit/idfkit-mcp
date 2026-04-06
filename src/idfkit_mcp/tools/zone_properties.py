@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastmcp.tools import tool
+from idfkit import IDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -24,7 +25,9 @@ _SURFACE_TYPE_MAP: dict[str, str] = {
 }
 
 
-def _zone_geometry(doc: Any, zone_name: str, has_surfaces: bool) -> tuple[float | None, float | None, float | None]:
+def _zone_geometry(
+    doc: IDFDocument, zone_name: str, has_surfaces: bool
+) -> tuple[float | None, float | None, float | None]:
     """Return (floor_area_m2, volume_m3, height_m) or (None, None, None) if no surfaces."""
     if not has_surfaces:
         return None, None, None
@@ -44,16 +47,13 @@ def _zone_geometry(doc: Any, zone_name: str, has_surfaces: bool) -> tuple[float 
         return None, None, None
 
 
-def _surface_counts(doc: Any, zone_name: str) -> tuple[SurfaceTypeCounts, set[str]]:
+def _surface_counts(doc: IDFDocument, zone_name: str) -> tuple[SurfaceTypeCounts, set[str]]:
     """Count surfaces by type for a zone; return counts and set of host surface names."""
     counts = SurfaceTypeCounts()
     host_surfaces: set[str] = set()
 
-    if "BuildingSurface:Detailed" not in doc:
-        return counts, host_surfaces
-
-    for surface in doc.get_collection("BuildingSurface:Detailed"):
-        if surface.data.get("zone_name", "").lower() != zone_name.lower():
+    for surface in doc.get_referencing(zone_name):
+        if surface.obj_type != "BuildingSurface:Detailed":
             continue
         host_surfaces.add(surface.name.lower())
         surface_type = surface.data.get("surface_type", "").lower()
@@ -63,35 +63,33 @@ def _surface_counts(doc: Any, zone_name: str) -> tuple[SurfaceTypeCounts, set[st
     return counts, host_surfaces
 
 
-def _fenestration_counts(doc: Any, host_surfaces: set[str]) -> tuple[int, int]:
+def _fenestration_counts(doc: IDFDocument, host_surfaces: set[str]) -> tuple[int, int]:
     """Count windows and doors for surfaces in this zone."""
     windows = doors = 0
-    if "FenestrationSurface:Detailed" not in doc:
-        return windows, doors
-    for fen in doc.get_collection("FenestrationSurface:Detailed"):
-        if fen.data.get("building_surface_name", "").lower() not in host_surfaces:
-            continue
-        if fen.data.get("surface_type", "").lower() == "door":
-            doors += 1
-        else:
-            windows += 1
+    for host_name in host_surfaces:
+        for fen in doc.get_referencing(host_name):
+            if fen.obj_type != "FenestrationSurface:Detailed":
+                continue
+            if fen.data.get("surface_type", "").lower() == "door":
+                doors += 1
+            else:
+                windows += 1
     return windows, doors
 
 
-def _zone_constructions(doc: Any, zone_name: str) -> list[str]:
+def _zone_constructions(doc: IDFDocument, zone_name: str) -> list[str]:
     """Unique construction names used by surfaces in this zone."""
     names: set[str] = set()
-    if "BuildingSurface:Detailed" in doc:
-        for surface in doc.get_collection("BuildingSurface:Detailed"):
-            if surface.data.get("zone_name", "").lower() != zone_name.lower():
-                continue
-            cn = surface.data.get("construction_name", "")
-            if cn:
-                names.add(cn)
+    for surface in doc.get_referencing(zone_name):
+        if surface.obj_type != "BuildingSurface:Detailed":
+            continue
+        cn = surface.data.get("construction_name", "")
+        if cn:
+            names.add(cn)
     return sorted(names)
 
 
-def _zone_schedules(doc: Any, zone_name: str) -> list[str]:
+def _zone_schedules(doc: IDFDocument, zone_name: str) -> list[str]:
     """Schedule names referenced by objects that themselves reference this zone."""
     schedules: set[str] = set()
     for obj in doc.get_referencing(zone_name):
@@ -101,41 +99,28 @@ def _zone_schedules(doc: Any, zone_name: str) -> list[str]:
     return sorted(schedules)
 
 
-def _zone_hvac_connections(doc: Any, zone_name: str) -> list[str]:
+def _zone_hvac_connections(doc: IDFDocument, zone_name: str) -> list[str]:
     """ZoneHVAC:EquipmentConnections names for this zone.
 
     Falls back to the zone_name field when the connection object itself is unnamed
     (which is valid in EnergyPlus — ZoneHVAC:EquipmentConnections may use the zone
     name as its implicit identifier).
     """
-    if "ZoneHVAC:EquipmentConnections" not in doc:
-        return []
     results: list[str] = []
-    for conn in doc.get_collection("ZoneHVAC:EquipmentConnections"):
-        if conn.data.get("zone_name", "").lower() != zone_name.lower():
+    for conn in doc.get_referencing(zone_name):
+        if conn.obj_type != "ZoneHVAC:EquipmentConnections":
             continue
         # Use explicit name if present; fall back to zone_name (the implicit key)
-        results.append(conn.name or conn.data.get("zone_name", zone_name))
+        results.append(conn.name or zone_name)
     return results
 
 
-def _zone_thermostats(doc: Any, zone_name: str) -> list[str]:
-    """Control object names from ZoneControl:Thermostat for this zone."""
-    if "ZoneControl:Thermostat" not in doc:
-        return []
-    thermostats: list[str] = []
-    for ctrl in doc.get_collection("ZoneControl:Thermostat"):
-        zl = ctrl.data.get("zone_or_zonelist_or_space_or_spacelist_name", "")
-        if not zl:
-            zl = ctrl.data.get("zone_or_zonelist_name", "")
-        if zl.lower() == zone_name.lower():
-            control_name = ctrl.data.get("control_object_name", "")
-            if control_name:
-                thermostats.append(control_name)
-    return thermostats
+def _zone_thermostats(doc: IDFDocument, zone_name: str) -> list[str]:
+    """Thermostat control names from ZoneControl:Thermostat for this zone."""
+    return [obj.name for obj in doc.get_referencing(zone_name) if obj.obj_type == "ZoneControl:Thermostat" and obj.name]
 
 
-def _build_zone_properties(doc: Any, zone_name: str) -> ZoneProperties:
+def _build_zone_properties(doc: IDFDocument, zone_name: str) -> ZoneProperties:
     """Build a ZoneProperties summary for one zone."""
     counts, host_surfaces = _surface_counts(doc, zone_name)
     has_surfaces = len(host_surfaces) > 0
