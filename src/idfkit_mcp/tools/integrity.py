@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import Callable
 
 from fastmcp.tools import tool
+from idfkit import IDFDocument
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.models import IntegrityIssue, ModelIntegrityResult
@@ -34,7 +35,7 @@ _REQUIRED_CONTROLS = (
 )
 
 
-def _check_zones_with_no_surfaces(doc: Any) -> list[IntegrityIssue]:
+def _check_zones_with_no_surfaces(doc: IDFDocument) -> list[IntegrityIssue]:
     """Every Zone must have at least one BuildingSurface:Detailed."""
     issues: list[IntegrityIssue] = []
     if "Zone" not in doc:
@@ -62,7 +63,7 @@ def _check_zones_with_no_surfaces(doc: Any) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_required_controls(doc: Any) -> list[IntegrityIssue]:
+def _check_required_controls(doc: IDFDocument) -> list[IntegrityIssue]:
     """Required singleton control objects must be present."""
     issues: list[IntegrityIssue] = []
     for obj_type in _REQUIRED_CONTROLS:
@@ -79,7 +80,7 @@ def _check_required_controls(doc: Any) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_orphan_schedules(doc: Any) -> list[IntegrityIssue]:
+def _check_orphan_schedules(doc: IDFDocument) -> list[IntegrityIssue]:
     """Schedules defined but not referenced by any other object."""
     issues: list[IntegrityIssue] = []
     for sched_type in _SCHEDULE_TYPES:
@@ -101,7 +102,7 @@ def _check_orphan_schedules(doc: Any) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_surface_boundary_mismatches(doc: Any) -> list[IntegrityIssue]:
+def _check_surface_boundary_mismatches(doc: IDFDocument) -> list[IntegrityIssue]:
     """Surfaces with outside_boundary_condition='Surface' must have a valid, reciprocal partner."""
     issues: list[IntegrityIssue] = []
     if "BuildingSurface:Detailed" not in doc:
@@ -160,7 +161,7 @@ def _check_surface_boundary_mismatches(doc: Any) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_fenestration_hosts(doc: Any) -> list[IntegrityIssue]:
+def _check_fenestration_hosts(doc: IDFDocument) -> list[IntegrityIssue]:
     """FenestrationSurface:Detailed must reference an existing BuildingSurface:Detailed."""
     issues: list[IntegrityIssue] = []
     if "FenestrationSurface:Detailed" not in doc:
@@ -186,7 +187,7 @@ def _check_fenestration_hosts(doc: Any) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_hvac_zone_references(doc: Any) -> list[IntegrityIssue]:
+def _check_hvac_zone_references(doc: IDFDocument) -> list[IntegrityIssue]:
     """ZoneHVAC:EquipmentConnections zone_name must reference an existing Zone."""
     issues: list[IntegrityIssue] = []
     if "ZoneHVAC:EquipmentConnections" not in doc:
@@ -232,7 +233,7 @@ def check_model_integrity() -> ModelIntegrityResult:
     state = get_state()
     doc = state.require_model()
 
-    checks: list[tuple[str, Any]] = [
+    checks: list[tuple[str, Callable[[IDFDocument], list[IntegrityIssue]]]] = [
         ("zones_with_no_surfaces", _check_zones_with_no_surfaces),
         ("required_simulation_controls", _check_required_controls),
         ("orphan_schedules", _check_orphan_schedules),

@@ -73,11 +73,8 @@ class TestRunSimulation:
             result = await call_tool(client, "run_simulation", {"design_day": True})
 
         assert result["success"] is True
-        state = state_with_model
-        collection = state.document.get_collection("Output:SQLite")  # type: ignore[union-attr]
-        sqlite_object = collection.first()
-        assert sqlite_object is not None
-        assert sqlite_object.option_type == "SimpleAndTabular"
+        # The original model must NOT be mutated — simulation runs on a copy.
+        assert "Output:SQLite" not in state_with_model.document  # type: ignore[operator]
 
     async def test_upgrades_existing_output_sqlite(
         self, client: object, state_with_model: ServerState, tmp_path: Path
@@ -119,10 +116,11 @@ class TestRunSimulation:
             result = await call_tool(client, "run_simulation", {"design_day": True})
 
         assert result["success"] is True
+        # The original model must NOT be mutated — simulation runs on a copy.
         collection = state_with_model.document.get_collection("Output:SQLite")  # type: ignore[union-attr]
         sqlite_object = collection.first()
         assert sqlite_object is not None
-        assert sqlite_object.option_type == "SimpleAndTabular"
+        assert sqlite_object.option_type == "Simple"  # unchanged
 
 
 class TestListOutputVariables:
@@ -330,7 +328,9 @@ class TestEnsureSummaryReports:
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         assert obj is not None
-        assert obj.report_name in ("HVACSizingSummary", "SensibleHeatGainSummary")
+        from idfkit_mcp.tools.simulation import _REQUIRED_SUMMARY_REPORTS
+
+        assert obj.report_name in _REQUIRED_SUMMARY_REPORTS
 
     def test_appends_missing_reports_to_existing(self, state_with_model: ServerState) -> None:
         from idfkit_mcp.tools.simulation import _ensure_summary_reports
@@ -370,11 +370,14 @@ class TestEnsureSummaryReports:
         from idfkit_mcp.tools.simulation import _ensure_summary_reports
 
         doc = state_with_model.require_model()
-        doc.add(
-            "Output:Table:SummaryReports",
-            data={"report_name": "SensibleHeatGainSummary", "report_name_2": "HVACSizingSummary"},
-        )
+        from idfkit_mcp.tools.simulation import _REQUIRED_SUMMARY_REPORTS
+
+        data: dict[str, str] = {}
+        for i, name in enumerate(_REQUIRED_SUMMARY_REPORTS, 1):
+            data["report_name" if i == 1 else f"report_name_{i}"] = name
+        doc.add("Output:Table:SummaryReports", data=data)
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
-        # Nothing appended
-        assert getattr(obj, "report_name_3", None) is None
+        # Nothing appended beyond what's already there
+        next_field = f"report_name_{len(_REQUIRED_SUMMARY_REPORTS) + 1}"
+        assert getattr(obj, next_field, None) is None

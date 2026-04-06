@@ -147,7 +147,10 @@ def _ensure_sqlite_output(doc: IDFDocument[Literal[True]]) -> None:
 
 # Summary reports that downstream tools and viewers require.
 _REQUIRED_SUMMARY_REPORTS = frozenset({
+    "AnnualBuildingUtilityPerformanceSummary",
+    "InputVerificationandResultsSummary",
     "SensibleHeatGainSummary",
+    "SystemSummary",
     "HVACSizingSummary",
 })
 
@@ -241,8 +244,12 @@ async def run_simulation(
     state = get_state()
     doc = state.require_model()
     weather = _resolve_weather_path(weather_file, design_day)
-    _ensure_sqlite_output(doc)
-    _ensure_summary_reports(doc)
+
+    # Simulate on a copy so pre-flight injections (Output:SQLite,
+    # Output:Table:SummaryReports) do not mutate the user's loaded model.
+    sim_doc = doc.copy()
+    _ensure_sqlite_output(sim_doc)
+    _ensure_summary_reports(sim_doc)
 
     config = find_energyplus(path=energyplus_dir, version=energyplus_version)
     logger.info(
@@ -254,7 +261,7 @@ async def run_simulation(
     )
 
     result = await async_simulate(
-        doc,
+        sim_doc,
         weather="" if weather is None else weather,
         design_day=design_day,
         annual=annual,
@@ -526,10 +533,10 @@ def get_results_summary() -> GetResultsSummaryResult:
         "fatal_messages": fatal_msgs if fatal_msgs else None,
         "severe_messages": severe_msgs if severe_msgs else None,
         "sql_available": sql_available,
-        "unmet_hours": [u.model_dump() for u in unmet_hours] if unmet_hours else None,
+        "unmet_hours": [u.model_dump() for u in unmet_hours] if sql_available else None,
         "total_unmet_heating_hours": total_unmet_heating if sql_available else None,
         "total_unmet_cooling_hours": total_unmet_cooling if sql_available else None,
-        "end_uses": [e.model_dump() for e in end_uses] if end_uses else None,
+        "end_uses": [e.model_dump() for e in end_uses] if sql_available else None,
         "classified_warnings": [w.model_dump() for w in classified] if classified else None,
         "qa_flags": [f.model_dump() for f in qa_flags] if qa_flags else None,
         "notes": notes if notes else None,
@@ -781,7 +788,6 @@ def build_simulation_report() -> SimulationReportResult:
     with _open_sql_result(result) as sql:
         report_sections, table_count = _collect_tabular_sections(sql)
 
-    errors = result.errors
     building = "Unknown"
     doc = state.document
     if doc is not None and "Building" in doc:
@@ -789,16 +795,26 @@ def build_simulation_report() -> SimulationReportResult:
         if bldg is not None:
             building = bldg.name or "Unknown"
 
+    # Extract metadata from SQL Simulations table when available.
+    energyplus_version = ""
+    environment = ""
     timestamp = ""
-    if errors.simulation_complete:
-        summary_text = errors.summary()
-        if summary_text:
-            timestamp = summary_text.split("\n")[0]
+    try:
+        with _open_sql_result(result) as meta_sql:
+            sim_rows = meta_sql.query("SELECT EnergyPlusVersion, TimeStamp FROM Simulations LIMIT 1")
+            if sim_rows:
+                energyplus_version = str(sim_rows[0][0] or "")
+                timestamp = str(sim_rows[0][1] or "")
+            envs = meta_sql.list_environments()
+            if envs:
+                environment = ", ".join(e.name for e in envs)
+    except Exception:
+        logger.debug("Could not extract simulation metadata from SQL", exc_info=True)
 
     return SimulationReportResult(
         building_name=building,
-        environment="",
-        energyplus_version="",
+        environment=environment,
+        energyplus_version=energyplus_version,
         timestamp=timestamp,
         report_count=len(report_sections),
         table_count=table_count,
