@@ -78,7 +78,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--transport",
         choices=("stdio", "sse", "http", "streamable-http"),
-        default=os.getenv("IDFKIT_MCP_TRANSPORT", "http"),
+        default=os.getenv("IDFKIT_MCP_TRANSPORT", "stdio"),
         help="MCP transport (default: http, env: IDFKIT_MCP_TRANSPORT).",
     )
     parser.add_argument(

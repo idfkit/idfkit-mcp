@@ -104,6 +104,20 @@ def peak_loads_summary() -> ResourceResult:
 
 
 @resource(
+    "idfkit://simulation/report",
+    name="simulation_report",
+    title="Simulation Report",
+    description="Full tabular simulation report organized by report section and table.",
+    mime_type="application/json",
+)
+def simulation_report() -> ResourceResult:
+    """Full tabular report as JSON for the interactive viewer."""
+    from idfkit_mcp.tools.simulation import build_simulation_report
+
+    return _to_resource_json(build_simulation_report())
+
+
+@resource(
     "idfkit://docs/{object_type}",
     name="documentation_urls",
     title="Documentation URLs",

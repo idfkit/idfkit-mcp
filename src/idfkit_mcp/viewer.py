@@ -262,7 +262,7 @@ VIEWER_HTML = r"""<!DOCTYPE html>
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
-    "@modelcontextprotocol/ext-apps": "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps"
+    "@modelcontextprotocol/ext-apps": "https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps"
   }
 }
 </script>
@@ -781,15 +781,17 @@ function handleToolResult({ content }) {
   }
 }
 
-// Connect via the official MCP Apps SDK.
-const app = new App({ name: 'idfkit Geometry Viewer', version: '1.0.0' });
-app.ontoolresult = handleToolResult;
-await app.connect();
-
-// Also check if data was embedded (for standalone testing).
+// Load embedded data immediately (for standalone testing / when connect stalls).
 if (window.__IDFKIT_DATA__) {
   buildModel(window.__IDFKIT_DATA__);
 }
+
+// Connect via the official MCP Apps SDK.
+try {
+  const app = new App({ name: 'idfkit Geometry Viewer', version: '1.0.0' });
+  app.ontoolresult = handleToolResult;
+  await app.connect();
+} catch (e) { console.debug('[idfkit-geometry-viewer] MCP Apps SDK not available', e); }
 </script>
 </body>
 </html>

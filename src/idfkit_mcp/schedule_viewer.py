@@ -220,7 +220,7 @@ SCHEDULE_VIEWER_HTML = r"""<!DOCTYPE html>
 <script type="importmap">
 {
   "imports": {
-    "@modelcontextprotocol/ext-apps": "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps"
+    "@modelcontextprotocol/ext-apps": "https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps"
   }
 }
 </script>
@@ -610,14 +610,16 @@ function handleToolResult({ content }) {
   }
 }
 
-const app = new App({ name: 'idfkit Schedule Viewer', version: '1.0.0' });
-app.ontoolresult = handleToolResult;
-await app.connect();
-
-// Standalone testing fallback.
+// Standalone testing fallback — load immediately before connect stalls.
 if (window.__IDFKIT_DATA__) {
   loadModel(window.__IDFKIT_DATA__);
 }
+
+try {
+  const app = new App({ name: 'idfkit Schedule Viewer', version: '1.0.0' });
+  app.ontoolresult = handleToolResult;
+  await app.connect();
+} catch (e) { console.debug('[idfkit-schedule-viewer] MCP Apps SDK not available', e); }
 </script>
 </body>
 </html>
