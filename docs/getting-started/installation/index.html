@@ -12,7 +12,7 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/getting-started/installation/">
+        <link rel="canonical" href="https://mcp.idfkit.com/getting-started/installation/">
       
       
         <link rel="prev" href="../..">
@@ -1514,8 +1514,6 @@
       
         
       
-        
-      
     
     
     
@@ -1568,34 +1566,6 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/app/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    App
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
               
             
               
@@ -1705,6 +1675,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1718,10 +1698,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
             
   
   
@@ -1739,8 +1719,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1793,6 +1773,34 @@
     
   
     Read
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zone Properties
   
 
     
@@ -1869,6 +1877,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/tools-integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/tools-simulation/" class="md-nav__link">
         
   
@@ -1877,6 +1913,90 @@
     
   
     Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peak Loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-schedule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedule
   
 
     
@@ -2279,9 +2399,9 @@
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nv">IDFKIT_MCP_TRANSPORT</span><span class="o">=</span>streamable-http<span class="w"> </span><span class="nv">IDFKIT_MCP_HOST</span><span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="nv">IDFKIT_MCP_PORT</span><span class="o">=</span><span class="m">8000</span><span class="w"> </span>idfkit-mcp
 </span></code></pre></div>
 <h2 id="log-verbosity">Log Verbosity<a class="headerlink" href="#log-verbosity" title="Permanent link">&para;</a></h2>
-<p>Control log output with <code>--log-level</code> (or the <code>IDFKIT_MCP_LOG_LEVEL</code> environment variable).
+<p>Control log output with the <code>IDFKIT_MCP_LOG_LEVEL</code> environment variable.
 The default level is <code>INFO</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>idfkit-mcp<span class="w"> </span>--log-level<span class="w"> </span>DEBUG
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
 </span></code></pre></div>
 <p>Available levels: <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>.</p>
 <p>At <code>DEBUG</code> level the server emits per-tool CALL/OK traces, idfkit core parsing
@@ -2389,7 +2509,7 @@ the high-frequency per-call noise.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+      Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
     </div>
   
   

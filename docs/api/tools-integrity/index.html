@@ -12,13 +12,13 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/troubleshooting/setup/">
+        <link rel="canonical" href="https://mcp.idfkit.com/api/tools-integrity/">
       
       
-        <link rel="prev" href="../../concepts/error-semantics/">
+        <link rel="prev" href="../tools-validation/">
       
       
-        <link rel="next" href="../simulation/">
+        <link rel="next" href="../tools-simulation/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Setup & Configuration - idfkit-mcp</title>
+        <title>Tools: Integrity - idfkit-mcp</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#setup-configuration" class="md-skip">
+        <a href="#tools-integrity" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Setup &amp; Configuration
+              Tools: Integrity
             
           </span>
         </div>
@@ -291,13 +291,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="././" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../troubleshooting/setup/" class="md-tabs__link">
           
   
   Troubleshooting
@@ -312,11 +310,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   API Reference
@@ -1146,10 +1146,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1161,22 +1159,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1194,7 +1189,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1209,37 +1204,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Setup & Configuration
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/setup/" class="md-nav__link">
         
   
   
@@ -1255,261 +1223,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#enable-debug-logging" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable Debug Logging
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#server-does-not-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Server Does Not Start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Server Does Not Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mcp-client-cannot-connect" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Client Cannot Connect
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Client Cannot Connect">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#energyplus-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EnergyPlus not found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="EnergyPlus not found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-model-loaded" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No model loaded
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No model loaded">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#openstudio-sdk-not-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenStudio SDK not available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OpenStudio SDK not available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-version-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema Version Errors
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema Version Errors">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1522,7 +1235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../simulation/" class="md-nav__link">
+      <a href="../../troubleshooting/simulation/" class="md-nav__link">
         
   
   
@@ -1554,6 +1267,8 @@
       
   
   
+    
+  
   
   
     
@@ -1575,20 +1290,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1606,13 +1324,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1632,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/server/" class="md-nav__link">
+      <a href="../server/" class="md-nav__link">
         
   
   
@@ -1660,7 +1378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/state/" class="md-nav__link">
+      <a href="../state/" class="md-nav__link">
         
   
   
@@ -1688,7 +1406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/resources/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
@@ -1713,8 +1431,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1747,18 +1467,21 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="">
             
   
   
@@ -1776,7 +1499,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1794,7 +1517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schema/" class="md-nav__link">
+      <a href="../tools-schema/" class="md-nav__link">
         
   
   
@@ -1822,7 +1545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-read/" class="md-nav__link">
+      <a href="../tools-read/" class="md-nav__link">
         
   
   
@@ -1850,7 +1573,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+      <a href="../tools-zone-properties/" class="md-nav__link">
         
   
   
@@ -1878,7 +1601,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-write/" class="md-nav__link">
+      <a href="../tools-write/" class="md-nav__link">
         
   
   
@@ -1906,7 +1629,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-validation/" class="md-nav__link">
+      <a href="../tools-validation/" class="md-nav__link">
         
   
   
@@ -1931,10 +1654,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/tools-integrity/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrity
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1950,6 +1700,49 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.integrity.check_model_integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_model_integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1962,7 +1755,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-simulation/" class="md-nav__link">
+      <a href="../tools-simulation/" class="md-nav__link">
         
   
   
@@ -1990,7 +1783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+      <a href="../tools-peak-loads/" class="md-nav__link">
         
   
   
@@ -2018,7 +1811,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-geometry/" class="md-nav__link">
+      <a href="../tools-geometry/" class="md-nav__link">
         
   
   
@@ -2046,7 +1839,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schedule/" class="md-nav__link">
+      <a href="../tools-schedule/" class="md-nav__link">
         
   
   
@@ -2074,7 +1867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-weather/" class="md-nav__link">
+      <a href="../tools-weather/" class="md-nav__link">
         
   
   
@@ -2102,7 +1895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-docs/" class="md-nav__link">
+      <a href="../tools-docs/" class="md-nav__link">
         
   
   
@@ -2166,10 +1959,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#enable-debug-logging" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.integrity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enable Debug Logging
+        integrity
       
     </span>
   </a>
@@ -2177,225 +1970,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#server-does-not-start" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.integrity.check_model_integrity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Server Does Not Start
+        check_model_integrity
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Server Does Not Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mcp-client-cannot-connect" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Client Cannot Connect
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Client Cannot Connect">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#energyplus-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EnergyPlus not found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="EnergyPlus not found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-model-loaded" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No model loaded
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No model loaded">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#openstudio-sdk-not-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenStudio SDK not available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OpenStudio SDK not available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-version-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema Version Errors
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema Version Errors">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2414,7 +1995,7 @@
                 
                   
   
-    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/troubleshooting/setup.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/api/tools-integrity.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"/></svg>
     </a>
@@ -2423,72 +2004,198 @@
     
       
     
-    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/troubleshooting/setup.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/api/tools-integrity.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0 8a5 5 0 0 1-5-5 5 5 0 0 1 5-5 5 5 0 0 1 5 5 5 5 0 0 1-5 5m0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5"/></svg>
     </a>
   
 
 
-<h1 id="setup-configuration">Setup &amp; Configuration<a class="headerlink" href="#setup-configuration" title="Permanent link">&para;</a></h1>
-<h2 id="enable-debug-logging">Enable Debug Logging<a class="headerlink" href="#enable-debug-logging" title="Permanent link">&para;</a></h2>
-<p>When troubleshooting any issue, start by enabling debug output:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
-</span></code></pre></div>
-<p>This reveals per-tool CALL/OK traces with timing, idfkit core library details
-(parsing, schema loading, validation), and query parameters — making it much
-easier to pinpoint failures.</p>
-<h2 id="server-does-not-start">Server Does Not Start<a class="headerlink" href="#server-does-not-start" title="Permanent link">&para;</a></h2>
-<h3 id="symptom">Symptom<a class="headerlink" href="#symptom" title="Permanent link">&para;</a></h3>
-<p>Client reports command not found for <code>idfkit-mcp</code>.</p>
-<h3 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Install package in the runtime environment.</li>
-<li>Or switch to <code>uvx --from idfkit-mcp idfkit-mcp</code>.</li>
-</ul>
-<h2 id="mcp-client-cannot-connect">MCP Client Cannot Connect<a class="headerlink" href="#mcp-client-cannot-connect" title="Permanent link">&para;</a></h2>
-<h3 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Confirm JSON config is valid (no comments).</li>
-<li>Confirm command runs in terminal:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span>idfkit-mcp<span class="w"> </span>idfkit-mcp
-</span></code></pre></div></li>
-<li>Restart client after config changes.</li>
-</ol>
-<h2 id="energyplus-not-found"><code>EnergyPlus not found</code><a class="headerlink" href="#energyplus-not-found" title="Permanent link">&para;</a></h2>
-<h3 id="cause">Cause<a class="headerlink" href="#cause" title="Permanent link">&para;</a></h3>
-<p>Simulation tool cannot resolve EnergyPlus installation.</p>
-<h3 id="fix_1">Fix<a class="headerlink" href="#fix_1" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Install EnergyPlus.</li>
-<li>Set <code>ENERGYPLUS_DIR</code>.</li>
-<li>Verify <code>energyplus</code> is on <code>PATH</code>.</li>
-</ol>
-<h2 id="no-model-loaded"><code>No model loaded</code><a class="headerlink" href="#no-model-loaded" title="Permanent link">&para;</a></h2>
-<h3 id="cause_1">Cause<a class="headerlink" href="#cause_1" title="Permanent link">&para;</a></h3>
-<p>Read/write/validation/simulation tool called before loading or creating a model.</p>
-<h3 id="fix_2">Fix<a class="headerlink" href="#fix_2" title="Permanent link">&para;</a></h3>
-<p>Call one of:</p>
-<ul>
-<li><code>load_model(file_path=...)</code></li>
-<li><code>new_model()</code></li>
-</ul>
-<h2 id="openstudio-sdk-not-available"><code>OpenStudio SDK not available</code><a class="headerlink" href="#openstudio-sdk-not-available" title="Permanent link">&para;</a></h2>
-<h3 id="cause_2">Cause<a class="headerlink" href="#cause_2" title="Permanent link">&para;</a></h3>
-<p><code>convert_osm_to_idf</code> was called in an environment without OpenStudio Python bindings.</p>
-<h3 id="fix_3">Fix<a class="headerlink" href="#fix_3" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Reinstall <code>idfkit-mcp</code> in the active environment so required dependencies are present.</li>
-<li>Or use the Docker image where dependencies are preinstalled.</li>
-</ol>
-<h2 id="schema-version-errors">Schema Version Errors<a class="headerlink" href="#schema-version-errors" title="Permanent link">&para;</a></h2>
-<h3 id="symptom_1">Symptom<a class="headerlink" href="#symptom_1" title="Permanent link">&para;</a></h3>
-<p><code>Version must be in 'X.Y.Z' format</code> or schema not found.</p>
-<h3 id="fix_4">Fix<a class="headerlink" href="#fix_4" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Use strict semantic format, e.g. <code>24.1.0</code>.</li>
-<li>Use a supported version provided by installed <code>idfkit</code>.</li>
-</ul>
+<h1 id="tools-integrity">Tools: Integrity<a class="headerlink" href="#tools-integrity" title="Permanent link">&para;</a></h1>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="idfkit_mcp.tools.integrity"></a>
+    <div class="doc doc-contents first">
+
+        <p>Domain-level model integrity checks (pre-simulation QA).</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="idfkit_mcp.tools.integrity.check_model_integrity" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">check_model_integrity</span><span class="p">()</span></code>
+
+<a href="#idfkit_mcp.tools.integrity.check_model_integrity" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Domain-level pre-simulation QA — catches issues schema validation cannot.</p>
+<p>Runs six checks against the loaded model:
+- Zones with no BuildingSurface:Detailed surfaces
+- Missing required simulation control objects (Version, Building, Timestep, RunPeriod, SimulationControl)
+- Orphan schedules (defined but not referenced by any object)
+- Surface boundary condition mismatches (non-reciprocal 'Surface' pairs)
+- Fenestration surfaces referencing non-existent host surfaces
+- ZoneHVAC:EquipmentConnections referencing non-existent zones</p>
+<p>Use this after validate_model and before run_simulation. A model can pass
+validate_model but still fail these checks.</p>
+<p>Preconditions: model loaded.
+Side effects: none — read-only.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/idfkit_mcp/tools/integrity.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-215">215</a></span>
+<span class="normal"><a href="#__codelineno-0-216">216</a></span>
+<span class="normal"><a href="#__codelineno-0-217">217</a></span>
+<span class="normal"><a href="#__codelineno-0-218">218</a></span>
+<span class="normal"><a href="#__codelineno-0-219">219</a></span>
+<span class="normal"><a href="#__codelineno-0-220">220</a></span>
+<span class="normal"><a href="#__codelineno-0-221">221</a></span>
+<span class="normal"><a href="#__codelineno-0-222">222</a></span>
+<span class="normal"><a href="#__codelineno-0-223">223</a></span>
+<span class="normal"><a href="#__codelineno-0-224">224</a></span>
+<span class="normal"><a href="#__codelineno-0-225">225</a></span>
+<span class="normal"><a href="#__codelineno-0-226">226</a></span>
+<span class="normal"><a href="#__codelineno-0-227">227</a></span>
+<span class="normal"><a href="#__codelineno-0-228">228</a></span>
+<span class="normal"><a href="#__codelineno-0-229">229</a></span>
+<span class="normal"><a href="#__codelineno-0-230">230</a></span>
+<span class="normal"><a href="#__codelineno-0-231">231</a></span>
+<span class="normal"><a href="#__codelineno-0-232">232</a></span>
+<span class="normal"><a href="#__codelineno-0-233">233</a></span>
+<span class="normal"><a href="#__codelineno-0-234">234</a></span>
+<span class="normal"><a href="#__codelineno-0-235">235</a></span>
+<span class="normal"><a href="#__codelineno-0-236">236</a></span>
+<span class="normal"><a href="#__codelineno-0-237">237</a></span>
+<span class="normal"><a href="#__codelineno-0-238">238</a></span>
+<span class="normal"><a href="#__codelineno-0-239">239</a></span>
+<span class="normal"><a href="#__codelineno-0-240">240</a></span>
+<span class="normal"><a href="#__codelineno-0-241">241</a></span>
+<span class="normal"><a href="#__codelineno-0-242">242</a></span>
+<span class="normal"><a href="#__codelineno-0-243">243</a></span>
+<span class="normal"><a href="#__codelineno-0-244">244</a></span>
+<span class="normal"><a href="#__codelineno-0-245">245</a></span>
+<span class="normal"><a href="#__codelineno-0-246">246</a></span>
+<span class="normal"><a href="#__codelineno-0-247">247</a></span>
+<span class="normal"><a href="#__codelineno-0-248">248</a></span>
+<span class="normal"><a href="#__codelineno-0-249">249</a></span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span>
+<span class="normal"><a href="#__codelineno-0-255">255</a></span>
+<span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span>
+<span class="normal"><a href="#__codelineno-0-258">258</a></span>
+<span class="normal"><a href="#__codelineno-0-259">259</a></span>
+<span class="normal"><a href="#__codelineno-0-260">260</a></span>
+<span class="normal"><a href="#__codelineno-0-261">261</a></span>
+<span class="normal"><a href="#__codelineno-0-262">262</a></span>
+<span class="normal"><a href="#__codelineno-0-263">263</a></span>
+<span class="normal"><a href="#__codelineno-0-264">264</a></span>
+<span class="normal"><a href="#__codelineno-0-265">265</a></span>
+<span class="normal"><a href="#__codelineno-0-266">266</a></span>
+<span class="normal"><a href="#__codelineno-0-267">267</a></span>
+<span class="normal"><a href="#__codelineno-0-268">268</a></span>
+<span class="normal"><a href="#__codelineno-0-269">269</a></span>
+<span class="normal"><a href="#__codelineno-0-270">270</a></span>
+<span class="normal"><a href="#__codelineno-0-271">271</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-215"><a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="nd">@tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">_READ_ONLY</span><span class="p">)</span>
+</span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_model_integrity</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ModelIntegrityResult</span><span class="p">:</span>
+</span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Domain-level pre-simulation QA — catches issues schema validation cannot.</span>
+</span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218"></a>
+</span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">    Runs six checks against the loaded model:</span>
+</span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">    - Zones with no BuildingSurface:Detailed surfaces</span>
+</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">    - Missing required simulation control objects (Version, Building, Timestep, RunPeriod, SimulationControl)</span>
+</span><span id="__span-0-222"><a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    - Orphan schedules (defined but not referenced by any object)</span>
+</span><span id="__span-0-223"><a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">    - Surface boundary condition mismatches (non-reciprocal &#39;Surface&#39; pairs)</span>
+</span><span id="__span-0-224"><a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">    - Fenestration surfaces referencing non-existent host surfaces</span>
+</span><span id="__span-0-225"><a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">    - ZoneHVAC:EquipmentConnections referencing non-existent zones</span>
+</span><span id="__span-0-226"><a id="__codelineno-0-226" name="__codelineno-0-226"></a>
+</span><span id="__span-0-227"><a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    Use this after validate_model and before run_simulation. A model can pass</span>
+</span><span id="__span-0-228"><a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">    validate_model but still fail these checks.</span>
+</span><span id="__span-0-229"><a id="__codelineno-0-229" name="__codelineno-0-229"></a>
+</span><span id="__span-0-230"><a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">    Preconditions: model loaded.</span>
+</span><span id="__span-0-231"><a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">    Side effects: none — read-only.</span>
+</span><span id="__span-0-232"><a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-233"><a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
+</span><span id="__span-0-234"><a id="__codelineno-0-234" name="__codelineno-0-234"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
+</span><span id="__span-0-235"><a id="__codelineno-0-235" name="__codelineno-0-235"></a>
+</span><span id="__span-0-236"><a id="__codelineno-0-236" name="__codelineno-0-236"></a>    <span class="n">checks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">IDFDocument</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">IntegrityIssue</span><span class="p">]]]]</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-0-237"><a id="__codelineno-0-237" name="__codelineno-0-237"></a>        <span class="p">(</span><span class="s2">&quot;zones_with_no_surfaces&quot;</span><span class="p">,</span> <span class="n">_check_zones_with_no_surfaces</span><span class="p">),</span>
+</span><span id="__span-0-238"><a id="__codelineno-0-238" name="__codelineno-0-238"></a>        <span class="p">(</span><span class="s2">&quot;required_simulation_controls&quot;</span><span class="p">,</span> <span class="n">_check_required_controls</span><span class="p">),</span>
+</span><span id="__span-0-239"><a id="__codelineno-0-239" name="__codelineno-0-239"></a>        <span class="p">(</span><span class="s2">&quot;orphan_schedules&quot;</span><span class="p">,</span> <span class="n">_check_orphan_schedules</span><span class="p">),</span>
+</span><span id="__span-0-240"><a id="__codelineno-0-240" name="__codelineno-0-240"></a>        <span class="p">(</span><span class="s2">&quot;surface_boundary_mismatches&quot;</span><span class="p">,</span> <span class="n">_check_surface_boundary_mismatches</span><span class="p">),</span>
+</span><span id="__span-0-241"><a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="p">(</span><span class="s2">&quot;fenestration_host_check&quot;</span><span class="p">,</span> <span class="n">_check_fenestration_hosts</span><span class="p">),</span>
+</span><span id="__span-0-242"><a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="p">(</span><span class="s2">&quot;hvac_zone_references&quot;</span><span class="p">,</span> <span class="n">_check_hvac_zone_references</span><span class="p">),</span>
+</span><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a>    <span class="p">]</span>
+</span><span id="__span-0-244"><a id="__codelineno-0-244" name="__codelineno-0-244"></a>
+</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">all_issues</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">IntegrityIssue</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-246"><a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="n">checks_run</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-247"><a id="__codelineno-0-247" name="__codelineno-0-247"></a>
+</span><span id="__span-0-248"><a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">checks</span><span class="p">:</span>
+</span><span id="__span-0-249"><a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="n">checks_run</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</span><span id="__span-0-250"><a id="__codelineno-0-250" name="__codelineno-0-250"></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-251"><a id="__codelineno-0-251" name="__codelineno-0-251"></a>            <span class="n">all_issues</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span>
+</span><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+</span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Integrity check &#39;</span><span class="si">%s</span><span class="s2">&#39; failed unexpectedly&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+</span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a>
+</span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="n">error_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">all_issues</span> <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">severity</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span>
+</span><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a>    <span class="n">warning_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">all_issues</span> <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">severity</span> <span class="o">==</span> <span class="s2">&quot;warning&quot;</span><span class="p">)</span>
+</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a>
+</span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+</span><span id="__span-0-259"><a id="__codelineno-0-259" name="__codelineno-0-259"></a>        <span class="s2">&quot;check_model_integrity: </span><span class="si">%d</span><span class="s2"> errors, </span><span class="si">%d</span><span class="s2"> warnings across </span><span class="si">%d</span><span class="s2"> checks&quot;</span><span class="p">,</span>
+</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="n">error_count</span><span class="p">,</span>
+</span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="n">warning_count</span><span class="p">,</span>
+</span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="nb">len</span><span class="p">(</span><span class="n">checks_run</span><span class="p">),</span>
+</span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a>    <span class="p">)</span>
+</span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264"></a>
+</span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="k">return</span> <span class="n">ModelIntegrityResult</span><span class="p">(</span>
+</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="n">passed</span><span class="o">=</span><span class="n">error_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="n">error_count</span><span class="o">=</span><span class="n">error_count</span><span class="p">,</span>
+</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="n">warning_count</span><span class="o">=</span><span class="n">warning_count</span><span class="p">,</span>
+</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="n">issues</span><span class="o">=</span><span class="n">all_issues</span><span class="p">,</span>
+</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="n">checks_run</span><span class="o">=</span><span class="n">checks_run</span><span class="p">,</span>
+</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -2526,7 +2233,7 @@ easier to pinpoint failures.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../concepts/error-semantics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Error Semantics">
+          <a href="../tools-validation/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Validation">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2536,20 +2243,20 @@ easier to pinpoint failures.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Error Semantics
+                Validation
               </div>
             </div>
           </a>
         
         
           
-          <a href="../simulation/" class="md-footer__link md-footer__link--next" aria-label="Next: Modeling &amp; Simulation">
+          <a href="../tools-simulation/" class="md-footer__link md-footer__link--next" aria-label="Next: Simulation">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Modeling & Simulation
+                Simulation
               </div>
             </div>
             <div class="md-footer__button md-icon">

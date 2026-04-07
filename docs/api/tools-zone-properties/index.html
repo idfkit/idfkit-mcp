@@ -12,13 +12,13 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/troubleshooting/setup/">
+        <link rel="canonical" href="https://mcp.idfkit.com/api/tools-zone-properties/">
       
       
-        <link rel="prev" href="../../concepts/error-semantics/">
+        <link rel="prev" href="../tools-read/">
       
       
-        <link rel="next" href="../simulation/">
+        <link rel="next" href="../tools-write/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Setup & Configuration - idfkit-mcp</title>
+        <title>Tools: Zone Properties - idfkit-mcp</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#setup-configuration" class="md-skip">
+        <a href="#tools-zone-properties" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Setup &amp; Configuration
+              Tools: Zone Properties
             
           </span>
         </div>
@@ -291,13 +291,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="././" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../troubleshooting/setup/" class="md-tabs__link">
           
   
   Troubleshooting
@@ -312,11 +310,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   API Reference
@@ -1146,10 +1146,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1161,22 +1159,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1194,7 +1189,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1209,37 +1204,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Setup & Configuration
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/setup/" class="md-nav__link">
         
   
   
@@ -1255,261 +1223,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#enable-debug-logging" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable Debug Logging
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#server-does-not-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Server Does Not Start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Server Does Not Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mcp-client-cannot-connect" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Client Cannot Connect
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Client Cannot Connect">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#energyplus-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EnergyPlus not found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="EnergyPlus not found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-model-loaded" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No model loaded
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No model loaded">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#openstudio-sdk-not-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenStudio SDK not available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OpenStudio SDK not available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-version-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema Version Errors
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema Version Errors">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1522,7 +1235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../simulation/" class="md-nav__link">
+      <a href="../../troubleshooting/simulation/" class="md-nav__link">
         
   
   
@@ -1554,6 +1267,8 @@
       
   
   
+    
+  
   
   
     
@@ -1575,20 +1290,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1606,13 +1324,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1632,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/server/" class="md-nav__link">
+      <a href="../server/" class="md-nav__link">
         
   
   
@@ -1660,7 +1378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/state/" class="md-nav__link">
+      <a href="../state/" class="md-nav__link">
         
   
   
@@ -1688,7 +1406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/resources/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
@@ -1713,8 +1431,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1747,18 +1467,21 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="">
             
   
   
@@ -1776,7 +1499,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1794,7 +1517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schema/" class="md-nav__link">
+      <a href="../tools-schema/" class="md-nav__link">
         
   
   
@@ -1822,7 +1545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-read/" class="md-nav__link">
+      <a href="../tools-read/" class="md-nav__link">
         
   
   
@@ -1847,10 +1570,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zone Properties
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1866,6 +1616,49 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.zone_properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        zone_properties
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.zone_properties.get_zone_properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_zone_properties
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1878,7 +1671,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-write/" class="md-nav__link">
+      <a href="../tools-write/" class="md-nav__link">
         
   
   
@@ -1906,7 +1699,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-validation/" class="md-nav__link">
+      <a href="../tools-validation/" class="md-nav__link">
         
   
   
@@ -1934,7 +1727,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-integrity/" class="md-nav__link">
+      <a href="../tools-integrity/" class="md-nav__link">
         
   
   
@@ -1962,7 +1755,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-simulation/" class="md-nav__link">
+      <a href="../tools-simulation/" class="md-nav__link">
         
   
   
@@ -1990,7 +1783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+      <a href="../tools-peak-loads/" class="md-nav__link">
         
   
   
@@ -2018,7 +1811,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-geometry/" class="md-nav__link">
+      <a href="../tools-geometry/" class="md-nav__link">
         
   
   
@@ -2046,7 +1839,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schedule/" class="md-nav__link">
+      <a href="../tools-schedule/" class="md-nav__link">
         
   
   
@@ -2074,7 +1867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-weather/" class="md-nav__link">
+      <a href="../tools-weather/" class="md-nav__link">
         
   
   
@@ -2102,7 +1895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-docs/" class="md-nav__link">
+      <a href="../tools-docs/" class="md-nav__link">
         
   
   
@@ -2166,10 +1959,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#enable-debug-logging" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.zone_properties" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enable Debug Logging
+        zone_properties
       
     </span>
   </a>
@@ -2177,225 +1970,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#server-does-not-start" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.zone_properties.get_zone_properties" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Server Does Not Start
+        get_zone_properties
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Server Does Not Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mcp-client-cannot-connect" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Client Cannot Connect
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Client Cannot Connect">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#energyplus-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EnergyPlus not found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="EnergyPlus not found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-model-loaded" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No model loaded
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No model loaded">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#openstudio-sdk-not-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenStudio SDK not available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OpenStudio SDK not available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-version-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema Version Errors
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema Version Errors">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2414,7 +1995,7 @@
                 
                   
   
-    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/troubleshooting/setup.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/api/tools-zone-properties.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"/></svg>
     </a>
@@ -2423,72 +2004,144 @@
     
       
     
-    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/troubleshooting/setup.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/api/tools-zone-properties.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0 8a5 5 0 0 1-5-5 5 5 0 0 1 5-5 5 5 0 0 1 5 5 5 5 0 0 1-5 5m0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5"/></svg>
     </a>
   
 
 
-<h1 id="setup-configuration">Setup &amp; Configuration<a class="headerlink" href="#setup-configuration" title="Permanent link">&para;</a></h1>
-<h2 id="enable-debug-logging">Enable Debug Logging<a class="headerlink" href="#enable-debug-logging" title="Permanent link">&para;</a></h2>
-<p>When troubleshooting any issue, start by enabling debug output:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
-</span></code></pre></div>
-<p>This reveals per-tool CALL/OK traces with timing, idfkit core library details
-(parsing, schema loading, validation), and query parameters — making it much
-easier to pinpoint failures.</p>
-<h2 id="server-does-not-start">Server Does Not Start<a class="headerlink" href="#server-does-not-start" title="Permanent link">&para;</a></h2>
-<h3 id="symptom">Symptom<a class="headerlink" href="#symptom" title="Permanent link">&para;</a></h3>
-<p>Client reports command not found for <code>idfkit-mcp</code>.</p>
-<h3 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Install package in the runtime environment.</li>
-<li>Or switch to <code>uvx --from idfkit-mcp idfkit-mcp</code>.</li>
-</ul>
-<h2 id="mcp-client-cannot-connect">MCP Client Cannot Connect<a class="headerlink" href="#mcp-client-cannot-connect" title="Permanent link">&para;</a></h2>
-<h3 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Confirm JSON config is valid (no comments).</li>
-<li>Confirm command runs in terminal:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span>idfkit-mcp<span class="w"> </span>idfkit-mcp
-</span></code></pre></div></li>
-<li>Restart client after config changes.</li>
-</ol>
-<h2 id="energyplus-not-found"><code>EnergyPlus not found</code><a class="headerlink" href="#energyplus-not-found" title="Permanent link">&para;</a></h2>
-<h3 id="cause">Cause<a class="headerlink" href="#cause" title="Permanent link">&para;</a></h3>
-<p>Simulation tool cannot resolve EnergyPlus installation.</p>
-<h3 id="fix_1">Fix<a class="headerlink" href="#fix_1" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Install EnergyPlus.</li>
-<li>Set <code>ENERGYPLUS_DIR</code>.</li>
-<li>Verify <code>energyplus</code> is on <code>PATH</code>.</li>
-</ol>
-<h2 id="no-model-loaded"><code>No model loaded</code><a class="headerlink" href="#no-model-loaded" title="Permanent link">&para;</a></h2>
-<h3 id="cause_1">Cause<a class="headerlink" href="#cause_1" title="Permanent link">&para;</a></h3>
-<p>Read/write/validation/simulation tool called before loading or creating a model.</p>
-<h3 id="fix_2">Fix<a class="headerlink" href="#fix_2" title="Permanent link">&para;</a></h3>
-<p>Call one of:</p>
-<ul>
-<li><code>load_model(file_path=...)</code></li>
-<li><code>new_model()</code></li>
-</ul>
-<h2 id="openstudio-sdk-not-available"><code>OpenStudio SDK not available</code><a class="headerlink" href="#openstudio-sdk-not-available" title="Permanent link">&para;</a></h2>
-<h3 id="cause_2">Cause<a class="headerlink" href="#cause_2" title="Permanent link">&para;</a></h3>
-<p><code>convert_osm_to_idf</code> was called in an environment without OpenStudio Python bindings.</p>
-<h3 id="fix_3">Fix<a class="headerlink" href="#fix_3" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Reinstall <code>idfkit-mcp</code> in the active environment so required dependencies are present.</li>
-<li>Or use the Docker image where dependencies are preinstalled.</li>
-</ol>
-<h2 id="schema-version-errors">Schema Version Errors<a class="headerlink" href="#schema-version-errors" title="Permanent link">&para;</a></h2>
-<h3 id="symptom_1">Symptom<a class="headerlink" href="#symptom_1" title="Permanent link">&para;</a></h3>
-<p><code>Version must be in 'X.Y.Z' format</code> or schema not found.</p>
-<h3 id="fix_4">Fix<a class="headerlink" href="#fix_4" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Use strict semantic format, e.g. <code>24.1.0</code>.</li>
-<li>Use a supported version provided by installed <code>idfkit</code>.</li>
-</ul>
+<h1 id="tools-zone-properties">Tools: Zone Properties<a class="headerlink" href="#tools-zone-properties" title="Permanent link">&para;</a></h1>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="idfkit_mcp.tools.zone_properties"></a>
+    <div class="doc doc-contents first">
+
+        <p>Zone properties tool — typed summary of zone geometry, surfaces, constructions, and HVAC.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="idfkit_mcp.tools.zone_properties.get_zone_properties" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">get_zone_properties</span><span class="p">(</span><span class="n">zone_name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#idfkit_mcp.tools.zone_properties.get_zone_properties" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Typed summary of zone geometry, surfaces, constructions, schedules, and HVAC.</p>
+<p>Returns floor area, volume, ceiling height, surface counts by type (walls/floors/roofs/
+windows/doors), unique construction names, schedule names referenced by zone loads,
+HVAC equipment connection names, and thermostat control object names.</p>
+<p>Geometry values (area, volume, height) are calculated from BuildingSurface:Detailed
+vertices and returned as None when no surfaces exist for the zone.</p>
+<p>Preconditions: model loaded.
+Side effects: none — read-only.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/idfkit_mcp/tools/zone_properties.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span>
+<span class="normal"><a href="#__codelineno-0-152">152</a></span>
+<span class="normal"><a href="#__codelineno-0-153">153</a></span>
+<span class="normal"><a href="#__codelineno-0-154">154</a></span>
+<span class="normal"><a href="#__codelineno-0-155">155</a></span>
+<span class="normal"><a href="#__codelineno-0-156">156</a></span>
+<span class="normal"><a href="#__codelineno-0-157">157</a></span>
+<span class="normal"><a href="#__codelineno-0-158">158</a></span>
+<span class="normal"><a href="#__codelineno-0-159">159</a></span>
+<span class="normal"><a href="#__codelineno-0-160">160</a></span>
+<span class="normal"><a href="#__codelineno-0-161">161</a></span>
+<span class="normal"><a href="#__codelineno-0-162">162</a></span>
+<span class="normal"><a href="#__codelineno-0-163">163</a></span>
+<span class="normal"><a href="#__codelineno-0-164">164</a></span>
+<span class="normal"><a href="#__codelineno-0-165">165</a></span>
+<span class="normal"><a href="#__codelineno-0-166">166</a></span>
+<span class="normal"><a href="#__codelineno-0-167">167</a></span>
+<span class="normal"><a href="#__codelineno-0-168">168</a></span>
+<span class="normal"><a href="#__codelineno-0-169">169</a></span>
+<span class="normal"><a href="#__codelineno-0-170">170</a></span>
+<span class="normal"><a href="#__codelineno-0-171">171</a></span>
+<span class="normal"><a href="#__codelineno-0-172">172</a></span>
+<span class="normal"><a href="#__codelineno-0-173">173</a></span>
+<span class="normal"><a href="#__codelineno-0-174">174</a></span>
+<span class="normal"><a href="#__codelineno-0-175">175</a></span>
+<span class="normal"><a href="#__codelineno-0-176">176</a></span>
+<span class="normal"><a href="#__codelineno-0-177">177</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="nd">@tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">_READ_ONLY</span><span class="p">)</span>
+</span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_zone_properties</span><span class="p">(</span>
+</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a>    <span class="n">zone_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Zone name. Omit for all zones.&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GetZonePropertiesResult</span><span class="p">:</span>
+</span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Typed summary of zone geometry, surfaces, constructions, schedules, and HVAC.</span>
+</span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151"></a>
+</span><span id="__span-0-152"><a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    Returns floor area, volume, ceiling height, surface counts by type (walls/floors/roofs/</span>
+</span><span id="__span-0-153"><a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">    windows/doors), unique construction names, schedule names referenced by zone loads,</span>
+</span><span id="__span-0-154"><a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">    HVAC equipment connection names, and thermostat control object names.</span>
+</span><span id="__span-0-155"><a id="__codelineno-0-155" name="__codelineno-0-155"></a>
+</span><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="sd">    Geometry values (area, volume, height) are calculated from BuildingSurface:Detailed</span>
+</span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="sd">    vertices and returned as None when no surfaces exist for the zone.</span>
+</span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158"></a>
+</span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">    Preconditions: model loaded.</span>
+</span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="sd">    Side effects: none — read-only.</span>
+</span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
+</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a>    <span class="n">doc</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_model</span><span class="p">()</span>
+</span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a>
+</span><span id="__span-0-165"><a id="__codelineno-0-165" name="__codelineno-0-165"></a>    <span class="k">if</span> <span class="n">zone_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-166"><a id="__codelineno-0-166" name="__codelineno-0-166"></a>        <span class="k">if</span> <span class="s2">&quot;Zone&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">doc</span> <span class="ow">or</span> <span class="n">doc</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s2">&quot;Zone&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">zone_name</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolError</span>
+</span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168"></a>
+</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>            <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Zone &#39;</span><span class="si">{</span><span class="n">zone_name</span><span class="si">}</span><span class="s2">&#39; not found in the model.&quot;</span><span class="p">)</span>
+</span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a>        <span class="n">zones</span> <span class="o">=</span> <span class="p">[</span><span class="n">_build_zone_properties</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">zone_name</span><span class="p">)]</span>
+</span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171"></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172"></a>        <span class="k">if</span> <span class="s2">&quot;Zone&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+</span><span id="__span-0-173"><a id="__codelineno-0-173" name="__codelineno-0-173"></a>            <span class="k">return</span> <span class="n">GetZonePropertiesResult</span><span class="p">(</span><span class="n">zone_count</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">zones</span><span class="o">=</span><span class="p">[])</span>
+</span><span id="__span-0-174"><a id="__codelineno-0-174" name="__codelineno-0-174"></a>        <span class="n">zones</span> <span class="o">=</span> <span class="p">[</span><span class="n">_build_zone_properties</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s2">&quot;Zone&quot;</span><span class="p">)]</span>
+</span><span id="__span-0-175"><a id="__codelineno-0-175" name="__codelineno-0-175"></a>
+</span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;get_zone_properties: returned </span><span class="si">%d</span><span class="s2"> zone(s)&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zones</span><span class="p">))</span>
+</span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a>    <span class="k">return</span> <span class="n">GetZonePropertiesResult</span><span class="p">(</span><span class="n">zone_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">zones</span><span class="p">),</span> <span class="n">zones</span><span class="o">=</span><span class="n">zones</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -2526,7 +2179,7 @@ easier to pinpoint failures.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../concepts/error-semantics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Error Semantics">
+          <a href="../tools-read/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Read">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2536,20 +2189,20 @@ easier to pinpoint failures.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Error Semantics
+                Read
               </div>
             </div>
           </a>
         
         
           
-          <a href="../simulation/" class="md-footer__link md-footer__link--next" aria-label="Next: Modeling &amp; Simulation">
+          <a href="../tools-write/" class="md-footer__link md-footer__link--next" aria-label="Next: Write">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Modeling & Simulation
+                Write
               </div>
             </div>
             <div class="md-footer__button md-icon">

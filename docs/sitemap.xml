@@ -1,99 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url>
-        <loc>https://mcp.idfkit.com/docs/</loc>
+        <loc>https://mcp.idfkit.com/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/getting-started/installation/</loc>
+        <loc>https://mcp.idfkit.com/getting-started/installation/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/getting-started/client-setup/</loc>
+        <loc>https://mcp.idfkit.com/getting-started/client-setup/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/getting-started/first-session/</loc>
+        <loc>https://mcp.idfkit.com/getting-started/first-session/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/workflows/codex/</loc>
+        <loc>https://mcp.idfkit.com/workflows/codex/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/workflows/claude/</loc>
+        <loc>https://mcp.idfkit.com/workflows/claude/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/workflows/multi-agent-patterns/</loc>
+        <loc>https://mcp.idfkit.com/workflows/multi-agent-patterns/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/</loc>
+        <loc>https://mcp.idfkit.com/tools/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/schema/</loc>
+        <loc>https://mcp.idfkit.com/tools/schema/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/model-read/</loc>
+        <loc>https://mcp.idfkit.com/tools/model-read/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/model-write/</loc>
+        <loc>https://mcp.idfkit.com/tools/model-write/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/validation/</loc>
+        <loc>https://mcp.idfkit.com/tools/validation/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/simulation/</loc>
+        <loc>https://mcp.idfkit.com/tools/simulation/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/weather/</loc>
+        <loc>https://mcp.idfkit.com/tools/weather/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/tools/docs/</loc>
+        <loc>https://mcp.idfkit.com/tools/docs/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/concepts/architecture/</loc>
+        <loc>https://mcp.idfkit.com/concepts/architecture/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/concepts/server-state/</loc>
+        <loc>https://mcp.idfkit.com/concepts/server-state/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/concepts/error-semantics/</loc>
+        <loc>https://mcp.idfkit.com/concepts/error-semantics/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/troubleshooting/setup/</loc>
+        <loc>https://mcp.idfkit.com/troubleshooting/setup/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/troubleshooting/simulation/</loc>
+        <loc>https://mcp.idfkit.com/troubleshooting/simulation/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/</loc>
+        <loc>https://mcp.idfkit.com/api/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/app/</loc>
+        <loc>https://mcp.idfkit.com/api/server/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/server/</loc>
+        <loc>https://mcp.idfkit.com/api/state/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/state/</loc>
+        <loc>https://mcp.idfkit.com/api/resources/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/resources/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-schema/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-schema/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-read/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-read/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-zone-properties/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-write/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-write/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-validation/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-validation/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-simulation/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-integrity/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-weather/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-simulation/</loc>
       </url>
       <url>
-        <loc>https://mcp.idfkit.com/docs/api/tools-docs/</loc>
+        <loc>https://mcp.idfkit.com/api/tools-peak-loads/</loc>
+      </url>
+      <url>
+        <loc>https://mcp.idfkit.com/api/tools-geometry/</loc>
+      </url>
+      <url>
+        <loc>https://mcp.idfkit.com/api/tools-schedule/</loc>
+      </url>
+      <url>
+        <loc>https://mcp.idfkit.com/api/tools-weather/</loc>
+      </url>
+      <url>
+        <loc>https://mcp.idfkit.com/api/tools-docs/</loc>
       </url>
 </urlset>

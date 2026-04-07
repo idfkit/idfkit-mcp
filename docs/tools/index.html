@@ -12,7 +12,7 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/tools/">
+        <link rel="canonical" href="https://mcp.idfkit.com/tools/">
       
       
         <link rel="prev" href="../workflows/multi-agent-patterns/">
@@ -1289,8 +1289,6 @@
       
         
       
-        
-      
     
     
     
@@ -1343,34 +1341,6 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api/app/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    App
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
               
             
               
@@ -1480,6 +1450,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1493,10 +1473,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
             
   
   
@@ -1514,8 +1494,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1568,6 +1548,34 @@
     
   
     Read
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tools-zone-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zone Properties
   
 
     
@@ -1644,6 +1652,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../api/tools-integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../api/tools-simulation/" class="md-nav__link">
         
   
@@ -1652,6 +1688,90 @@
     
   
     Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tools-peak-loads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peak Loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tools-geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tools-schedule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedule
   
 
     
@@ -1839,14 +1959,16 @@
 
 
 <h1 id="tool-reference-overview">Tool Reference Overview<a class="headerlink" href="#tool-reference-overview" title="Permanent link">&para;</a></h1>
-<p><code>idfkit-mcp</code> exposes <strong>26 tools</strong> in seven categories, plus <strong>6 MCP resources</strong> for read-only data access.</p>
+<p><code>idfkit-mcp</code> exposes <strong>35 tools</strong> in nine categories, plus <strong>12 MCP resources</strong> for read-only data access.</p>
 <h2 id="categories">Categories<a class="headerlink" href="#categories" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Schema exploration: 4 tools</li>
-<li>Model read: 4 tools</li>
+<li>Model read: 6 tools</li>
 <li>Model write: 9 tools</li>
-<li>Validation: 1 tool</li>
-<li>Simulation: 4 tools</li>
+<li>Validation: 2 tools</li>
+<li>Simulation: 8 tools</li>
+<li>Geometry: 1 tool</li>
+<li>Schedules: 1 tool</li>
 <li>Weather: 2 tools</li>
 <li>Documentation: 2 tools</li>
 </ul>
@@ -1901,6 +2023,16 @@
 <td>Search model objects by substring</td>
 </tr>
 <tr>
+<td>Read</td>
+<td><code>get_zone_properties</code></td>
+<td>Return typed zone geometry, surface, schedule, and HVAC summaries</td>
+</tr>
+<tr>
+<td>Read</td>
+<td><code>get_change_log</code></td>
+<td>Return recent mutation history for the current session</td>
+</tr>
+<tr>
 <td>Write</td>
 <td><code>new_model</code></td>
 <td>Create empty model</td>
@@ -1951,6 +2083,11 @@
 <td>Full schema and reference validation</td>
 </tr>
 <tr>
+<td>Validation</td>
+<td><code>check_model_integrity</code></td>
+<td>Run domain-level pre-simulation QA checks</td>
+</tr>
+<tr>
 <td>Simulation</td>
 <td><code>run_simulation</code></td>
 <td>Execute EnergyPlus run</td>
@@ -1967,8 +2104,28 @@
 </tr>
 <tr>
 <td>Simulation</td>
+<td><code>query_simulation_table</code></td>
+<td>Query EnergyPlus tabular report data from SQL output</td>
+</tr>
+<tr>
+<td>Simulation</td>
+<td><code>list_simulation_reports</code></td>
+<td>List tabular report names available in SQL output</td>
+</tr>
+<tr>
+<td>Simulation</td>
 <td><code>export_timeseries</code></td>
 <td>Export time series data to CSV</td>
+</tr>
+<tr>
+<td>Simulation</td>
+<td><code>analyze_peak_loads</code></td>
+<td>Analyze peak heating/cooling load breakdowns and QA flags</td>
+</tr>
+<tr>
+<td>Simulation</td>
+<td><code>view_simulation_report</code></td>
+<td>Browse the full tabular simulation report in an MCP Apps viewer</td>
 </tr>
 <tr>
 <td>Weather</td>
@@ -1979,6 +2136,16 @@
 <td>Weather</td>
 <td><code>download_weather_file</code></td>
 <td>Download EPW/DDY and cache path</td>
+</tr>
+<tr>
+<td>Geometry</td>
+<td><code>view_geometry</code></td>
+<td>Interactive 3D building geometry viewer (MCP Apps)</td>
+</tr>
+<tr>
+<td>Schedules</td>
+<td><code>view_schedules</code></td>
+<td>Interactive schedule heatmap viewer (MCP Apps)</td>
 </tr>
 <tr>
 <td>Documentation</td>
@@ -2024,7 +2191,31 @@
 </tr>
 <tr>
 <td><code>idfkit://simulation/results</code></td>
-<td>Summary of the most recent simulation results</td>
+<td>Structured QA diagnostics from the most recent simulation</td>
+</tr>
+<tr>
+<td><code>idfkit://simulation/peak-loads</code></td>
+<td>Peak heating/cooling load decomposition and QA analysis</td>
+</tr>
+<tr>
+<td><code>idfkit://simulation/report</code></td>
+<td>Full tabular simulation report as JSON</td>
+</tr>
+<tr>
+<td><code>ui://idfkit/geometry-viewer.html</code></td>
+<td>Interactive Three.js geometry viewer (MCP Apps)</td>
+</tr>
+<tr>
+<td><code>ui://idfkit/schedule-viewer.html</code></td>
+<td>Interactive schedule heatmap viewer (MCP Apps)</td>
+</tr>
+<tr>
+<td><code>ui://idfkit/peak-loads-viewer.html</code></td>
+<td>Interactive peak load QA/QC viewer (MCP Apps)</td>
+</tr>
+<tr>
+<td><code>ui://idfkit/report-viewer.html</code></td>
+<td>Interactive tabular simulation report viewer (MCP Apps)</td>
 </tr>
 </tbody>
 </table>
@@ -2032,8 +2223,8 @@
 <ol>
 <li>Use schema tools before mutations.</li>
 <li>Prefer batched writes.</li>
-<li>Validate immediately after writes.</li>
-<li>Run simulation only after model health checks pass.</li>
+<li>Run <code>validate_model</code>, then <code>check_model_integrity</code>.</li>
+<li>Read <code>idfkit://simulation/results</code> after every simulation.</li>
 <li>Treat each server session as stateful and sequential.</li>
 </ol>
 
@@ -2113,7 +2304,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+      Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
     </div>
   
   

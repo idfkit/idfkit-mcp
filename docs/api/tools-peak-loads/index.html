@@ -12,13 +12,13 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/troubleshooting/setup/">
+        <link rel="canonical" href="https://mcp.idfkit.com/api/tools-peak-loads/">
       
       
-        <link rel="prev" href="../../concepts/error-semantics/">
+        <link rel="prev" href="../tools-simulation/">
       
       
-        <link rel="next" href="../simulation/">
+        <link rel="next" href="../tools-geometry/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Setup & Configuration - idfkit-mcp</title>
+        <title>Tools: Peak Loads - idfkit-mcp</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#setup-configuration" class="md-skip">
+        <a href="#tools-peak-loads" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Setup &amp; Configuration
+              Tools: Peak Loads
             
           </span>
         </div>
@@ -291,13 +291,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="././" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../troubleshooting/setup/" class="md-tabs__link">
           
   
   Troubleshooting
@@ -312,11 +310,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   API Reference
@@ -1146,10 +1146,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1161,22 +1159,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1194,7 +1189,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1209,37 +1204,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Setup & Configuration
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/setup/" class="md-nav__link">
         
   
   
@@ -1255,261 +1223,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#enable-debug-logging" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable Debug Logging
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#server-does-not-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Server Does Not Start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Server Does Not Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mcp-client-cannot-connect" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Client Cannot Connect
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Client Cannot Connect">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#energyplus-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EnergyPlus not found
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="EnergyPlus not found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-model-loaded" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No model loaded
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No model loaded">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#openstudio-sdk-not-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenStudio SDK not available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OpenStudio SDK not available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-version-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema Version Errors
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema Version Errors">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1522,7 +1235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../simulation/" class="md-nav__link">
+      <a href="../../troubleshooting/simulation/" class="md-nav__link">
         
   
   
@@ -1554,6 +1267,8 @@
       
   
   
+    
+  
   
   
     
@@ -1575,20 +1290,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1606,13 +1324,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1632,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/server/" class="md-nav__link">
+      <a href="../server/" class="md-nav__link">
         
   
   
@@ -1660,7 +1378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/state/" class="md-nav__link">
+      <a href="../state/" class="md-nav__link">
         
   
   
@@ -1688,7 +1406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/resources/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
@@ -1713,8 +1431,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1747,18 +1467,21 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="">
             
   
   
@@ -1776,7 +1499,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1794,7 +1517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schema/" class="md-nav__link">
+      <a href="../tools-schema/" class="md-nav__link">
         
   
   
@@ -1822,7 +1545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-read/" class="md-nav__link">
+      <a href="../tools-read/" class="md-nav__link">
         
   
   
@@ -1850,7 +1573,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+      <a href="../tools-zone-properties/" class="md-nav__link">
         
   
   
@@ -1878,7 +1601,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-write/" class="md-nav__link">
+      <a href="../tools-write/" class="md-nav__link">
         
   
   
@@ -1906,7 +1629,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-validation/" class="md-nav__link">
+      <a href="../tools-validation/" class="md-nav__link">
         
   
   
@@ -1934,7 +1657,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-integrity/" class="md-nav__link">
+      <a href="../tools-integrity/" class="md-nav__link">
         
   
   
@@ -1962,7 +1685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-simulation/" class="md-nav__link">
+      <a href="../tools-simulation/" class="md-nav__link">
         
   
   
@@ -1987,10 +1710,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peak Loads
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2006,6 +1756,71 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.peak_loads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        peak_loads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.peak_loads.analyze_peak_loads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        analyze_peak_loads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.peak_loads.build_peak_load_analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build_peak_load_analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.peak_loads.peak_loads_viewer_html" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        peak_loads_viewer_html
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2018,7 +1833,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-geometry/" class="md-nav__link">
+      <a href="../tools-geometry/" class="md-nav__link">
         
   
   
@@ -2046,7 +1861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-schedule/" class="md-nav__link">
+      <a href="../tools-schedule/" class="md-nav__link">
         
   
   
@@ -2074,7 +1889,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-weather/" class="md-nav__link">
+      <a href="../tools-weather/" class="md-nav__link">
         
   
   
@@ -2102,7 +1917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/tools-docs/" class="md-nav__link">
+      <a href="../tools-docs/" class="md-nav__link">
         
   
   
@@ -2166,10 +1981,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#enable-debug-logging" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.peak_loads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enable Debug Logging
+        peak_loads
       
     </span>
   </a>
@@ -2177,225 +1992,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#server-does-not-start" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.peak_loads.analyze_peak_loads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Server Does Not Start
+        analyze_peak_loads
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Server Does Not Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-client-cannot-connect" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.peak_loads.build_peak_load_analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MCP Client Cannot Connect
+        build_peak_load_analysis
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="MCP Client Cannot Connect">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#energyplus-not-found" class="md-nav__link">
+  <a href="#idfkit_mcp.tools.peak_loads.peak_loads_viewer_html" class="md-nav__link">
     <span class="md-ellipsis">
       
-        EnergyPlus not found
+        peak_loads_viewer_html
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="EnergyPlus not found">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#no-model-loaded" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No model loaded
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="No model loaded">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#openstudio-sdk-not-available" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenStudio SDK not available
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OpenStudio SDK not available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cause_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cause
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-version-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema Version Errors
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema Version Errors">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#symptom_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Symptom
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2414,7 +2039,7 @@
                 
                   
   
-    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/troubleshooting/setup.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/idfkit/idfkit-mcp/edit/main/docs/api/tools-peak-loads.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"/></svg>
     </a>
@@ -2423,72 +2048,248 @@
     
       
     
-    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/troubleshooting/setup.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/idfkit/idfkit-mcp/raw/main/docs/api/tools-peak-loads.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0 8a5 5 0 0 1-5-5 5 5 0 0 1 5-5 5 5 0 0 1 5 5 5 5 0 0 1-5 5m0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5"/></svg>
     </a>
   
 
 
-<h1 id="setup-configuration">Setup &amp; Configuration<a class="headerlink" href="#setup-configuration" title="Permanent link">&para;</a></h1>
-<h2 id="enable-debug-logging">Enable Debug Logging<a class="headerlink" href="#enable-debug-logging" title="Permanent link">&para;</a></h2>
-<p>When troubleshooting any issue, start by enabling debug output:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
-</span></code></pre></div>
-<p>This reveals per-tool CALL/OK traces with timing, idfkit core library details
-(parsing, schema loading, validation), and query parameters — making it much
-easier to pinpoint failures.</p>
-<h2 id="server-does-not-start">Server Does Not Start<a class="headerlink" href="#server-does-not-start" title="Permanent link">&para;</a></h2>
-<h3 id="symptom">Symptom<a class="headerlink" href="#symptom" title="Permanent link">&para;</a></h3>
-<p>Client reports command not found for <code>idfkit-mcp</code>.</p>
-<h3 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Install package in the runtime environment.</li>
-<li>Or switch to <code>uvx --from idfkit-mcp idfkit-mcp</code>.</li>
-</ul>
-<h2 id="mcp-client-cannot-connect">MCP Client Cannot Connect<a class="headerlink" href="#mcp-client-cannot-connect" title="Permanent link">&para;</a></h2>
-<h3 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Confirm JSON config is valid (no comments).</li>
-<li>Confirm command runs in terminal:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span>idfkit-mcp<span class="w"> </span>idfkit-mcp
-</span></code></pre></div></li>
-<li>Restart client after config changes.</li>
-</ol>
-<h2 id="energyplus-not-found"><code>EnergyPlus not found</code><a class="headerlink" href="#energyplus-not-found" title="Permanent link">&para;</a></h2>
-<h3 id="cause">Cause<a class="headerlink" href="#cause" title="Permanent link">&para;</a></h3>
-<p>Simulation tool cannot resolve EnergyPlus installation.</p>
-<h3 id="fix_1">Fix<a class="headerlink" href="#fix_1" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Install EnergyPlus.</li>
-<li>Set <code>ENERGYPLUS_DIR</code>.</li>
-<li>Verify <code>energyplus</code> is on <code>PATH</code>.</li>
-</ol>
-<h2 id="no-model-loaded"><code>No model loaded</code><a class="headerlink" href="#no-model-loaded" title="Permanent link">&para;</a></h2>
-<h3 id="cause_1">Cause<a class="headerlink" href="#cause_1" title="Permanent link">&para;</a></h3>
-<p>Read/write/validation/simulation tool called before loading or creating a model.</p>
-<h3 id="fix_2">Fix<a class="headerlink" href="#fix_2" title="Permanent link">&para;</a></h3>
-<p>Call one of:</p>
-<ul>
-<li><code>load_model(file_path=...)</code></li>
-<li><code>new_model()</code></li>
-</ul>
-<h2 id="openstudio-sdk-not-available"><code>OpenStudio SDK not available</code><a class="headerlink" href="#openstudio-sdk-not-available" title="Permanent link">&para;</a></h2>
-<h3 id="cause_2">Cause<a class="headerlink" href="#cause_2" title="Permanent link">&para;</a></h3>
-<p><code>convert_osm_to_idf</code> was called in an environment without OpenStudio Python bindings.</p>
-<h3 id="fix_3">Fix<a class="headerlink" href="#fix_3" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Reinstall <code>idfkit-mcp</code> in the active environment so required dependencies are present.</li>
-<li>Or use the Docker image where dependencies are preinstalled.</li>
-</ol>
-<h2 id="schema-version-errors">Schema Version Errors<a class="headerlink" href="#schema-version-errors" title="Permanent link">&para;</a></h2>
-<h3 id="symptom_1">Symptom<a class="headerlink" href="#symptom_1" title="Permanent link">&para;</a></h3>
-<p><code>Version must be in 'X.Y.Z' format</code> or schema not found.</p>
-<h3 id="fix_4">Fix<a class="headerlink" href="#fix_4" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Use strict semantic format, e.g. <code>24.1.0</code>.</li>
-<li>Use a supported version provided by installed <code>idfkit</code>.</li>
-</ul>
+<h1 id="tools-peak-loads">Tools: Peak Loads<a class="headerlink" href="#tools-peak-loads" title="Permanent link">&para;</a></h1>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="idfkit_mcp.tools.peak_loads"></a>
+    <div class="doc doc-contents first">
+
+        <p>Peak load QA/QC analysis tool.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="idfkit_mcp.tools.peak_loads.analyze_peak_loads" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">analyze_peak_loads</span><span class="p">()</span></code>
+
+<a href="#idfkit_mcp.tools.peak_loads.analyze_peak_loads" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Analyze peak heating and cooling loads for QA/QC.</p>
+<p>Decomposes facility and zone-level peaks into components (solar, people,
+lighting, equipment, infiltration, envelope) and flags potential issues
+such as unusual peak timing, excessive loads, or component dominance.</p>
+<p>Requires a completed simulation with SQL output and the
+SensibleHeatGainSummary and HVACSizingSummary reports.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/idfkit_mcp/tools/peak_loads.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-386">386</a></span>
+<span class="normal"><a href="#__codelineno-0-387">387</a></span>
+<span class="normal"><a href="#__codelineno-0-388">388</a></span>
+<span class="normal"><a href="#__codelineno-0-389">389</a></span>
+<span class="normal"><a href="#__codelineno-0-390">390</a></span>
+<span class="normal"><a href="#__codelineno-0-391">391</a></span>
+<span class="normal"><a href="#__codelineno-0-392">392</a></span>
+<span class="normal"><a href="#__codelineno-0-393">393</a></span>
+<span class="normal"><a href="#__codelineno-0-394">394</a></span>
+<span class="normal"><a href="#__codelineno-0-395">395</a></span>
+<span class="normal"><a href="#__codelineno-0-396">396</a></span>
+<span class="normal"><a href="#__codelineno-0-397">397</a></span>
+<span class="normal"><a href="#__codelineno-0-398">398</a></span>
+<span class="normal"><a href="#__codelineno-0-399">399</a></span>
+<span class="normal"><a href="#__codelineno-0-400">400</a></span>
+<span class="normal"><a href="#__codelineno-0-401">401</a></span>
+<span class="normal"><a href="#__codelineno-0-402">402</a></span>
+<span class="normal"><a href="#__codelineno-0-403">403</a></span>
+<span class="normal"><a href="#__codelineno-0-404">404</a></span>
+<span class="normal"><a href="#__codelineno-0-405">405</a></span>
+<span class="normal"><a href="#__codelineno-0-406">406</a></span>
+<span class="normal"><a href="#__codelineno-0-407">407</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-386"><a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="nd">@tool</span><span class="p">(</span>
+</span><span id="__span-0-387"><a id="__codelineno-0-387" name="__codelineno-0-387"></a>    <span class="n">annotations</span><span class="o">=</span><span class="n">_READ_ONLY</span><span class="p">,</span>
+</span><span id="__span-0-388"><a id="__codelineno-0-388" name="__codelineno-0-388"></a>    <span class="n">meta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-0-389"><a id="__codelineno-0-389" name="__codelineno-0-389"></a>        <span class="s2">&quot;ui&quot;</span><span class="p">:</span> <span class="n">app_config_to_meta_dict</span><span class="p">(</span>
+</span><span id="__span-0-390"><a id="__codelineno-0-390" name="__codelineno-0-390"></a>            <span class="n">AppConfig</span><span class="p">(</span>
+</span><span id="__span-0-391"><a id="__codelineno-0-391" name="__codelineno-0-391"></a>                <span class="n">resourceUri</span><span class="o">=</span><span class="s2">&quot;ui://idfkit/peak-loads-viewer.html&quot;</span><span class="p">,</span>
+</span><span id="__span-0-392"><a id="__codelineno-0-392" name="__codelineno-0-392"></a>                <span class="n">prefersBorder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-393"><a id="__codelineno-0-393" name="__codelineno-0-393"></a>            <span class="p">)</span>
+</span><span id="__span-0-394"><a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="p">)</span>
+</span><span id="__span-0-395"><a id="__codelineno-0-395" name="__codelineno-0-395"></a>    <span class="p">},</span>
+</span><span id="__span-0-396"><a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="p">)</span>
+</span><span id="__span-0-397"><a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="k">def</span><span class="w"> </span><span class="nf">analyze_peak_loads</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">PeakLoadAnalysisResult</span><span class="p">:</span>
+</span><span id="__span-0-398"><a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyze peak heating and cooling loads for QA/QC.</span>
+</span><span id="__span-0-399"><a id="__codelineno-0-399" name="__codelineno-0-399"></a>
+</span><span id="__span-0-400"><a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">    Decomposes facility and zone-level peaks into components (solar, people,</span>
+</span><span id="__span-0-401"><a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">    lighting, equipment, infiltration, envelope) and flags potential issues</span>
+</span><span id="__span-0-402"><a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    such as unusual peak timing, excessive loads, or component dominance.</span>
+</span><span id="__span-0-403"><a id="__codelineno-0-403" name="__codelineno-0-403"></a>
+</span><span id="__span-0-404"><a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">    Requires a completed simulation with SQL output and the</span>
+</span><span id="__span-0-405"><a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">    SensibleHeatGainSummary and HVACSizingSummary reports.</span>
+</span><span id="__span-0-406"><a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-407"><a id="__codelineno-0-407" name="__codelineno-0-407"></a>    <span class="k">return</span> <span class="n">build_peak_load_analysis</span><span class="p">()</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="idfkit_mcp.tools.peak_loads.build_peak_load_analysis" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_peak_load_analysis</span><span class="p">()</span></code>
+
+<a href="#idfkit_mcp.tools.peak_loads.build_peak_load_analysis" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Run the full peak load QA/QC analysis on the current simulation.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/idfkit_mcp/tools/peak_loads.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-354">354</a></span>
+<span class="normal"><a href="#__codelineno-0-355">355</a></span>
+<span class="normal"><a href="#__codelineno-0-356">356</a></span>
+<span class="normal"><a href="#__codelineno-0-357">357</a></span>
+<span class="normal"><a href="#__codelineno-0-358">358</a></span>
+<span class="normal"><a href="#__codelineno-0-359">359</a></span>
+<span class="normal"><a href="#__codelineno-0-360">360</a></span>
+<span class="normal"><a href="#__codelineno-0-361">361</a></span>
+<span class="normal"><a href="#__codelineno-0-362">362</a></span>
+<span class="normal"><a href="#__codelineno-0-363">363</a></span>
+<span class="normal"><a href="#__codelineno-0-364">364</a></span>
+<span class="normal"><a href="#__codelineno-0-365">365</a></span>
+<span class="normal"><a href="#__codelineno-0-366">366</a></span>
+<span class="normal"><a href="#__codelineno-0-367">367</a></span>
+<span class="normal"><a href="#__codelineno-0-368">368</a></span>
+<span class="normal"><a href="#__codelineno-0-369">369</a></span>
+<span class="normal"><a href="#__codelineno-0-370">370</a></span>
+<span class="normal"><a href="#__codelineno-0-371">371</a></span>
+<span class="normal"><a href="#__codelineno-0-372">372</a></span>
+<span class="normal"><a href="#__codelineno-0-373">373</a></span>
+<span class="normal"><a href="#__codelineno-0-374">374</a></span>
+<span class="normal"><a href="#__codelineno-0-375">375</a></span>
+<span class="normal"><a href="#__codelineno-0-376">376</a></span>
+<span class="normal"><a href="#__codelineno-0-377">377</a></span>
+<span class="normal"><a href="#__codelineno-0-378">378</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-354"><a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="k">def</span><span class="w"> </span><span class="nf">build_peak_load_analysis</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">PeakLoadAnalysisResult</span><span class="p">:</span>
+</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the full peak load QA/QC analysis on the current simulation.&quot;&quot;&quot;</span>
+</span><span id="__span-0-356"><a id="__codelineno-0-356" name="__codelineno-0-356"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
+</span><span id="__span-0-357"><a id="__codelineno-0-357" name="__codelineno-0-357"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">require_simulation_result</span><span class="p">()</span>
+</span><span id="__span-0-358"><a id="__codelineno-0-358" name="__codelineno-0-358"></a>
+</span><span id="__span-0-359"><a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="k">with</span> <span class="n">_open_sql</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="k">as</span> <span class="n">sql</span><span class="p">:</span>
+</span><span id="__span-0-360"><a id="__codelineno-0-360" name="__codelineno-0-360"></a>        <span class="n">zone_areas</span> <span class="o">=</span> <span class="n">_get_zone_areas</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+</span><span id="__span-0-361"><a id="__codelineno-0-361" name="__codelineno-0-361"></a>        <span class="n">total_area</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">zone_areas</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</span><span id="__span-0-362"><a id="__codelineno-0-362" name="__codelineno-0-362"></a>
+</span><span id="__span-0-363"><a id="__codelineno-0-363" name="__codelineno-0-363"></a>        <span class="n">cooling</span> <span class="o">=</span> <span class="n">_parse_peak_components</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="s2">&quot;Peak Cooling Sensible Heat Gain Components&quot;</span><span class="p">,</span> <span class="n">zone_areas</span><span class="p">)</span>
+</span><span id="__span-0-364"><a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="n">heating</span> <span class="o">=</span> <span class="n">_parse_peak_components</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="s2">&quot;Peak Heating Sensible Heat Gain Components&quot;</span><span class="p">,</span> <span class="n">zone_areas</span><span class="p">)</span>
+</span><span id="__span-0-365"><a id="__codelineno-0-365" name="__codelineno-0-365"></a>
+</span><span id="__span-0-366"><a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="n">sizing_cooling</span> <span class="o">=</span> <span class="n">_parse_sizing</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="s2">&quot;Zone Sensible Cooling&quot;</span><span class="p">,</span> <span class="n">zone_areas</span><span class="p">)</span>
+</span><span id="__span-0-367"><a id="__codelineno-0-367" name="__codelineno-0-367"></a>        <span class="n">sizing_heating</span> <span class="o">=</span> <span class="n">_parse_sizing</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="s2">&quot;Zone Sensible Heating&quot;</span><span class="p">,</span> <span class="n">zone_areas</span><span class="p">)</span>
+</span><span id="__span-0-368"><a id="__codelineno-0-368" name="__codelineno-0-368"></a>
+</span><span id="__span-0-369"><a id="__codelineno-0-369" name="__codelineno-0-369"></a>    <span class="n">flags</span> <span class="o">=</span> <span class="n">_generate_flags</span><span class="p">(</span><span class="n">cooling</span><span class="p">,</span> <span class="n">heating</span><span class="p">,</span> <span class="n">sizing_cooling</span><span class="p">,</span> <span class="n">sizing_heating</span><span class="p">,</span> <span class="n">total_area</span><span class="p">)</span>
+</span><span id="__span-0-370"><a id="__codelineno-0-370" name="__codelineno-0-370"></a>
+</span><span id="__span-0-371"><a id="__codelineno-0-371" name="__codelineno-0-371"></a>    <span class="k">return</span> <span class="n">PeakLoadAnalysisResult</span><span class="p">(</span>
+</span><span id="__span-0-372"><a id="__codelineno-0-372" name="__codelineno-0-372"></a>        <span class="n">cooling</span><span class="o">=</span><span class="n">cooling</span><span class="p">,</span>
+</span><span id="__span-0-373"><a id="__codelineno-0-373" name="__codelineno-0-373"></a>        <span class="n">heating</span><span class="o">=</span><span class="n">heating</span><span class="p">,</span>
+</span><span id="__span-0-374"><a id="__codelineno-0-374" name="__codelineno-0-374"></a>        <span class="n">sizing_cooling</span><span class="o">=</span><span class="n">sizing_cooling</span><span class="p">,</span>
+</span><span id="__span-0-375"><a id="__codelineno-0-375" name="__codelineno-0-375"></a>        <span class="n">sizing_heating</span><span class="o">=</span><span class="n">sizing_heating</span><span class="p">,</span>
+</span><span id="__span-0-376"><a id="__codelineno-0-376" name="__codelineno-0-376"></a>        <span class="n">total_floor_area_m2</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">total_area</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+</span><span id="__span-0-377"><a id="__codelineno-0-377" name="__codelineno-0-377"></a>        <span class="n">flags</span><span class="o">=</span><span class="n">flags</span><span class="p">,</span>
+</span><span id="__span-0-378"><a id="__codelineno-0-378" name="__codelineno-0-378"></a>    <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="idfkit_mcp.tools.peak_loads.peak_loads_viewer_html" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">peak_loads_viewer_html</span><span class="p">()</span></code>
+
+<a href="#idfkit_mcp.tools.peak_loads.peak_loads_viewer_html" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return the self-contained peak load viewer HTML.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/idfkit_mcp/tools/peak_loads.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-410">410</a></span>
+<span class="normal"><a href="#__codelineno-0-411">411</a></span>
+<span class="normal"><a href="#__codelineno-0-412">412</a></span>
+<span class="normal"><a href="#__codelineno-0-413">413</a></span>
+<span class="normal"><a href="#__codelineno-0-414">414</a></span>
+<span class="normal"><a href="#__codelineno-0-415">415</a></span>
+<span class="normal"><a href="#__codelineno-0-416">416</a></span>
+<span class="normal"><a href="#__codelineno-0-417">417</a></span>
+<span class="normal"><a href="#__codelineno-0-418">418</a></span>
+<span class="normal"><a href="#__codelineno-0-419">419</a></span>
+<span class="normal"><a href="#__codelineno-0-420">420</a></span>
+<span class="normal"><a href="#__codelineno-0-421">421</a></span>
+<span class="normal"><a href="#__codelineno-0-422">422</a></span>
+<span class="normal"><a href="#__codelineno-0-423">423</a></span>
+<span class="normal"><a href="#__codelineno-0-424">424</a></span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="nd">@resource</span><span class="p">(</span>
+</span><span id="__span-0-411"><a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="s2">&quot;ui://idfkit/peak-loads-viewer.html&quot;</span><span class="p">,</span>
+</span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;peak_loads_viewer&quot;</span><span class="p">,</span>
+</span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Peak Load Viewer&quot;</span><span class="p">,</span>
+</span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Interactive peak load QA/QC viewer for heating and cooling load breakdowns.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a>    <span class="n">meta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>        <span class="s2">&quot;ui&quot;</span><span class="p">:</span> <span class="n">app_config_to_meta_dict</span><span class="p">(</span>
+</span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>            <span class="n">AppConfig</span><span class="p">(</span>
+</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>                <span class="n">csp</span><span class="o">=</span><span class="n">ResourceCSP</span><span class="p">(</span><span class="n">resourceDomains</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;https://unpkg.com&quot;</span><span class="p">]),</span>
+</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>                <span class="n">prefersBorder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>            <span class="p">)</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="p">)</span>
+</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="p">},</span>
+</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="p">)</span>
+</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="k">def</span><span class="w"> </span><span class="nf">peak_loads_viewer_html</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the self-contained peak load viewer HTML.&quot;&quot;&quot;</span>
+</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="k">return</span> <span class="n">PEAK_LOADS_VIEWER_HTML</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -2526,7 +2327,7 @@ easier to pinpoint failures.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../concepts/error-semantics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Error Semantics">
+          <a href="../tools-simulation/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Simulation">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2536,20 +2337,20 @@ easier to pinpoint failures.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Error Semantics
+                Simulation
               </div>
             </div>
           </a>
         
         
           
-          <a href="../simulation/" class="md-footer__link md-footer__link--next" aria-label="Next: Modeling &amp; Simulation">
+          <a href="../tools-geometry/" class="md-footer__link md-footer__link--next" aria-label="Next: Geometry">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Modeling & Simulation
+                Geometry
               </div>
             </div>
             <div class="md-footer__button md-icon">

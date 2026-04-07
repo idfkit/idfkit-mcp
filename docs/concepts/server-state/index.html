@@ -12,7 +12,7 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/concepts/server-state/">
+        <link rel="canonical" href="https://mcp.idfkit.com/concepts/server-state/">
       
       
         <link rel="prev" href="../architecture/">
@@ -1403,8 +1403,6 @@
       
         
       
-        
-      
     
     
     
@@ -1457,34 +1455,6 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/app/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    App
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
               
             
               
@@ -1594,6 +1564,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1607,10 +1587,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
             
   
   
@@ -1628,8 +1608,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1682,6 +1662,34 @@
     
   
     Read
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zone Properties
   
 
     
@@ -1758,6 +1766,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/tools-integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/tools-simulation/" class="md-nav__link">
         
   
@@ -1766,6 +1802,90 @@
     
   
     Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peak Loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-schedule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedule
   
 
     
@@ -1983,6 +2103,7 @@
 <li><code>file_path</code>: current model path</li>
 <li><code>simulation_result</code>: last run result</li>
 <li><code>weather_file</code>: last downloaded EPW path</li>
+<li><code>change_log</code>: recent mutating operations for <code>get_change_log</code></li>
 <li><code>docs_index</code>: cached documentation search index (loaded on first <code>search_docs</code> / <code>get_doc_section</code> call)</li>
 <li><code>docs_version</code>: version of the cached docs index</li>
 <li><code>docs_separator</code>: tokenization regex from the docs index config</li>
@@ -1993,12 +2114,13 @@
 <li>Sequence matters.</li>
 <li>Loading a new model replaces prior context.</li>
 <li>Simulation and weather data are session-local.</li>
+<li>The change log is session-local and not persisted across <code>clear_session</code>.</li>
 </ul>
 <h2 id="required-preconditions">Required Preconditions<a class="headerlink" href="#required-preconditions" title="Permanent link">&para;</a></h2>
 <p>Some tools require prior state:</p>
 <ul>
-<li>model required: most read/write/validation/simulation tools</li>
-<li>simulation result required: <code>list_output_variables</code>, <code>query_timeseries</code>, <code>export_timeseries</code>, and the <code>idfkit://simulation/results</code> resource</li>
+<li>model required: most model read/write/validation tools, plus <code>view_geometry</code>, <code>view_schedules</code>, and <code>get_zone_properties</code></li>
+<li>simulation result required: <code>list_output_variables</code>, <code>query_timeseries</code>, <code>query_simulation_table</code>, <code>list_simulation_reports</code>, <code>view_simulation_report</code>, <code>analyze_peak_loads</code>, <code>export_timeseries</code>, and the <code>idfkit://simulation/results</code>, <code>idfkit://simulation/peak-loads</code>, and <code>idfkit://simulation/report</code> resources</li>
 </ul>
 <p>If missing, tools return descriptive errors such as:</p>
 <ul>
@@ -2012,6 +2134,10 @@
 <li><code>file_path</code> — reloaded via <code>load_model</code> on restore</li>
 <li><code>simulation_run_dir</code> — simulation result rebuilt from output directory</li>
 <li><code>weather_file</code> — weather file path restored</li>
+</ul>
+<p>Not persisted:</p>
+<ul>
+<li><code>change_log</code> — stays in-memory only and resets with a fresh session or <code>clear_session</code></li>
 </ul>
 <p>Behavior:</p>
 <ul>
@@ -2052,7 +2178,15 @@
 </tr>
 <tr>
 <td><code>idfkit://simulation/results</code></td>
-<td>Summary of the most recent simulation results</td>
+<td>Structured QA diagnostics from the most recent simulation</td>
+</tr>
+<tr>
+<td><code>idfkit://simulation/peak-loads</code></td>
+<td>Peak heating/cooling load decomposition and QA analysis</td>
+</tr>
+<tr>
+<td><code>idfkit://simulation/report</code></td>
+<td>Full tabular simulation report for the latest run</td>
 </tr>
 </tbody>
 </table>
@@ -2141,7 +2275,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+      Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
     </div>
   
   

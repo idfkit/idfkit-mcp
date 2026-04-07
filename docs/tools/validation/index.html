@@ -12,7 +12,7 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/tools/validation/">
+        <link rel="canonical" href="https://mcp.idfkit.com/tools/validation/">
       
       
         <link rel="prev" href="../model-write/">
@@ -956,6 +956,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#check_model_integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_model_integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#recommended-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1359,8 +1370,6 @@
       
         
       
-        
-      
     
     
     
@@ -1413,34 +1422,6 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/app/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    App
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
               
             
               
@@ -1550,6 +1531,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1563,10 +1554,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
             
   
   
@@ -1584,8 +1575,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1638,6 +1629,34 @@
     
   
     Read
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zone Properties
   
 
     
@@ -1714,6 +1733,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/tools-integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/tools-simulation/" class="md-nav__link">
         
   
@@ -1722,6 +1769,90 @@
     
   
     Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peak Loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-schedule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedule
   
 
     
@@ -1845,6 +1976,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#check_model_integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_model_integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#recommended-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1902,11 +2044,23 @@
 <li>structured error and warning entries</li>
 </ul>
 <p>Use the <code>idfkit://docs/{object_type}</code> resource to look up documentation for object types that appear in validation errors.</p>
+<h2 id="check_model_integrity"><code>check_model_integrity</code><a class="headerlink" href="#check_model_integrity" title="Permanent link">&para;</a></h2>
+<p>Runs domain-level pre-simulation QA that catches issues schema validation does not.</p>
+<p>Checks include:</p>
+<ul>
+<li>zones with no <code>BuildingSurface:Detailed</code> surfaces</li>
+<li>missing required control objects such as <code>Version</code>, <code>Building</code>, <code>Timestep</code>, <code>RunPeriod</code>, and <code>SimulationControl</code></li>
+<li>orphan schedules that are defined but never referenced</li>
+<li>non-reciprocal surface boundary-condition pairs</li>
+<li>fenestration surfaces with missing host surfaces</li>
+<li><code>ZoneHVAC:EquipmentConnections</code> rows that reference missing zones</li>
+</ul>
 <h2 id="recommended-gate">Recommended Gate<a class="headerlink" href="#recommended-gate" title="Permanent link">&para;</a></h2>
 <p>Run after any mutation batch:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>validate_model(check_references=true)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>check_model_integrity()
 </span></code></pre></div>
-<p>Only proceed to simulation when validation is clean.</p>
+<p>Only proceed to simulation when both checks are clean.</p>
 
 
 
@@ -1984,7 +2138,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+      Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
     </div>
   
   

@@ -12,7 +12,7 @@
         <meta name="author" content="Samuel Letellier-Duchesne">
       
       
-        <link rel="canonical" href="https://mcp.idfkit.com/docs/concepts/architecture/">
+        <link rel="canonical" href="https://mcp.idfkit.com/concepts/architecture/">
       
       
         <link rel="prev" href="../../tools/docs/">
@@ -1442,8 +1442,6 @@
       
         
       
-        
-      
     
     
     
@@ -1496,34 +1494,6 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/app/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    App
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
               
             
               
@@ -1633,6 +1603,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1646,10 +1626,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_6" id="__nav_7_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
             
   
   
@@ -1667,8 +1647,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1721,6 +1701,34 @@
     
   
     Read
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-zone-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zone Properties
   
 
     
@@ -1797,6 +1805,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/tools-integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/tools-simulation/" class="md-nav__link">
         
   
@@ -1805,6 +1841,90 @@
     
   
     Simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-peak-loads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peak Loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/tools-schedule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedule
   
 
     
@@ -2070,10 +2190,10 @@ graph TB
     subgraph Server["idfkit-mcp Server"]
         Transport["Transport Layer&lt;br/&gt;&lt;small&gt;stdio | SSE | streamable-http&lt;/small&gt;"]
         Middleware["Middleware&lt;br/&gt;&lt;small&gt;logging, error handling, session binding&lt;/small&gt;"]
-        Tools["32 Tools&lt;br/&gt;&lt;small&gt;schema, read, write, validation,&lt;br/&gt;simulation, weather, docs&lt;/small&gt;"]
-        Resources["6 Resources&lt;br/&gt;&lt;small&gt;read-only model &amp; result state&lt;/small&gt;"]
+        Tools["35 Tools&lt;br/&gt;&lt;small&gt;schema, read, write, validation,&lt;br/&gt;simulation, geometry, schedules, weather, docs&lt;/small&gt;"]
+        Resources["12 Resources&lt;br/&gt;&lt;small&gt;JSON state resources + MCP App viewers&lt;/small&gt;"]
         Session["Session Manager&lt;br/&gt;&lt;small&gt;up to 20 concurrent sessions&lt;/small&gt;"]
-        State["ServerState&lt;br/&gt;&lt;small&gt;document, schema, sim results,&lt;br/&gt;weather file, docs index&lt;/small&gt;"]
+        State["ServerState&lt;br/&gt;&lt;small&gt;document, schema, sim results,&lt;br/&gt;weather file, change log, docs index&lt;/small&gt;"]
     end
 
     subgraph Core["idfkit (core library)"]
@@ -2123,20 +2243,22 @@ block
         http["streamable-http&lt;br/&gt;(multi-session)"]
     end
     block:middleware["Middleware"]
-        mw["ToolExecutionMiddleware — logging, error mapping, session binding"]
+        mw["Logging · Error mapping · Session binding"]
     end
-    block:tools_resources
-        schema_t["Schema&lt;br/&gt;(4 tools)"]
-        read_t["Read&lt;br/&gt;(7 tools)"]
-        write_t["Write&lt;br/&gt;(9 tools)"]
-        val_t["Validation&lt;br/&gt;(2 tools)"]
-        sim_t["Simulation&lt;br/&gt;(5 tools)"]
-        weather_t["Weather&lt;br/&gt;(2 tools)"]
-        docs_t["Docs&lt;br/&gt;(3 tools)"]
-        res["Resources&lt;br/&gt;(6)"]
+    block:tools_resources["Tools &amp; Resources"]
+        schema_t["Schema (4)"]
+        read_t["Read (6)"]
+        write_t["Write (9)"]
+        val_t["Validation (2)"]
+        sim_t["Simulation (8)"]
+        weather_t["Weather (2)"]
+        geom_t["Geometry (1)"]
+        sched_t["Schedules (1)"]
+        docs_t["Docs (2)"]
+        res["Resources (12)"]
     end
     block:state_layer["Session &amp; State"]
-        state["ServerState — per-session document, schema, results, caches"]
+        state["ServerState — per-session document, schema, results, change log, caches"]
     end
     block:core["Core Library (idfkit)"]
         idfkit["Parsing · Validation · Simulation · Weather · Schemas"]
@@ -2238,7 +2360,7 @@ block
 <li><strong>SSE / streamable-http</strong> (multi-client): Up to 20 concurrent sessions keyed by <code>mcp-session-id</code> header. LRU eviction when full. Persistence disabled (sessions are ephemeral).</li>
 </ul>
 <h2 id="tool-categories">Tool Categories<a class="headerlink" href="#tool-categories" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph LR
+<pre class="mermaid"><code>graph TB
     subgraph Schema["Schema Exploration"]
         A1[list_object_types]
         A2[describe_object_type]
@@ -2251,31 +2373,36 @@ block
         B2[convert_osm_to_idf]
         B3[list_objects]
         B4[search_objects]
-        B5[get_object]
-        B6[get_model_summary]
-        B7[get_references]
+        B5[get_zone_properties]
+        B6[get_change_log]
     end
 
     subgraph Write["Model Write"]
         C1[new_model]
-        C2[add_object / batch_add_objects]
-        C3[update_object]
-        C4[remove_object]
-        C5[rename_object / duplicate_object]
-        C6[save_model]
-        C7[clear_session]
+        C2[add_object]
+        C3[batch_add_objects]
+        C4[update_object]
+        C5[remove_object]
+        C6[rename_object]
+        C7[duplicate_object]
+        C8[save_model]
+        C9[clear_session]
     end
 
     subgraph Validation
         D1[validate_model]
-        D2[check_references]
+        D2[check_model_integrity]
     end
 
     subgraph Simulation
         E1[run_simulation]
         E2[list_output_variables]
         E3[query_timeseries]
-        E4[export_timeseries]
+        E4[query_simulation_table]
+        E5[list_simulation_reports]
+        E6[view_simulation_report]
+        E7[analyze_peak_loads]
+        E8[export_timeseries]
     end
 
     subgraph Weather
@@ -2283,10 +2410,17 @@ block
         F2[download_weather_file]
     end
 
+    subgraph Geometry
+        H1[view_geometry]
+    end
+
+    subgraph Schedules
+        I1[view_schedules]
+    end
+
     subgraph Documentation
         G1[search_docs]
         G2[get_doc_section]
-        G3[lookup_documentation]
     end</code></pre>
 <h2 id="typical-workflow">Typical Workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
@@ -2306,6 +2440,9 @@ block
     Agent-&gt;&gt;MCP: validate_model()
     MCP--&gt;&gt;Agent: Validation results (errors, warnings)
 
+    Agent-&gt;&gt;MCP: check_model_integrity()
+    MCP--&gt;&gt;Agent: Domain QA findings (orphan schedules, missing controls, geometry issues)
+
     Agent-&gt;&gt;MCP: search_weather_stations("Chicago")
     MCP--&gt;&gt;Agent: Matching stations with WMO IDs
 
@@ -2317,8 +2454,11 @@ block
     EP--&gt;&gt;MCP: Results (SQL, HTML, errors)
     MCP--&gt;&gt;Agent: Success + runtime + error summary
 
-    Agent-&gt;&gt;MCP: query_timeseries("Zone Mean Air Temperature")
-    MCP--&gt;&gt;Agent: Hourly temperature data
+    Agent-&gt;&gt;MCP: read idfkit://simulation/results
+    MCP--&gt;&gt;Agent: Structured QA diagnostics (unmet hours, end uses, flags)
+
+    Agent-&gt;&gt;MCP: analyze_peak_loads()
+    MCP--&gt;&gt;Agent: Peak load decomposition + QA flags
 
     Agent-&gt;&gt;MCP: save_model("office.idf")
     MCP--&gt;&gt;Agent: File saved</code></pre>
@@ -2399,7 +2539,7 @@ block
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+      Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
     </div>
   
   
