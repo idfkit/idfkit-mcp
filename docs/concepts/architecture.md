@@ -20,10 +20,10 @@ graph TB
     subgraph Server["idfkit-mcp Server"]
         Transport["Transport Layer<br/><small>stdio | SSE | streamable-http</small>"]
         Middleware["Middleware<br/><small>logging, error handling, session binding</small>"]
-        Tools["28 Tools<br/><small>schema, read, write, validation,<br/>simulation, geometry, schedules, weather, docs</small>"]
-        Resources["8 Resources<br/><small>read-only model & result state</small>"]
+        Tools["35 Tools<br/><small>schema, read, write, validation,<br/>simulation, geometry, schedules, weather, docs</small>"]
+        Resources["12 Resources<br/><small>JSON state resources + MCP App viewers</small>"]
         Session["Session Manager<br/><small>up to 20 concurrent sessions</small>"]
-        State["ServerState<br/><small>document, schema, sim results,<br/>weather file, docs index</small>"]
+        State["ServerState<br/><small>document, schema, sim results,<br/>weather file, change log, docs index</small>"]
     end
 
     subgraph Core["idfkit (core library)"]
@@ -82,18 +82,18 @@ block
     end
     block:tools_resources["Tools & Resources"]
         schema_t["Schema (4)"]
-        read_t["Read (4)"]
+        read_t["Read (6)"]
         write_t["Write (9)"]
-        val_t["Validation (1)"]
-        sim_t["Simulation (4)"]
+        val_t["Validation (2)"]
+        sim_t["Simulation (8)"]
         weather_t["Weather (2)"]
         geom_t["Geometry (1)"]
         sched_t["Schedules (1)"]
         docs_t["Docs (2)"]
-        res["Resources (8)"]
+        res["Resources (12)"]
     end
     block:state_layer["Session & State"]
-        state["ServerState — per-session document, schema, results, caches"]
+        state["ServerState — per-session document, schema, results, change log, caches"]
     end
     block:core["Core Library (idfkit)"]
         idfkit["Parsing · Validation · Simulation · Weather · Schemas"]
@@ -170,7 +170,7 @@ sequenceDiagram
 ## Tool Categories
 
 ```mermaid
-graph LR
+graph TB
     subgraph Schema["Schema Exploration"]
         A1[list_object_types]
         A2[describe_object_type]
@@ -183,27 +183,36 @@ graph LR
         B2[convert_osm_to_idf]
         B3[list_objects]
         B4[search_objects]
+        B5[get_zone_properties]
+        B6[get_change_log]
     end
 
     subgraph Write["Model Write"]
         C1[new_model]
-        C2[add_object / batch_add_objects]
-        C3[update_object]
-        C4[remove_object]
-        C5[rename_object / duplicate_object]
-        C6[save_model]
-        C7[clear_session]
+        C2[add_object]
+        C3[batch_add_objects]
+        C4[update_object]
+        C5[remove_object]
+        C6[rename_object]
+        C7[duplicate_object]
+        C8[save_model]
+        C9[clear_session]
     end
 
     subgraph Validation
         D1[validate_model]
+        D2[check_model_integrity]
     end
 
     subgraph Simulation
         E1[run_simulation]
         E2[list_output_variables]
         E3[query_timeseries]
-        E4[export_timeseries]
+        E4[query_simulation_table]
+        E5[list_simulation_reports]
+        E6[view_simulation_report]
+        E7[analyze_peak_loads]
+        E8[export_timeseries]
     end
 
     subgraph Weather
@@ -245,6 +254,9 @@ sequenceDiagram
     Agent->>MCP: validate_model()
     MCP-->>Agent: Validation results (errors, warnings)
 
+    Agent->>MCP: check_model_integrity()
+    MCP-->>Agent: Domain QA findings (orphan schedules, missing controls, geometry issues)
+
     Agent->>MCP: search_weather_stations("Chicago")
     MCP-->>Agent: Matching stations with WMO IDs
 
@@ -256,8 +268,11 @@ sequenceDiagram
     EP-->>MCP: Results (SQL, HTML, errors)
     MCP-->>Agent: Success + runtime + error summary
 
-    Agent->>MCP: query_timeseries("Zone Mean Air Temperature")
-    MCP-->>Agent: Hourly temperature data
+    Agent->>MCP: read idfkit://simulation/results
+    MCP-->>Agent: Structured QA diagnostics (unmet hours, end uses, flags)
+
+    Agent->>MCP: analyze_peak_loads()
+    MCP-->>Agent: Peak load decomposition + QA flags
 
     Agent->>MCP: save_model("office.idf")
     MCP-->>Agent: File saved

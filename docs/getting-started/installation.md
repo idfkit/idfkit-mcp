@@ -113,11 +113,11 @@ IDFKIT_MCP_TRANSPORT=streamable-http IDFKIT_MCP_HOST=0.0.0.0 IDFKIT_MCP_PORT=800
 
 ## Log Verbosity
 
-Control log output with `--log-level` (or the `IDFKIT_MCP_LOG_LEVEL` environment variable).
+Control log output with the `IDFKIT_MCP_LOG_LEVEL` environment variable.
 The default level is `INFO`.
 
 ```bash
-idfkit-mcp --log-level DEBUG
+IDFKIT_MCP_LOG_LEVEL=DEBUG idfkit-mcp
 ```
 
 Available levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`.

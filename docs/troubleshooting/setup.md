@@ -5,12 +5,6 @@
 When troubleshooting any issue, start by enabling debug output:
 
 ```bash
-idfkit-mcp --log-level DEBUG
-```
-
-Or via environment variable:
-
-```bash
 IDFKIT_MCP_LOG_LEVEL=DEBUG idfkit-mcp
 ```
 

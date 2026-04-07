@@ -41,16 +41,18 @@ nav:
 
   - API Reference:
     - Overview: api/index.md
-    - App: api/app.md
     - Server: api/server.md
     - State: api/state.md
     - Resources: api/resources.md
     - Tools:
       - Schema: api/tools-schema.md
       - Read: api/tools-read.md
+      - Zone Properties: api/tools-zone-properties.md
       - Write: api/tools-write.md
       - Validation: api/tools-validation.md
+      - Integrity: api/tools-integrity.md
       - Simulation: api/tools-simulation.md
+      - Peak Loads: api/tools-peak-loads.md
       - Geometry: api/tools-geometry.md
       - Schedule: api/tools-schedule.md
       - Weather: api/tools-weather.md

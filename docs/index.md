@@ -10,7 +10,7 @@ hide:
 
 <p class="hero-tagline">
 A production-ready MCP server for EnergyPlus workflows: schema discovery,
-model editing, validation, weather acquisition, and simulation via idfkit.
+model editing, integrity checks, QA diagnostics, peak-load analysis, and simulation via idfkit.
 </p>
 
 <div class="badges" markdown>
@@ -32,12 +32,13 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 
 <div class="feature-chips" markdown>
 
-<span class="chip">:material-tools: 28 MCP tools</span>
+<span class="chip">:material-tools: 35 MCP tools</span>
 <span class="chip">:material-shape-outline: Schema-aware edits</span>
-<span class="chip">:material-shield-check-outline: Validation + references</span>
+<span class="chip">:material-shield-check-outline: Validation + integrity checks</span>
 <span class="chip">:material-weather-cloudy: Weather search + download</span>
-<span class="chip">:material-play-circle-outline: Simulation orchestration</span>
-<span class="chip">:material-cube-outline: 3D geometry viewer</span>
+<span class="chip">:material-play-circle-outline: Simulation QA diagnostics</span>
+<span class="chip">:material-chart-waterfall: Peak loads + report viewers</span>
+<span class="chip">:material-cube-outline: Geometry + schedule viewers</span>
 <span class="chip">:material-robot-outline: Codex + Claude workflows</span>
 
 </div>
@@ -49,9 +50,11 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 - A single MCP server that covers the EnergyPlus model lifecycle:
   - schema exploration
   - model read/write operations
-  - validation and dangling-reference checks
+  - schema validation and domain integrity checks
   - weather station search and EPW download
-  - simulation runs and result summaries
+  - simulation runs with structured QA diagnostics
+  - peak-load analysis and tabular report browsing
+  - interactive geometry, schedule, and simulation viewers
 - Predictable, structured tool responses for autonomous agents.
 - Workflow compatibility across Codex, Claude, and other MCP-capable clients.
 
@@ -61,8 +64,9 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 2. `describe_object_type` before edits
 3. `batch_add_objects` for bulk creation
 4. `validate_model` after modifications
-5. `run_simulation`
-6. Read `idfkit://simulation/results` resource, then `list_output_variables`
+5. `check_model_integrity`
+6. `run_simulation`
+7. Read `idfkit://simulation/results`, then `analyze_peak_loads` or `view_simulation_report`
 
 ## Quick Workflow Example
 
@@ -71,9 +75,11 @@ model editing, validation, weather acquisition, and simulation via idfkit.
 2) describe_object_type(object_type="Zone")
 3) batch_add_objects(objects=[...])
 4) validate_model(check_references=True)
-5) download_weather_file(query="Chicago")
-6) run_simulation(annual=True)
-7) read idfkit://simulation/results resource
+5) check_model_integrity()
+6) download_weather_file(query="Chicago")
+7) run_simulation(annual=True)
+8) read idfkit://simulation/results resource
+9) analyze_peak_loads()
 ```
 
 ---

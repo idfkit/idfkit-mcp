@@ -1,6 +1,6 @@
 # Model Read Tools
 
-Read tools expose current model content and relationships.
+Read tools expose current model content, typed zone summaries, session history, and relationships.
 
 ## `load_model`
 
@@ -46,6 +46,36 @@ Parameters:
 Case-insensitive substring search across names and string fields.
 
 Optional `object_type` filter narrows results.
+
+## `get_zone_properties`
+
+Returns a typed summary of one zone, or all zones when `zone_name` is omitted.
+
+Highlights:
+
+- floor area, volume, and ceiling height derived from geometry when surfaces exist
+- surface counts for walls, floors, roofs, ceilings, windows, doors, and other surfaces
+- unique construction names referenced by zone surfaces
+- schedule names referenced by objects tied to that zone
+- HVAC connection names and thermostat controls associated with the zone
+
+Parameters:
+
+- `zone_name`: optional zone name; omit to summarize every zone in the model
+
+## `get_change_log`
+
+Returns recent mutation history for the current session.
+
+Parameters:
+
+- `limit`: maximum entries to return (default `20`, capped at `100`)
+
+Behavior:
+
+- records `add`, `update`, `remove`, `rename`, `duplicate`, `load`, and `new_model` operations in chronological order
+- is session-local and in-memory only
+- resets when `clear_session()` is called
 
 ## MCP Resources for Model Inspection
 

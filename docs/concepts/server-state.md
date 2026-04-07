@@ -9,6 +9,7 @@
 - `file_path`: current model path
 - `simulation_result`: last run result
 - `weather_file`: last downloaded EPW path
+- `change_log`: recent mutating operations for `get_change_log`
 - `docs_index`: cached documentation search index (loaded on first `search_docs` / `get_doc_section` call)
 - `docs_version`: version of the cached docs index
 - `docs_separator`: tokenization regex from the docs index config
@@ -19,13 +20,14 @@
 - Sequence matters.
 - Loading a new model replaces prior context.
 - Simulation and weather data are session-local.
+- The change log is session-local and not persisted across `clear_session`.
 
 ## Required Preconditions
 
 Some tools require prior state:
 
-- model required: most read/write/validation/simulation tools
-- simulation result required: `list_output_variables`, `query_timeseries`, `export_timeseries`, and the `idfkit://simulation/results` resource
+- model required: most model read/write/validation tools, plus `view_geometry`, `view_schedules`, and `get_zone_properties`
+- simulation result required: `list_output_variables`, `query_timeseries`, `query_simulation_table`, `list_simulation_reports`, `view_simulation_report`, `analyze_peak_loads`, `export_timeseries`, and the `idfkit://simulation/results`, `idfkit://simulation/peak-loads`, and `idfkit://simulation/report` resources
 
 If missing, tools return descriptive errors such as:
 
@@ -41,6 +43,10 @@ Saved state:
 - `file_path` — reloaded via `load_model` on restore
 - `simulation_run_dir` — simulation result rebuilt from output directory
 - `weather_file` — weather file path restored
+
+Not persisted:
+
+- `change_log` — stays in-memory only and resets with a fresh session or `clear_session`
 
 Behavior:
 
@@ -60,7 +66,9 @@ In addition to tools, the server exposes read-only MCP resources that let client
 | `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object |
 | `idfkit://model/references/{name}` | Inbound and outbound references for an object |
 | `idfkit://docs/{object_type}` | Documentation URLs for an object type |
-| `idfkit://simulation/results` | Summary of the most recent simulation results |
+| `idfkit://simulation/results` | Structured QA diagnostics from the most recent simulation |
+| `idfkit://simulation/peak-loads` | Peak heating/cooling load decomposition and QA analysis |
+| `idfkit://simulation/report` | Full tabular simulation report for the latest run |
 
 Resources return JSON (`application/json`) and are available whenever the corresponding state exists (e.g., `model/summary` requires a loaded model).
 
