@@ -7,8 +7,14 @@ import logging
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastmcp import FastMCP
+
+if TYPE_CHECKING:
+    from starlette.requests import Request
+    from starlette.responses import Response
+
 from fastmcp.server.lifespan import lifespan
 from fastmcp.server.providers import FileSystemProvider
 
@@ -70,6 +76,14 @@ mcp = FastMCP(
     providers=[FileSystemProvider(Path(__file__).parent / "tools")],
 )
 mcp.add_middleware(ToolExecutionMiddleware())
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(_request: Request) -> Response:
+    """Health check endpoint for load balancer probes."""
+    from starlette.responses import JSONResponse
+
+    return JSONResponse({"status": "ok"})
 
 
 def _parse_args() -> argparse.Namespace:
