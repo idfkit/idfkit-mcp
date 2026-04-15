@@ -415,6 +415,12 @@ class ServerState:
             import shutil
 
             shutil.rmtree(uploads_dir, ignore_errors=True)
+        try:
+            from idfkit_mcp.server import uploads as _uploads
+        except ImportError:
+            _uploads = None
+        if _uploads is not None:
+            _uploads.clear_scope(self.session_id)
         self.document = None
         self.schema = None
         self.file_path = None

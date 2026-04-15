@@ -16,6 +16,33 @@ from idfkit_mcp.state import ServerState
 from tests.conftest import call_tool
 
 
+class TestResolveSimulationOutputDir:
+    """IDFKIT_MCP_SIMULATION_DIR default and explicit-override behavior."""
+
+    def test_explicit_wins(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
+
+        monkeypatch.setenv("IDFKIT_MCP_SIMULATION_DIR", str(tmp_path))
+        assert _resolve_simulation_output_dir("/explicit/path", "sess-x") == "/explicit/path"
+
+    def test_env_var_creates_per_run_subdir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
+
+        monkeypatch.setenv("IDFKIT_MCP_SIMULATION_DIR", str(tmp_path))
+        resolved = _resolve_simulation_output_dir(None, "sess-y")
+        assert resolved is not None
+        run_dir = Path(resolved)
+        assert run_dir.is_dir()
+        assert run_dir.parent == tmp_path
+        assert run_dir.name.startswith("sess-y-")
+
+    def test_env_unset_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
+
+        monkeypatch.delenv("IDFKIT_MCP_SIMULATION_DIR", raising=False)
+        assert _resolve_simulation_output_dir(None, "sess-z") is None
+
+
 class TestRunSimulation:
     async def test_no_model(self, client: object) -> None:
         with pytest.raises(ToolError):

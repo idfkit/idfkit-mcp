@@ -105,6 +105,76 @@ class TestReadFileToolHidden:
         )
 
 
+class TestDiskBackedUploadStore:
+    """Exercise IdfUploadStore configured with a root path (IDFKIT_MCP_UPLOAD_DIR)."""
+
+    def test_on_store_writes_to_disk(self, tmp_path: Path) -> None:
+        from idfkit_mcp.state import _current_session_id
+        from idfkit_mcp.uploads import IdfUploadStore
+
+        store = IdfUploadStore(root=tmp_path, name="Test")
+        _current_session_id.set("sess-a")
+        payload = [{"name": "a.idf", "size": 4, "type": "text/plain", "data": base64.b64encode(b"idf!").decode()}]
+        store.on_store(payload, ctx=None)  # type: ignore[arg-type]
+
+        assert (tmp_path / "sess-a" / "a.idf").read_bytes() == b"idf!"
+        assert (tmp_path / "sess-a" / "a.idf.meta.json").exists()
+
+    def test_get_bytes_reads_from_disk(self, tmp_path: Path) -> None:
+        from idfkit_mcp.state import _current_session_id
+        from idfkit_mcp.uploads import IdfUploadStore
+
+        store = IdfUploadStore(root=tmp_path, name="Test")
+        _current_session_id.set("sess-b")
+        store.on_store(
+            [{"name": "m.idf", "size": 5, "type": "text/plain", "data": base64.b64encode(b"bytes").decode()}],
+            ctx=None,  # type: ignore[arg-type]
+        )
+        assert store.get_bytes("m.idf", session_id="sess-b") == b"bytes"
+
+    def test_scope_isolation(self, tmp_path: Path) -> None:
+        from idfkit_mcp.state import _current_session_id
+        from idfkit_mcp.uploads import IdfUploadStore
+
+        store = IdfUploadStore(root=tmp_path, name="Test")
+        for sid, blob in [("one", b"first"), ("two", b"second")]:
+            _current_session_id.set(sid)
+            store.on_store(
+                [{"name": "x.idf", "size": len(blob), "type": "text/plain", "data": base64.b64encode(blob).decode()}],
+                ctx=None,  # type: ignore[arg-type]
+            )
+        assert store.get_bytes("x.idf", session_id="one") == b"first"
+        assert store.get_bytes("x.idf", session_id="two") == b"second"
+
+    def test_path_traversal_rejected(self, tmp_path: Path) -> None:
+        from idfkit_mcp.state import _current_session_id
+        from idfkit_mcp.uploads import IdfUploadStore
+
+        store = IdfUploadStore(root=tmp_path, name="Test")
+        _current_session_id.set("sess-t")
+        for bad in ("../escape.idf", "foo/bar.idf", ".hidden", ".."):
+            with pytest.raises(ValueError):
+                store.on_store(
+                    [{"name": bad, "size": 1, "type": "text/plain", "data": base64.b64encode(b"x").decode()}],
+                    ctx=None,  # type: ignore[arg-type]
+                )
+
+    def test_clear_scope_removes_disk_dir(self, tmp_path: Path) -> None:
+        from idfkit_mcp.state import _current_session_id
+        from idfkit_mcp.uploads import IdfUploadStore
+
+        store = IdfUploadStore(root=tmp_path, name="Test")
+        _current_session_id.set("sess-c")
+        store.on_store(
+            [{"name": "a.idf", "size": 1, "type": "text/plain", "data": base64.b64encode(b"a").decode()}],
+            ctx=None,  # type: ignore[arg-type]
+        )
+        scope = tmp_path / "sess-c"
+        assert scope.exists()
+        store.clear_scope("sess-c")
+        assert not scope.exists()
+
+
 class TestModelSummaryResource:
     async def test_with_model(self, client: object, state_with_zones: ServerState) -> None:
         payload = await read_resource_json(client, "idfkit://model/summary")

@@ -72,7 +72,9 @@ async def _configure_logging(_server: FastMCP) -> AsyncIterator[None]:
     yield
 
 
+_upload_dir_env = os.environ.get("IDFKIT_MCP_UPLOAD_DIR")
 uploads = IdfUploadStore(
+    root=Path(_upload_dir_env) if _upload_dir_env else None,
     name="IDFFiles",
     title="Upload an EnergyPlus model",
     description="Drop an .idf or .epJSON file. Then call load_model(upload_name=...) to load it.",

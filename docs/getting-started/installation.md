@@ -111,6 +111,56 @@ idfkit-mcp --transport streamable-http --host 127.0.0.1 --port 8000
 IDFKIT_MCP_TRANSPORT=streamable-http IDFKIT_MCP_HOST=0.0.0.0 IDFKIT_MCP_PORT=8000 idfkit-mcp
 ```
 
+## Storage Directories
+
+Hosted deployments (HTTP transport, multi-replica, shared volumes) can redirect
+file storage away from the ephemeral container filesystem via environment
+variables.
+
+### `IDFKIT_MCP_UPLOAD_DIR`
+
+Where files dropped into the `file_manager` UI are stored. When unset, uploads
+live in-memory on the Python process and are lost when the container restarts —
+fine for `stdio` and single-container deployments. When set, uploads are written
+to `<IDFKIT_MCP_UPLOAD_DIR>/<session_id>/<filename>` with a sidecar
+`<filename>.meta.json`. Point this at a shared volume (e.g. EFS) so concurrent
+replicas can all resolve `load_model(upload_name=...)` calls.
+
+```bash
+IDFKIT_MCP_UPLOAD_DIR=/mnt/idfkit-uploads idfkit-mcp --transport http
+```
+
+Cleanup: `clear_session()` removes the caller's scope directory. Abandoned
+sessions are not swept automatically — run a periodic cleanup (e.g. delete
+scopes older than 24 h) in production.
+
+### `IDFKIT_MCP_SIMULATION_DIR`
+
+Default parent directory for EnergyPlus run output. When unset, each
+`run_simulation` call creates a fresh temp directory. When set, each run writes
+to `<IDFKIT_MCP_SIMULATION_DIR>/<session_id>-<utc-timestamp>/`. An explicit
+`output_directory` argument on the tool call always wins.
+
+```bash
+IDFKIT_MCP_SIMULATION_DIR=/mnt/idfkit-simulations idfkit-mcp --transport http
+```
+
+### `IDFKIT_MCP_OUTPUT_DIRS`
+
+Whitelist of directories that `save_model` (and any other tool that writes
+user-named output paths) may resolve into. Prevents a misbehaving agent from
+writing outside a sanctioned area.
+
+- Colon-separated on POSIX, semicolon-separated on Windows.
+- Defaults to the current working directory when unset.
+
+```bash
+IDFKIT_MCP_OUTPUT_DIRS=/workspace:/mnt/outputs idfkit-mcp
+```
+
+Paths that resolve outside every listed root are rejected with a `ToolError`,
+including attempts via `..` traversal or symlinks.
+
 ## Log Verbosity
 
 Control log output with the `IDFKIT_MCP_LOG_LEVEL` environment variable.
