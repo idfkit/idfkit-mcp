@@ -2120,12 +2120,18 @@
 <p>Read tools expose current model content, typed zone summaries, session history, and relationships.</p>
 <h2 id="load_model"><code>load_model</code><a class="headerlink" href="#load_model" title="Permanent link">&para;</a></h2>
 <p>Loads IDF or epJSON into active server state.</p>
+<p>Parameters (provide exactly one source):</p>
+<ul>
+<li><code>file_path</code>: server-local path to the file. Use this on <code>stdio</code> and local setups where the server shares the client's filesystem.</li>
+<li><code>upload_name</code>: name of a file previously uploaded via the <code>file_manager</code> UI tool. Use this on hosted/HTTP deployments where the server has no access to the client's disk.</li>
+<li><code>version</code> (optional): override version as <code>X.Y.Z</code>.</li>
+</ul>
 <p>Notes:</p>
 <ul>
 <li>File type inferred from extension.</li>
-<li>Optional <code>version</code> override (<code>X.Y.Z</code>) is supported.</li>
 <li>Loading resets previous simulation result state.</li>
 <li>Persists session state to disk for automatic recovery across server restarts.</li>
+<li>For uploads, bytes are pulled from the <code>FileUpload</code> store (in-memory or disk-backed via <code>IDFKIT_MCP_UPLOAD_DIR</code>) and materialized to a per-session cache before parsing. <code>clear_session</code> removes the materialized file and the upload scope.</li>
 </ul>
 <h2 id="convert_osm_to_idf"><code>convert_osm_to_idf</code><a class="headerlink" href="#convert_osm_to_idf" title="Permanent link">&para;</a></h2>
 <p>Converts an OpenStudio <code>.osm</code> model to <code>.idf</code> using OpenStudio SDK and loads the

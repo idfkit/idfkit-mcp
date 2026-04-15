@@ -2730,7 +2730,13 @@ session ID on every connection.</p>
 <span class="normal"><a href="#__codelineno-0-421">421</a></span>
 <span class="normal"><a href="#__codelineno-0-422">422</a></span>
 <span class="normal"><a href="#__codelineno-0-423">423</a></span>
-<span class="normal"><a href="#__codelineno-0-424">424</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-142"><a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="normal"><a href="#__codelineno-0-424">424</a></span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span>
+<span class="normal"><a href="#__codelineno-0-427">427</a></span>
+<span class="normal"><a href="#__codelineno-0-428">428</a></span>
+<span class="normal"><a href="#__codelineno-0-429">429</a></span>
+<span class="normal"><a href="#__codelineno-0-430">430</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-142"><a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span>
 </span><span id="__span-0-143"><a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="k">class</span><span class="w"> </span><span class="nc">ServerState</span><span class="p">:</span>
 </span><span id="__span-0-144"><a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Holds the active document, schema, and simulation result for one session.</span>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145"></a>
@@ -3006,13 +3012,19 @@ session ID on every connection.</p>
 </span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a>            <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 </span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>
 </span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">uploads_dir</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">document</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_result</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">weather_file</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">change_log</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_session_restored</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">idfkit_mcp.server</span><span class="w"> </span><span class="kn">import</span> <span class="n">uploads</span> <span class="k">as</span> <span class="n">_uploads</span>
+</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>            <span class="n">_uploads</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>        <span class="k">if</span> <span class="n">_uploads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>            <span class="n">_uploads</span><span class="o">.</span><span class="n">clear_scope</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">)</span>
+</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">document</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">simulation_result</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-428"><a id="__codelineno-0-428" name="__codelineno-0-428"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">weather_file</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-429"><a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">change_log</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="__span-0-430"><a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_session_restored</span> <span class="o">=</span> <span class="kc">False</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -3062,7 +3074,13 @@ session ID on every connection.</p>
 <span class="normal"><a href="#__codelineno-0-421">421</a></span>
 <span class="normal"><a href="#__codelineno-0-422">422</a></span>
 <span class="normal"><a href="#__codelineno-0-423">423</a></span>
-<span class="normal"><a href="#__codelineno-0-424">424</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-407"><a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="k">def</span><span class="w"> </span><span class="nf">clear_session</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-424">424</a></span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span>
+<span class="normal"><a href="#__codelineno-0-427">427</a></span>
+<span class="normal"><a href="#__codelineno-0-428">428</a></span>
+<span class="normal"><a href="#__codelineno-0-429">429</a></span>
+<span class="normal"><a href="#__codelineno-0-430">430</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-407"><a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="k">def</span><span class="w"> </span><span class="nf">clear_session</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-408"><a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete the session file and reset all restorable state.&quot;&quot;&quot;</span>
 </span><span id="__span-0-409"><a id="__codelineno-0-409" name="__codelineno-0-409"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">persistence_enabled</span><span class="p">:</span>
 </span><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a>        <span class="n">session_path</span> <span class="o">=</span> <span class="n">_session_file_path</span><span class="p">()</span>
@@ -3073,13 +3091,19 @@ session ID on every connection.</p>
 </span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 </span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>
 </span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">uploads_dir</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">document</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">simulation_result</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">weather_file</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">change_log</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session_restored</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">idfkit_mcp.server</span><span class="w"> </span><span class="kn">import</span> <span class="n">uploads</span> <span class="k">as</span> <span class="n">_uploads</span>
+</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="n">_uploads</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="k">if</span> <span class="n">_uploads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="n">_uploads</span><span class="o">.</span><span class="n">clear_scope</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">)</span>
+</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">document</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">simulation_result</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-428"><a id="__codelineno-0-428" name="__codelineno-0-428"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">weather_file</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-429"><a id="__codelineno-0-429" name="__codelineno-0-429"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">change_log</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="__span-0-430"><a id="__codelineno-0-430" name="__codelineno-0-430"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session_restored</span> <span class="o">=</span> <span class="kc">False</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3570,13 +3594,7 @@ the least-recently-used session when the registry is full.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/idfkit_mcp/state.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-455">455</a></span>
-<span class="normal"><a href="#__codelineno-0-456">456</a></span>
-<span class="normal"><a href="#__codelineno-0-457">457</a></span>
-<span class="normal"><a href="#__codelineno-0-458">458</a></span>
-<span class="normal"><a href="#__codelineno-0-459">459</a></span>
-<span class="normal"><a href="#__codelineno-0-460">460</a></span>
-<span class="normal"><a href="#__codelineno-0-461">461</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-461">461</a></span>
 <span class="normal"><a href="#__codelineno-0-462">462</a></span>
 <span class="normal"><a href="#__codelineno-0-463">463</a></span>
 <span class="normal"><a href="#__codelineno-0-464">464</a></span>
@@ -3593,30 +3611,36 @@ the least-recently-used session when the registry is full.</p>
 <span class="normal"><a href="#__codelineno-0-475">475</a></span>
 <span class="normal"><a href="#__codelineno-0-476">476</a></span>
 <span class="normal"><a href="#__codelineno-0-477">477</a></span>
-<span class="normal"><a href="#__codelineno-0-478">478</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-455"><a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ServerState</span><span class="p">:</span>
-</span><span id="__span-0-456"><a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ``ServerState`` for the current MCP session.</span>
-</span><span id="__span-0-457"><a id="__codelineno-0-457" name="__codelineno-0-457"></a>
-</span><span id="__span-0-458"><a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">    Creates a new state on first access for a given session ID and evicts</span>
-</span><span id="__span-0-459"><a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">    the least-recently-used session when the registry is full.</span>
-</span><span id="__span-0-460"><a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-461"><a id="__codelineno-0-461" name="__codelineno-0-461"></a>    <span class="n">session_id</span> <span class="o">=</span> <span class="n">_current_session_id</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-</span><span id="__span-0-462"><a id="__codelineno-0-462" name="__codelineno-0-462"></a>
-</span><span id="__span-0-463"><a id="__codelineno-0-463" name="__codelineno-0-463"></a>    <span class="k">if</span> <span class="n">session_id</span> <span class="ow">in</span> <span class="n">_sessions</span><span class="p">:</span>
-</span><span id="__span-0-464"><a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="n">_sessions</span><span class="o">.</span><span class="n">move_to_end</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
-</span><span id="__span-0-465"><a id="__codelineno-0-465" name="__codelineno-0-465"></a>        <span class="k">return</span> <span class="n">_sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span>
-</span><span id="__span-0-466"><a id="__codelineno-0-466" name="__codelineno-0-466"></a>
-</span><span id="__span-0-467"><a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="c1"># Evict oldest sessions when at capacity</span>
-</span><span id="__span-0-468"><a id="__codelineno-0-468" name="__codelineno-0-468"></a>    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">_sessions</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_MAX_SESSIONS</span><span class="p">:</span>
-</span><span id="__span-0-469"><a id="__codelineno-0-469" name="__codelineno-0-469"></a>        <span class="n">evicted_id</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_sessions</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</span><span id="__span-0-470"><a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Evicted session </span><span class="si">%s</span><span class="s2"> (capacity </span><span class="si">%d</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">evicted_id</span><span class="p">,</span> <span class="n">_MAX_SESSIONS</span><span class="p">)</span>
-</span><span id="__span-0-471"><a id="__codelineno-0-471" name="__codelineno-0-471"></a>
-</span><span id="__span-0-472"><a id="__codelineno-0-472" name="__codelineno-0-472"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">ServerState</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="n">session_id</span><span class="p">)</span>
-</span><span id="__span-0-473"><a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="c1"># HTTP sessions are ephemeral — no point persisting to disk</span>
-</span><span id="__span-0-474"><a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="k">if</span> <span class="n">session_id</span> <span class="o">!=</span> <span class="s2">&quot;stdio&quot;</span><span class="p">:</span>
-</span><span id="__span-0-475"><a id="__codelineno-0-475" name="__codelineno-0-475"></a>        <span class="n">state</span><span class="o">.</span><span class="n">persistence_enabled</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="__span-0-476"><a id="__codelineno-0-476" name="__codelineno-0-476"></a>    <span class="n">_sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
-</span><span id="__span-0-477"><a id="__codelineno-0-477" name="__codelineno-0-477"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Created session </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">session_id</span><span class="p">)</span>
-</span><span id="__span-0-478"><a id="__codelineno-0-478" name="__codelineno-0-478"></a>    <span class="k">return</span> <span class="n">state</span>
+<span class="normal"><a href="#__codelineno-0-478">478</a></span>
+<span class="normal"><a href="#__codelineno-0-479">479</a></span>
+<span class="normal"><a href="#__codelineno-0-480">480</a></span>
+<span class="normal"><a href="#__codelineno-0-481">481</a></span>
+<span class="normal"><a href="#__codelineno-0-482">482</a></span>
+<span class="normal"><a href="#__codelineno-0-483">483</a></span>
+<span class="normal"><a href="#__codelineno-0-484">484</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-461"><a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ServerState</span><span class="p">:</span>
+</span><span id="__span-0-462"><a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ``ServerState`` for the current MCP session.</span>
+</span><span id="__span-0-463"><a id="__codelineno-0-463" name="__codelineno-0-463"></a>
+</span><span id="__span-0-464"><a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">    Creates a new state on first access for a given session ID and evicts</span>
+</span><span id="__span-0-465"><a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">    the least-recently-used session when the registry is full.</span>
+</span><span id="__span-0-466"><a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-467"><a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="n">session_id</span> <span class="o">=</span> <span class="n">_current_session_id</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+</span><span id="__span-0-468"><a id="__codelineno-0-468" name="__codelineno-0-468"></a>
+</span><span id="__span-0-469"><a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="k">if</span> <span class="n">session_id</span> <span class="ow">in</span> <span class="n">_sessions</span><span class="p">:</span>
+</span><span id="__span-0-470"><a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="n">_sessions</span><span class="o">.</span><span class="n">move_to_end</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+</span><span id="__span-0-471"><a id="__codelineno-0-471" name="__codelineno-0-471"></a>        <span class="k">return</span> <span class="n">_sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span>
+</span><span id="__span-0-472"><a id="__codelineno-0-472" name="__codelineno-0-472"></a>
+</span><span id="__span-0-473"><a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="c1"># Evict oldest sessions when at capacity</span>
+</span><span id="__span-0-474"><a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">_sessions</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_MAX_SESSIONS</span><span class="p">:</span>
+</span><span id="__span-0-475"><a id="__codelineno-0-475" name="__codelineno-0-475"></a>        <span class="n">evicted_id</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_sessions</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-0-476"><a id="__codelineno-0-476" name="__codelineno-0-476"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Evicted session </span><span class="si">%s</span><span class="s2"> (capacity </span><span class="si">%d</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">evicted_id</span><span class="p">,</span> <span class="n">_MAX_SESSIONS</span><span class="p">)</span>
+</span><span id="__span-0-477"><a id="__codelineno-0-477" name="__codelineno-0-477"></a>
+</span><span id="__span-0-478"><a id="__codelineno-0-478" name="__codelineno-0-478"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">ServerState</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="n">session_id</span><span class="p">)</span>
+</span><span id="__span-0-479"><a id="__codelineno-0-479" name="__codelineno-0-479"></a>    <span class="c1"># HTTP sessions are ephemeral — no point persisting to disk</span>
+</span><span id="__span-0-480"><a id="__codelineno-0-480" name="__codelineno-0-480"></a>    <span class="k">if</span> <span class="n">session_id</span> <span class="o">!=</span> <span class="s2">&quot;stdio&quot;</span><span class="p">:</span>
+</span><span id="__span-0-481"><a id="__codelineno-0-481" name="__codelineno-0-481"></a>        <span class="n">state</span><span class="o">.</span><span class="n">persistence_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="__span-0-482"><a id="__codelineno-0-482" name="__codelineno-0-482"></a>    <span class="n">_sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
+</span><span id="__span-0-483"><a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Created session </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">session_id</span><span class="p">)</span>
+</span><span id="__span-0-484"><a id="__codelineno-0-484" name="__codelineno-0-484"></a>    <span class="k">return</span> <span class="n">state</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3640,19 +3664,19 @@ the least-recently-used session when the registry is full.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/idfkit_mcp/state.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-481">481</a></span>
-<span class="normal"><a href="#__codelineno-0-482">482</a></span>
-<span class="normal"><a href="#__codelineno-0-483">483</a></span>
-<span class="normal"><a href="#__codelineno-0-484">484</a></span>
-<span class="normal"><a href="#__codelineno-0-485">485</a></span>
-<span class="normal"><a href="#__codelineno-0-486">486</a></span>
-<span class="normal"><a href="#__codelineno-0-487">487</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-481"><a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="k">def</span><span class="w"> </span><span class="nf">reset_sessions</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-482"><a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Clear all sessions and reset to the default ``&quot;stdio&quot;`` session.</span>
-</span><span id="__span-0-483"><a id="__codelineno-0-483" name="__codelineno-0-483"></a>
-</span><span id="__span-0-484"><a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">    Intended for test fixtures only.</span>
-</span><span id="__span-0-485"><a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-486"><a id="__codelineno-0-486" name="__codelineno-0-486"></a>    <span class="n">_sessions</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-</span><span id="__span-0-487"><a id="__codelineno-0-487" name="__codelineno-0-487"></a>    <span class="n">_current_session_id</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;stdio&quot;</span><span class="p">)</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-487">487</a></span>
+<span class="normal"><a href="#__codelineno-0-488">488</a></span>
+<span class="normal"><a href="#__codelineno-0-489">489</a></span>
+<span class="normal"><a href="#__codelineno-0-490">490</a></span>
+<span class="normal"><a href="#__codelineno-0-491">491</a></span>
+<span class="normal"><a href="#__codelineno-0-492">492</a></span>
+<span class="normal"><a href="#__codelineno-0-493">493</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-487"><a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="k">def</span><span class="w"> </span><span class="nf">reset_sessions</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-488"><a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Clear all sessions and reset to the default ``&quot;stdio&quot;`` session.</span>
+</span><span id="__span-0-489"><a id="__codelineno-0-489" name="__codelineno-0-489"></a>
+</span><span id="__span-0-490"><a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">    Intended for test fixtures only.</span>
+</span><span id="__span-0-491"><a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-492"><a id="__codelineno-0-492" name="__codelineno-0-492"></a>    <span class="n">_sessions</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="__span-0-493"><a id="__codelineno-0-493" name="__codelineno-0-493"></a>    <span class="n">_current_session_id</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;stdio&quot;</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3675,23 +3699,23 @@ the least-recently-used session when the registry is full.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/idfkit_mcp/state.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-444">444</a></span>
-<span class="normal"><a href="#__codelineno-0-445">445</a></span>
-<span class="normal"><a href="#__codelineno-0-446">446</a></span>
-<span class="normal"><a href="#__codelineno-0-447">447</a></span>
-<span class="normal"><a href="#__codelineno-0-448">448</a></span>
-<span class="normal"><a href="#__codelineno-0-449">449</a></span>
-<span class="normal"><a href="#__codelineno-0-450">450</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-450">450</a></span>
 <span class="normal"><a href="#__codelineno-0-451">451</a></span>
-<span class="normal"><a href="#__codelineno-0-452">452</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-444"><a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="nd">@contextmanager</span>
-</span><span id="__span-0-445"><a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="k">def</span><span class="w"> </span><span class="nf">session_scope_from_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="__span-0-446"><a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Temporarily bind the current session ID from a FastMCP context.&quot;&quot;&quot;</span>
-</span><span id="__span-0-447"><a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">session_id</span> <span class="o">=</span> <span class="n">_extract_session_id</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="k">if</span> <span class="n">ctx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
-</span><span id="__span-0-448"><a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">token</span> <span class="o">=</span> <span class="n">_current_session_id</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
-</span><span id="__span-0-449"><a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="k">try</span><span class="p">:</span>
-</span><span id="__span-0-450"><a id="__codelineno-0-450" name="__codelineno-0-450"></a>        <span class="k">yield</span> <span class="n">session_id</span>
-</span><span id="__span-0-451"><a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="k">finally</span><span class="p">:</span>
-</span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a>        <span class="n">_current_session_id</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-452">452</a></span>
+<span class="normal"><a href="#__codelineno-0-453">453</a></span>
+<span class="normal"><a href="#__codelineno-0-454">454</a></span>
+<span class="normal"><a href="#__codelineno-0-455">455</a></span>
+<span class="normal"><a href="#__codelineno-0-456">456</a></span>
+<span class="normal"><a href="#__codelineno-0-457">457</a></span>
+<span class="normal"><a href="#__codelineno-0-458">458</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-450"><a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="nd">@contextmanager</span>
+</span><span id="__span-0-451"><a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="k">def</span><span class="w"> </span><span class="nf">session_scope_from_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Temporarily bind the current session ID from a FastMCP context.&quot;&quot;&quot;</span>
+</span><span id="__span-0-453"><a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="n">session_id</span> <span class="o">=</span> <span class="n">_extract_session_id</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="k">if</span> <span class="n">ctx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
+</span><span id="__span-0-454"><a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="n">token</span> <span class="o">=</span> <span class="n">_current_session_id</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+</span><span id="__span-0-455"><a id="__codelineno-0-455" name="__codelineno-0-455"></a>    <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-456"><a id="__codelineno-0-456" name="__codelineno-0-456"></a>        <span class="k">yield</span> <span class="n">session_id</span>
+</span><span id="__span-0-457"><a id="__codelineno-0-457" name="__codelineno-0-457"></a>    <span class="k">finally</span><span class="p">:</span>
+</span><span id="__span-0-458"><a id="__codelineno-0-458" name="__codelineno-0-458"></a>        <span class="n">_current_session_id</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
