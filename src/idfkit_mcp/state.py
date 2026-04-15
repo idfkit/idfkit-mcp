@@ -65,6 +65,16 @@ def _session_cache_dir() -> Path:
     return _cache_base_dir() / "sessions"
 
 
+def session_uploads_dir(session_id: str) -> Path:
+    """Return the per-session directory for uploaded files materialized to disk."""
+    return _cache_base_dir() / "uploads" / session_id
+
+
+def current_session_id() -> str:
+    """Return the session ID bound to the current request scope."""
+    return _current_session_id.get()
+
+
 def _session_file_path() -> Path:
     """Return the session file path, keyed by a hash of the current working directory."""
     import hashlib
@@ -400,6 +410,11 @@ class ServerState:
             session_path = _session_file_path()
             if session_path.exists():
                 session_path.unlink()
+        uploads_dir = session_uploads_dir(self.session_id)
+        if uploads_dir.exists():
+            import shutil
+
+            shutil.rmtree(uploads_dir, ignore_errors=True)
         self.document = None
         self.schema = None
         self.file_path = None

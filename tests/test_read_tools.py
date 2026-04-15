@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import builtins
 import sys
 import tempfile
 import types
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,7 +16,7 @@ from fastmcp.exceptions import ToolError
 from idfkit import new_document, write_idf
 
 from idfkit_mcp.models import ConvertOsmResult, ListObjectsResult, ModelSummary, SearchObjectsResult
-from idfkit_mcp.state import ServerState, get_state
+from idfkit_mcp.state import ServerState, get_state, session_uploads_dir
 from tests.conftest import call_tool, read_resource_json
 
 
@@ -37,6 +39,70 @@ class TestLoadModel:
     async def test_load_nonexistent(self, client: object) -> None:
         with pytest.raises(ToolError):
             await call_tool(client, "load_model", {"file_path": "/nonexistent/file.idf"})
+
+    async def test_requires_exactly_one_source(self, client: object, tmp_path: Path) -> None:
+        with pytest.raises(ToolError, match="exactly one"):
+            await call_tool(client, "load_model", {})
+        with pytest.raises(ToolError, match="exactly one"):
+            await call_tool(
+                client,
+                "load_model",
+                {"file_path": str(tmp_path / "x.idf"), "upload_name": "x.idf"},
+            )
+
+    async def test_load_from_upload(self, client: object) -> None:
+        from idfkit_mcp.server import uploads
+
+        doc = new_document()
+        doc.add("Zone", "UploadedZone")
+        with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
+            write_idf(doc, f.name)
+            data = Path(f.name).read_bytes()
+
+        state = get_state()
+        uploads._store.setdefault(state.session_id, {})["upload.idf"] = {
+            "name": "upload.idf",
+            "size": len(data),
+            "type": "text/plain",
+            "data": base64.b64encode(data).decode(),
+            "uploaded_at": datetime.now().isoformat(timespec="seconds"),
+        }
+
+        try:
+            result = await call_tool(client, "load_model", {"upload_name": "upload.idf"}, ModelSummary)
+            assert result.zone_count == 1
+            assert state.document is not None
+            materialized = session_uploads_dir(state.session_id) / "upload.idf"
+            assert state.file_path == materialized
+            assert materialized.read_bytes() == data
+        finally:
+            uploads._store.pop(state.session_id, None)
+            state.clear_session()
+
+    async def test_upload_missing_name(self, client: object) -> None:
+        with pytest.raises(ToolError, match="No upload"):
+            await call_tool(client, "load_model", {"upload_name": "does-not-exist.idf"})
+
+
+class TestClearSessionRemovesUploads:
+    async def test_clear_session_deletes_upload_dir(self, client: object) -> None:
+        state = get_state()
+        uploads_dir = session_uploads_dir(state.session_id)
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        (uploads_dir / "stale.idf").write_text("dummy")
+        assert uploads_dir.exists()
+
+        await call_tool(client, "clear_session", {})
+        assert not uploads_dir.exists()
+
+
+class TestReadFileToolHidden:
+    async def test_read_file_not_exposed(self, client: object) -> None:
+        tools = await client.list_tools()  # type: ignore[attr-defined]
+        names = {t.name for t in tools}
+        assert not any(name.endswith("read_file") for name in names), (
+            f"read_file should be hidden from the LLM to prevent token blow-up; saw {names}"
+        )
 
 
 class TestModelSummaryResource:

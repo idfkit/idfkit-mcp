@@ -71,12 +71,22 @@ class TestCreateServer:
         assert payload["name"] == "Office"
 
 
+def _is_third_party_app_tool(tool: Any) -> bool:
+    """Skip tools registered by third-party FastMCP apps (e.g. FileUpload).
+
+    Their schemas follow upstream conventions, not ours.
+    """
+    meta = getattr(tool, "meta", None) or {}
+    return "app" in meta.get("fastmcp", {})
+
+
 class TestToolSchemas:
     """Verify that all tool schemas are well-formed for broad client compatibility."""
 
     @pytest.fixture()
     async def tools(self, client: Client) -> list[Any]:
-        return await client.list_tools()
+        all_tools = await client.list_tools()
+        return [t for t in all_tools if not _is_third_party_app_tool(t)]
 
     async def test_all_tools_have_properties_key(self, tools: list[Any]) -> None:
         """Every tool's inputSchema must include a 'properties' key.

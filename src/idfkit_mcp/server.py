@@ -19,6 +19,7 @@ from fastmcp.server.lifespan import lifespan
 from fastmcp.server.providers import FileSystemProvider
 
 from idfkit_mcp.errors import ToolExecutionMiddleware
+from idfkit_mcp.uploads import IdfUploadStore
 
 _INSTRUCTIONS = """\
 EnergyPlus model authoring via idfkit.
@@ -52,6 +53,8 @@ TIPS:
   - get_zone_properties gives a typed summary of zone geometry, surfaces, constructions, and HVAC
   - analyze_peak_loads decomposes facility/zone peaks into components and flags QA issues
   - get_change_log shows recent mutations in the session
+  - Remote clients with no shared filesystem can upload a file via the file_manager UI tool,
+    then call load_model(upload_name=...) to load it.
 """
 
 
@@ -69,11 +72,19 @@ async def _configure_logging(_server: FastMCP) -> AsyncIterator[None]:
     yield
 
 
+uploads = IdfUploadStore(
+    name="IDFFiles",
+    title="Upload an EnergyPlus model",
+    description="Drop an .idf or .epJSON file. Then call load_model(upload_name=...) to load it.",
+    drop_label="Drop .idf / .epJSON here",
+    max_file_size=50 * 1024 * 1024,
+)
+
 mcp = FastMCP(
     "idfkit",
     instructions=_INSTRUCTIONS,
     lifespan=_configure_logging,
-    providers=[FileSystemProvider(Path(__file__).parent / "tools")],
+    providers=[FileSystemProvider(Path(__file__).parent / "tools"), uploads],
 )
 mcp.add_middleware(ToolExecutionMiddleware())
 
