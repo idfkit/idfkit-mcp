@@ -6,12 +6,18 @@ Read tools expose current model content, typed zone summaries, session history, 
 
 Loads IDF or epJSON into active server state.
 
+Parameters (provide exactly one source):
+
+- `file_path`: server-local path to the file. Use this on `stdio` and local setups where the server shares the client's filesystem.
+- `upload_name`: name of a file previously uploaded via the `file_manager` UI tool. Use this on hosted/HTTP deployments where the server has no access to the client's disk.
+- `version` (optional): override version as `X.Y.Z`.
+
 Notes:
 
 - File type inferred from extension.
-- Optional `version` override (`X.Y.Z`) is supported.
 - Loading resets previous simulation result state.
 - Persists session state to disk for automatic recovery across server restarts.
+- For uploads, bytes are pulled from the `FileUpload` store (in-memory or disk-backed via `IDFKIT_MCP_UPLOAD_DIR`) and materialized to a per-session cache before parsing. `clear_session` removes the materialized file and the upload scope.
 
 ## `convert_osm_to_idf`
 

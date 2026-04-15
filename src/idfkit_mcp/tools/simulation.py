@@ -204,6 +204,31 @@ def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
     logger.info("Added missing summary reports: %s", sorted(missing))
 
 
+def _resolve_simulation_output_dir(explicit: str | None, session_id: str) -> str | None:
+    """Resolve the EnergyPlus run directory.
+
+    Precedence:
+      1. ``explicit`` output_directory argument (tool param) wins when set.
+      2. ``IDFKIT_MCP_SIMULATION_DIR`` env var — each run gets its own subdir
+         ``<env>/<session_id>-<utc-stamp>/`` so concurrent sessions don't clobber.
+      3. ``None`` — idfkit picks its default (a tempdir).
+    """
+    if explicit is not None:
+        return explicit
+    import os
+    from datetime import datetime, timezone
+
+    env = os.environ.get("IDFKIT_MCP_SIMULATION_DIR")
+    if not env:
+        return None
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    from pathlib import Path
+
+    run_dir = Path(env) / f"{session_id}-{stamp}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return str(run_dir)
+
+
 def _build_progress_handler(ctx: Context | None) -> Any:
     """Build an async progress callback for FastMCP context reporting."""
     from idfkit.simulation.progress import SimulationProgress
@@ -252,6 +277,7 @@ async def run_simulation(
     _ensure_summary_reports(sim_doc)
 
     config = find_energyplus(path=energyplus_dir, version=energyplus_version)
+    resolved_output_dir = _resolve_simulation_output_dir(output_directory, state.session_id)
     logger.info(
         "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
         ".".join(str(p) for p in config.version),
@@ -266,7 +292,7 @@ async def run_simulation(
         design_day=design_day,
         annual=annual,
         energyplus=config,
-        output_dir=output_directory,
+        output_dir=resolved_output_dir,
         on_progress=_build_progress_handler(ctx),
     )
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextvars
 import dataclasses
 import logging
+import re
 from collections import OrderedDict
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -43,6 +44,16 @@ _MAX_SESSIONS = 20
 MAX_CHANGE_LOG = 100
 """Maximum change-log entries retained per session."""
 
+_SAFE_SESSION_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
+"""Allowed shape for MCP session IDs used as filesystem path components.
+
+The ``mcp-session-id`` header is client-supplied. Without validation, a value
+like ``../etc`` would escape the per-session scope on disk (cache dir, upload
+scope, simulation run dir). Reject-and-fallback to ``"stdio"`` is safer than
+sanitize-and-coerce: the attacker lands in a shared bucket they can see is
+not theirs, instead of a quietly-redirected attacker-controlled path.
+"""
+
 
 def _cache_base_dir() -> Path:
     """Return the platform-appropriate idfkit cache base directory."""
@@ -63,6 +74,16 @@ def _cache_base_dir() -> Path:
 def _session_cache_dir() -> Path:
     """Return the platform-appropriate directory for session state files."""
     return _cache_base_dir() / "sessions"
+
+
+def session_uploads_dir(session_id: str) -> Path:
+    """Return the per-session directory for uploaded files materialized to disk."""
+    return _cache_base_dir() / "uploads" / session_id
+
+
+def current_session_id() -> str:
+    """Return the session ID bound to the current request scope."""
+    return _current_session_id.get()
 
 
 def _session_file_path() -> Path:
@@ -400,6 +421,17 @@ class ServerState:
             session_path = _session_file_path()
             if session_path.exists():
                 session_path.unlink()
+        uploads_dir = session_uploads_dir(self.session_id)
+        if uploads_dir.exists():
+            import shutil
+
+            shutil.rmtree(uploads_dir, ignore_errors=True)
+        try:
+            from idfkit_mcp.server import uploads as _uploads
+        except ImportError:
+            _uploads = None
+        if _uploads is not None:
+            _uploads.clear_scope(self.session_id)
         self.document = None
         self.schema = None
         self.file_path = None
@@ -419,8 +451,10 @@ def _extract_session_id(ctx: Any) -> str:
         request = ctx.request_context.request
         if request is not None and hasattr(request, "headers"):
             sid = request.headers.get("mcp-session-id")
-            if sid:
+            if sid and _SAFE_SESSION_ID.fullmatch(sid):
                 return sid
+            if sid:
+                logger.warning("Rejecting malformed mcp-session-id (%d chars)", len(sid))
     except Exception:
         logger.debug("Could not extract session ID from context", exc_info=True)
     return "stdio"

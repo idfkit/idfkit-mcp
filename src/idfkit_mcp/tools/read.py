@@ -32,20 +32,47 @@ _LOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 
 @tool(annotations=_LOAD)
 def load_model(
-    file_path: Annotated[str, Field(description="Path to the IDF or epJSON file.")],
+    file_path: Annotated[
+        str | None, Field(description="Server-local path to an IDF/epJSON file (stdio/local clients).")
+    ] = None,
+    upload_name: Annotated[
+        str | None,
+        Field(description="Name of a file uploaded via the file_manager UI tool (remote clients)."),
+    ] = None,
     version: Annotated[str | None, Field(description='Version override as "X.Y.Z".')] = None,
 ) -> ModelSummary:
-    """Open an IDF or epJSON file as the active model."""
+    """Open an IDF or epJSON file as the active model.
+
+    Provide exactly one source: ``file_path`` for files on the server's disk, or
+    ``upload_name`` to load a file the user dropped into the file_manager UI.
+    """
     from pathlib import Path
 
     from idfkit import load_epjson, load_idf
 
+    if (file_path is None) == (upload_name is None):
+        raise ToolError("Provide exactly one of 'file_path' or 'upload_name'.")
+
     state = get_state()
-    path = Path(file_path)
     ver = None
     if version is not None:
         parts = version.split(".")
         ver = (int(parts[0]), int(parts[1]), int(parts[2]))
+
+    if upload_name is not None:
+        from idfkit_mcp.server import uploads
+        from idfkit_mcp.state import session_uploads_dir
+
+        try:
+            data = uploads.get_bytes(upload_name, session_id=state.session_id)
+        except KeyError as e:
+            raise ToolError(str(e)) from e
+        dest_dir = session_uploads_dir(state.session_id)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        path = dest_dir / upload_name
+        path.write_bytes(data)
+    else:
+        path = Path(file_path)  # type: ignore[arg-type]
 
     if path.suffix.lower() in (".epjson", ".json"):
         doc = load_epjson(str(path), version=ver, strict=True)

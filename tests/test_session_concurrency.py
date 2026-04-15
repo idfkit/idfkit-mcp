@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import types
 
 import pytest
 from fastmcp import Client
@@ -13,6 +14,7 @@ from idfkit_mcp.models import ListObjectsResult, SearchObjectsResult
 from idfkit_mcp.state import (
     _MAX_SESSIONS,  # pyright: ignore[reportPrivateUsage]
     _current_session_id,  # pyright: ignore[reportPrivateUsage]
+    _extract_session_id,  # pyright: ignore[reportPrivateUsage]
     _sessions,  # pyright: ignore[reportPrivateUsage]
     get_state,
     session_scope_from_context,
@@ -97,6 +99,31 @@ class TestSessionEviction:
 
         assert "s-0" in _sessions  # pyright: ignore[reportPrivateUsage]
         assert "s-1" not in _sessions  # pyright: ignore[reportPrivateUsage]
+
+
+class TestSessionIdSanitization:
+    """The ``mcp-session-id`` header is client-supplied and lands in filesystem paths.
+
+    Malformed values must fall back to ``"stdio"`` so an attacker can't steer
+    uploads, cache, or simulation output outside the per-session scope.
+    """
+
+    @staticmethod
+    def _ctx_with_sid(sid: str) -> object:
+        return types.SimpleNamespace(
+            request_context=types.SimpleNamespace(request=types.SimpleNamespace(headers={"mcp-session-id": sid}))
+        )
+
+    def test_accepts_uuid_like_sid(self) -> None:
+        sid = "7f8e9d6c-4b3a-2109-8765-fedcba987654"
+        assert _extract_session_id(self._ctx_with_sid(sid)) == sid
+
+    def test_rejects_path_traversal(self) -> None:
+        for bad in ("../escape", "..", "../../etc", "a/b", "a\\b", "sess\x00id", "/absolute", ""):
+            assert _extract_session_id(self._ctx_with_sid(bad)) == "stdio", f"should reject {bad!r}"
+
+    def test_rejects_overlong_sid(self) -> None:
+        assert _extract_session_id(self._ctx_with_sid("a" * 129)) == "stdio"
 
 
 @pytest.mark.asyncio
