@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextvars
 import dataclasses
 import logging
+import re
 from collections import OrderedDict
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -42,6 +43,16 @@ _MAX_SESSIONS = 20
 
 MAX_CHANGE_LOG = 100
 """Maximum change-log entries retained per session."""
+
+_SAFE_SESSION_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
+"""Allowed shape for MCP session IDs used as filesystem path components.
+
+The ``mcp-session-id`` header is client-supplied. Without validation, a value
+like ``../etc`` would escape the per-session scope on disk (cache dir, upload
+scope, simulation run dir). Reject-and-fallback to ``"stdio"`` is safer than
+sanitize-and-coerce: the attacker lands in a shared bucket they can see is
+not theirs, instead of a quietly-redirected attacker-controlled path.
+"""
 
 
 def _cache_base_dir() -> Path:
@@ -440,8 +451,10 @@ def _extract_session_id(ctx: Any) -> str:
         request = ctx.request_context.request
         if request is not None and hasattr(request, "headers"):
             sid = request.headers.get("mcp-session-id")
-            if sid:
+            if sid and _SAFE_SESSION_ID.fullmatch(sid):
                 return sid
+            if sid:
+                logger.warning("Rejecting malformed mcp-session-id (%d chars)", len(sid))
     except Exception:
         logger.debug("Could not extract session ID from context", exc_info=True)
     return "stdio"
