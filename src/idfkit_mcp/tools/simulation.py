@@ -291,6 +291,12 @@ async def run_simulation(
             annual,
         )
 
+        # TODO(timeouts): MCP clients time out on long simulations. Options to explore:
+        #   1. Heartbeat ctx.info() every ~10s during silent phases (progress already wired).
+        #   2. Submit+poll: spawn as background task, return job_id; add get_simulation_status tool.
+        #   3. Document recommended client timeouts.
+        # Start with (1); escalate to (2) if agents still time out. Same pattern applies to
+        # migration.py:_build_progress_handler.
         result = await async_simulate(
             sim_doc,
             weather="" if weather is None else weather,
