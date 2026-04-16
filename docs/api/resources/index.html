@@ -1489,6 +1489,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.resources.migration_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        migration_report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#idfkit_mcp.tools.resources.model_summary" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2056,6 +2067,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#idfkit_mcp.tools.resources.migration_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        migration_report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#idfkit_mcp.tools.resources.model_summary" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2234,6 +2256,57 @@
 </span><span id="__span-0-129"><a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">idfkit_mcp.tools.docs</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_documentation_urls</span>
 </span><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a>
 </span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a>    <span class="k">return</span> <span class="n">_to_resource_json</span><span class="p">(</span><span class="n">build_documentation_urls</span><span class="p">(</span><span class="n">object_type</span><span class="p">))</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="idfkit_mcp.tools.resources.migration_report" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">migration_report</span><span class="p">()</span></code>
+
+<a href="#idfkit_mcp.tools.resources.migration_report" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Most recent migration report as JSON.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/idfkit_mcp/tools/resources.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span>
+<span class="normal"><a href="#__codelineno-0-152">152</a></span>
+<span class="normal"><a href="#__codelineno-0-153">153</a></span>
+<span class="normal"><a href="#__codelineno-0-154">154</a></span>
+<span class="normal"><a href="#__codelineno-0-155">155</a></span>
+<span class="normal"><a href="#__codelineno-0-156">156</a></span>
+<span class="normal"><a href="#__codelineno-0-157">157</a></span>
+<span class="normal"><a href="#__codelineno-0-158">158</a></span>
+<span class="normal"><a href="#__codelineno-0-159">159</a></span>
+<span class="normal"><a href="#__codelineno-0-160">160</a></span>
+<span class="normal"><a href="#__codelineno-0-161">161</a></span>
+<span class="normal"><a href="#__codelineno-0-162">162</a></span>
+<span class="normal"><a href="#__codelineno-0-163">163</a></span>
+<span class="normal"><a href="#__codelineno-0-164">164</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="nd">@resource</span><span class="p">(</span>
+</span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="s2">&quot;idfkit://migration/report&quot;</span><span class="p">,</span>
+</span><span id="__span-0-152"><a id="__codelineno-0-152" name="__codelineno-0-152"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;migration_report&quot;</span><span class="p">,</span>
+</span><span id="__span-0-153"><a id="__codelineno-0-153" name="__codelineno-0-153"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Migration Report&quot;</span><span class="p">,</span>
+</span><span id="__span-0-154"><a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Last migrate_model run: per-step stdout/stderr, structural diff, versions.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-155"><a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="n">mime_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+</span><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="p">)</span>
+</span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="k">def</span><span class="w"> </span><span class="nf">migration_report</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ResourceResult</span><span class="p">:</span>
+</span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Most recent migration report as JSON.&quot;&quot;&quot;</span>
+</span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">idfkit_mcp.tools.migration</span><span class="w"> </span><span class="kn">import</span> <span class="n">serialize_report_for_resource</span>
+</span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
+</span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
+</span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a>    <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">migration_report</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No migration has run in this session. Call migrate_model first.&quot;</span><span class="p">)</span>
+</span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a>    <span class="k">return</span> <span class="n">_to_resource_json</span><span class="p">(</span><span class="n">serialize_report_for_resource</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">migration_report</span><span class="p">))</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

@@ -671,6 +671,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#storage-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Directories
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Directories">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idfkit_mcp_upload_dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDFKIT_MCP_UPLOAD_DIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idfkit_mcp_simulation_dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDFKIT_MCP_SIMULATION_DIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idfkit_mcp_output_dirs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDFKIT_MCP_OUTPUT_DIRS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#log-verbosity" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2242,6 +2292,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#storage-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Directories
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Directories">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idfkit_mcp_upload_dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDFKIT_MCP_UPLOAD_DIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idfkit_mcp_simulation_dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDFKIT_MCP_SIMULATION_DIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idfkit_mcp_output_dirs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDFKIT_MCP_OUTPUT_DIRS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#log-verbosity" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2398,10 +2498,45 @@
 <h3 id="environment-variable-configuration">Environment Variable Configuration<a class="headerlink" href="#environment-variable-configuration" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nv">IDFKIT_MCP_TRANSPORT</span><span class="o">=</span>streamable-http<span class="w"> </span><span class="nv">IDFKIT_MCP_HOST</span><span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="nv">IDFKIT_MCP_PORT</span><span class="o">=</span><span class="m">8000</span><span class="w"> </span>idfkit-mcp
 </span></code></pre></div>
+<h2 id="storage-directories">Storage Directories<a class="headerlink" href="#storage-directories" title="Permanent link">&para;</a></h2>
+<p>Hosted deployments (HTTP transport, multi-replica, shared volumes) can redirect
+file storage away from the ephemeral container filesystem via environment
+variables.</p>
+<h3 id="idfkit_mcp_upload_dir"><code>IDFKIT_MCP_UPLOAD_DIR</code><a class="headerlink" href="#idfkit_mcp_upload_dir" title="Permanent link">&para;</a></h3>
+<p>Where files dropped into the <code>file_manager</code> UI are stored. When unset, uploads
+live in-memory on the Python process and are lost when the container restarts —
+fine for <code>stdio</code> and single-container deployments. When set, uploads are written
+to <code>&lt;IDFKIT_MCP_UPLOAD_DIR&gt;/&lt;session_id&gt;/&lt;filename&gt;</code> with a sidecar
+<code>&lt;filename&gt;.meta.json</code>. Point this at a shared volume (e.g. EFS) so concurrent
+replicas can all resolve <code>load_model(upload_name=...)</code> calls.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">IDFKIT_MCP_UPLOAD_DIR</span><span class="o">=</span>/mnt/idfkit-uploads<span class="w"> </span>idfkit-mcp<span class="w"> </span>--transport<span class="w"> </span>http
+</span></code></pre></div>
+<p>Cleanup: <code>clear_session()</code> removes the caller's scope directory. Abandoned
+sessions are not swept automatically — run a periodic cleanup (e.g. delete
+scopes older than 24 h) in production.</p>
+<h3 id="idfkit_mcp_simulation_dir"><code>IDFKIT_MCP_SIMULATION_DIR</code><a class="headerlink" href="#idfkit_mcp_simulation_dir" title="Permanent link">&para;</a></h3>
+<p>Default parent directory for EnergyPlus run output. When unset, each
+<code>run_simulation</code> call creates a fresh temp directory. When set, each run writes
+to <code>&lt;IDFKIT_MCP_SIMULATION_DIR&gt;/&lt;session_id&gt;-&lt;utc-timestamp&gt;/</code>. An explicit
+<code>output_directory</code> argument on the tool call always wins.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nv">IDFKIT_MCP_SIMULATION_DIR</span><span class="o">=</span>/mnt/idfkit-simulations<span class="w"> </span>idfkit-mcp<span class="w"> </span>--transport<span class="w"> </span>http
+</span></code></pre></div>
+<h3 id="idfkit_mcp_output_dirs"><code>IDFKIT_MCP_OUTPUT_DIRS</code><a class="headerlink" href="#idfkit_mcp_output_dirs" title="Permanent link">&para;</a></h3>
+<p>Whitelist of directories that <code>save_model</code> (and any other tool that writes
+user-named output paths) may resolve into. Prevents a misbehaving agent from
+writing outside a sanctioned area.</p>
+<ul>
+<li>Colon-separated on POSIX, semicolon-separated on Windows.</li>
+<li>Defaults to the current working directory when unset.</li>
+</ul>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nv">IDFKIT_MCP_OUTPUT_DIRS</span><span class="o">=</span>/workspace:/mnt/outputs<span class="w"> </span>idfkit-mcp
+</span></code></pre></div>
+<p>Paths that resolve outside every listed root are rejected with a <code>ToolError</code>,
+including attempts via <code>..</code> traversal or symlinks.</p>
 <h2 id="log-verbosity">Log Verbosity<a class="headerlink" href="#log-verbosity" title="Permanent link">&para;</a></h2>
 <p>Control log output with the <code>IDFKIT_MCP_LOG_LEVEL</code> environment variable.
 The default level is <code>INFO</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nv">IDFKIT_MCP_LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>idfkit-mcp
 </span></code></pre></div>
 <p>Available levels: <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>.</p>
 <p>At <code>DEBUG</code> level the server emits per-tool CALL/OK traces, idfkit core parsing

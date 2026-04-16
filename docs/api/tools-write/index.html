@@ -2366,7 +2366,13 @@
 
     <div class="doc doc-contents ">
 
-        <p>Reset session state. Does not delete files on disk.</p>
+        <p>Reset model and simulation state so you can start fresh.</p>
+<p>Unloads the current model, schema, simulation results, migration report,
+and weather file. Uploaded files are kept so the user can re-load them
+without re-uploading.</p>
+<p>WARNING: Only call this when the user explicitly asks to start over.
+Do NOT call this to recover from tool errors — those errors are
+recoverable by retrying the failed tool or calling load_model again.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2376,12 +2382,30 @@
 <span class="normal"><a href="#__codelineno-0-245">245</a></span>
 <span class="normal"><a href="#__codelineno-0-246">246</a></span>
 <span class="normal"><a href="#__codelineno-0-247">247</a></span>
-<span class="normal"><a href="#__codelineno-0-248">248</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="nd">@tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">_DESTRUCTIVE</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-248">248</a></span>
+<span class="normal"><a href="#__codelineno-0-249">249</a></span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span>
+<span class="normal"><a href="#__codelineno-0-255">255</a></span>
+<span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="nd">@tool</span><span class="p">(</span><span class="n">annotations</span><span class="o">=</span><span class="n">_DESTRUCTIVE</span><span class="p">)</span>
 </span><span id="__span-0-244"><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="k">def</span><span class="w"> </span><span class="nf">clear_session</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ClearSessionResult</span><span class="p">:</span>
-</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset session state. Does not delete files on disk.&quot;&quot;&quot;</span>
-</span><span id="__span-0-246"><a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
-</span><span id="__span-0-247"><a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">state</span><span class="o">.</span><span class="n">clear_session</span><span class="p">()</span>
-</span><span id="__span-0-248"><a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">return</span> <span class="n">ClearSessionResult</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;cleared&quot;</span><span class="p">)</span>
+</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset model and simulation state so you can start fresh.</span>
+</span><span id="__span-0-246"><a id="__codelineno-0-246" name="__codelineno-0-246"></a>
+</span><span id="__span-0-247"><a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">    Unloads the current model, schema, simulation results, migration report,</span>
+</span><span id="__span-0-248"><a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">    and weather file. Uploaded files are kept so the user can re-load them</span>
+</span><span id="__span-0-249"><a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="sd">    without re-uploading.</span>
+</span><span id="__span-0-250"><a id="__codelineno-0-250" name="__codelineno-0-250"></a>
+</span><span id="__span-0-251"><a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    WARNING: Only call this when the user explicitly asks to start over.</span>
+</span><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    Do NOT call this to recover from tool errors — those errors are</span>
+</span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">    recoverable by retrying the failed tool or calling load_model again.</span>
+</span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">get_state</span><span class="p">()</span>
+</span><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a>    <span class="n">state</span><span class="o">.</span><span class="n">clear_session</span><span class="p">()</span>
+</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="k">return</span> <span class="n">ClearSessionResult</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;cleared&quot;</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
