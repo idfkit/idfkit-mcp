@@ -267,57 +267,62 @@ async def run_simulation(
     from idfkit.simulation.config import find_energyplus
 
     state = get_state()
-    doc = state.require_model()
-    weather = _resolve_weather_path(weather_file, design_day)
 
-    # Simulate on a copy so pre-flight injections (Output:SQLite,
-    # Output:Table:SummaryReports) do not mutate the user's loaded model.
-    sim_doc = doc.copy()
-    _ensure_sqlite_output(sim_doc)
-    _ensure_summary_reports(sim_doc)
+    if state.simulation_lock.locked():
+        raise ToolError("A simulation is already in progress for this session. Wait for it to finish.")
 
-    config = find_energyplus(path=energyplus_dir, version=energyplus_version)
-    resolved_output_dir = _resolve_simulation_output_dir(output_directory, state.session_id)
-    logger.info(
-        "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
-        ".".join(str(p) for p in config.version),
-        weather,
-        design_day,
-        annual,
-    )
+    async with state.simulation_lock:
+        doc = state.require_model()
+        weather = _resolve_weather_path(weather_file, design_day)
 
-    result = await async_simulate(
-        sim_doc,
-        weather="" if weather is None else weather,
-        design_day=design_day,
-        annual=annual,
-        energyplus=config,
-        output_dir=resolved_output_dir,
-        on_progress=_build_progress_handler(ctx),
-    )
+        # Simulate on a copy so pre-flight injections (Output:SQLite,
+        # Output:Table:SummaryReports) do not mutate the user's loaded model.
+        sim_doc = doc.copy()
+        _ensure_sqlite_output(sim_doc)
+        _ensure_summary_reports(sim_doc)
 
-    state.simulation_result = result
-    state.save_session()
+        config = find_energyplus(path=energyplus_dir, version=energyplus_version)
+        resolved_output_dir = _resolve_simulation_output_dir(output_directory, state.session_id)
+        logger.info(
+            "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
+            ".".join(str(p) for p in config.version),
+            weather,
+            design_day,
+            annual,
+        )
 
-    if result.success:
-        logger.info("Simulation completed in %.1fs", result.runtime_seconds)
-    else:
-        logger.warning("Simulation failed after %.1fs", result.runtime_seconds)
+        result = await async_simulate(
+            sim_doc,
+            weather="" if weather is None else weather,
+            design_day=design_day,
+            annual=annual,
+            energyplus=config,
+            output_dir=resolved_output_dir,
+            on_progress=_build_progress_handler(ctx),
+        )
 
-    errors = result.errors
+        state.simulation_result = result
+        state.save_session()
 
-    return RunSimulationResult.model_validate({
-        "success": result.success,
-        "runtime_seconds": round(result.runtime_seconds, 2),
-        "output_directory": str(result.run_dir),
-        "energyplus": {
-            "version": ".".join(str(part) for part in config.version),
-            "install_dir": str(config.install_dir),
-            "executable": str(config.executable),
-        },
-        "errors": _serialize_simulation_errors(errors),
-        "simulation_complete": errors.simulation_complete,
-    })
+        if result.success:
+            logger.info("Simulation completed in %.1fs", result.runtime_seconds)
+        else:
+            logger.warning("Simulation failed after %.1fs", result.runtime_seconds)
+
+        errors = result.errors
+
+        return RunSimulationResult.model_validate({
+            "success": result.success,
+            "runtime_seconds": round(result.runtime_seconds, 2),
+            "output_directory": str(result.run_dir),
+            "energyplus": {
+                "version": ".".join(str(part) for part in config.version),
+                "install_dir": str(config.install_dir),
+                "executable": str(config.executable),
+            },
+            "errors": _serialize_simulation_errors(errors),
+            "simulation_complete": errors.simulation_complete,
+        })
 
 
 _GJ_TO_KWH = 277.778

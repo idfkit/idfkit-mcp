@@ -145,3 +145,20 @@ def object_references(name: str) -> ResourceResult:
     state = get_state()
     doc = state.require_model()
     return _to_resource_json(build_references(doc, name))
+
+
+@resource(
+    "idfkit://migration/report",
+    name="migration_report",
+    title="Migration Report",
+    description="Last migrate_model run: per-step stdout/stderr, structural diff, versions.",
+    mime_type="application/json",
+)
+def migration_report() -> ResourceResult:
+    """Most recent migration report as JSON."""
+    from idfkit_mcp.tools.migration import serialize_report_for_resource
+
+    state = get_state()
+    if state.migration_report is None:
+        raise ValueError("No migration has run in this session. Call migrate_model first.")
+    return _to_resource_json(serialize_report_for_resource(state.migration_report))

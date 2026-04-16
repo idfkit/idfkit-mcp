@@ -39,6 +39,17 @@ QA LOOP — the recommended agent workflow:
   -> save_model -> run_simulation -> read idfkit://simulation/results
   -> fix issues -> run_simulation again -> repeat until qa_flags is empty
 
+VERSION MIGRATION:
+  migrate_model  — forward-migrate the loaded model to a newer EnergyPlus version via
+                   the IDFVersionUpdater transition binaries. Replaces the in-memory
+                   document on success; state.file_path is unchanged, so call
+                   save_model(path=...) to persist. If target_version is omitted the
+                   tool uses the installed EnergyPlus version; an EnergyPlus install is
+                   always required since the transition binaries ship with it.
+                   Read idfkit://migration/report for per-step stdout/stderr and the
+                   structural diff.
+                   Flow: load_model -> migrate_model -> validate_model -> save_model.
+
 RESOURCES (read-only state, read any time):
   idfkit://model/summary                     — version, zones, object counts
   idfkit://model/objects/{type}/{name}       — all field values for one object
@@ -46,6 +57,7 @@ RESOURCES (read-only state, read any time):
   idfkit://docs/{type}                       — documentation URLs
   idfkit://simulation/results                — post-run QA diagnostics (primary QA signal)
   idfkit://simulation/peak-loads             — peak heating/cooling load decomposition
+  idfkit://migration/report                  — last migrate_model run (per-step logs + diff)
 
 TIPS:
   - Prefer batch_add_objects over repeated add_object calls
