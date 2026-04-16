@@ -181,8 +181,23 @@ def convert_osm_to_idf(
 def list_objects(
     object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone").')],
     limit: Annotated[int, Field(description="Maximum objects to return.")] = 50,
+    include_all_fields: Annotated[
+        bool,
+        Field(
+            description=(
+                "If False (default), each object includes only its name and schema-required fields "
+                "to save tokens. Set True to return every field value for every object."
+            )
+        ),
+    ] = False,
 ) -> ListObjectsResult:
-    """List objects of a type with names and required fields."""
+    """List objects of a type.
+
+    By default each object is returned in brief form: name plus schema-required fields
+    only. Optional fields (economizer settings, enum overrides, etc.) are omitted — set
+    ``include_all_fields=True`` to get every field, or read the
+    ``idfkit://model/objects/{type}/{name}`` resource for one object's full field values.
+    """
     limit = min(limit, 200)
 
     state = get_state()
@@ -193,9 +208,10 @@ def list_objects(
 
     collection = doc.get_collection(object_type)
     total = len(collection)
-    objects = [serialize_object(obj, schema=state.schema, brief=True) for obj in list(collection)[:limit]]
+    brief = not include_all_fields
+    objects = [serialize_object(obj, schema=state.schema, brief=brief) for obj in list(collection)[:limit]]
 
-    logger.debug("list_objects: type=%s total=%d returned=%d", object_type, total, len(objects))
+    logger.debug("list_objects: type=%s total=%d returned=%d brief=%s", object_type, total, len(objects), brief)
     return ListObjectsResult(object_type=object_type, total=total, returned=len(objects), objects=objects)
 
 

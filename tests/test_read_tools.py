@@ -221,6 +221,19 @@ class TestListObjects:
         with pytest.raises(ToolError):
             await call_tool(client, "list_objects", {"object_type": "Material"})
 
+    async def test_include_all_fields(self, client: object, state_with_zones: ServerState) -> None:
+        brief = await call_tool(client, "list_objects", {"object_type": "Zone"}, ListObjectsResult)
+        full = await call_tool(
+            client,
+            "list_objects",
+            {"object_type": "Zone", "include_all_fields": True},
+            ListObjectsResult,
+        )
+        brief_keys = set(brief.objects[0].keys())
+        full_keys = set(full.objects[0].keys())
+        assert brief_keys.issubset(full_keys)
+        assert len(full_keys) > len(brief_keys)
+
 
 class TestSearchObjects:
     async def test_search_by_name(self, client: object, state_with_zones: ServerState) -> None:
