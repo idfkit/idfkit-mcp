@@ -502,6 +502,49 @@ class QuerySimulationTableResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Migration tool responses
+# ---------------------------------------------------------------------------
+
+
+class MigrationStepBrief(BaseModel):
+    """One transition step from a ``migrate_model`` run."""
+
+    from_version: str
+    to_version: str
+    success: bool
+    runtime_seconds: float
+    binary: str | None = None
+
+
+class FieldDeltaModel(BaseModel):
+    """Schema-level field changes between two versions of an object type."""
+
+    added: list[str]
+    removed: list[str]
+
+
+class MigrationDiffSummary(BaseModel):
+    """Structural diff between the source and migrated documents."""
+
+    added_object_types: list[str]
+    removed_object_types: list[str]
+    object_count_delta: dict[str, int]
+    field_changes: dict[str, FieldDeltaModel]
+
+
+class MigrateModelResult(BaseModel):
+    """Response from ``migrate_model``."""
+
+    success: bool
+    source_version: str
+    target_version: str
+    requested_target: str
+    steps: list[MigrationStepBrief]
+    diff: MigrationDiffSummary
+    summary: str
+
+
+# ---------------------------------------------------------------------------
 # Weather tool responses
 # ---------------------------------------------------------------------------
 

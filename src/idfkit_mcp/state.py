@@ -22,6 +22,7 @@ from urllib.request import urlopen
 from idfkit import LATEST_VERSION, IDFDocument, get_schema
 
 if TYPE_CHECKING:
+    from idfkit.migration import MigrationReport
     from idfkit.schema import EpJSONSchema
     from idfkit.simulation.result import SimulationResult
     from idfkit.weather.index import StationIndex
@@ -171,6 +172,7 @@ class ServerState:
     schema: EpJSONSchema | None = None
     file_path: Path | None = None
     simulation_result: SimulationResult | None = None
+    migration_report: MigrationReport | None = None
     weather_file: Path | None = None
     station_index: StationIndex | None = None
     docs_index: list[dict[str, object]] | None = None
@@ -436,6 +438,7 @@ class ServerState:
         self.schema = None
         self.file_path = None
         self.simulation_result = None
+        self.migration_report = None
         self.weather_file = None
         self.change_log.clear()
         self._session_restored = False

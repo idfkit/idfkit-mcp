@@ -48,6 +48,16 @@ def state_with_model() -> ServerState:
 
 
 @pytest.fixture()
+def state_with_old_version_model() -> ServerState:
+    """Return server state with a v22.1.0 model loaded (migratable to newer versions)."""
+    state = get_state()
+    doc = new_document(version=(22, 1, 0))
+    state.document = doc
+    state.schema = doc.schema
+    return state
+
+
+@pytest.fixture()
 def state_with_zones() -> ServerState:
     """Return server state with a model containing zones and surfaces."""
     state = get_state()
