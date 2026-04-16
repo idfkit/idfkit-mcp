@@ -194,65 +194,70 @@ async def migrate_model(
     from idfkit.simulation.config import find_energyplus
 
     state = get_state()
-    doc = state.require_model()
 
-    try:
-        config = find_energyplus(path=energyplus_dir)
-    except EnergyPlusNotFoundError as exc:
-        raise ToolError(
-            "EnergyPlus installation not found. Install EnergyPlus matching the target "
-            "version or pass energyplus_dir pointing at the install root."
-        ) from exc
+    if state.migration_lock.locked():
+        raise ToolError("A migration is already in progress for this session. Wait for it to finish.")
 
-    target = _parse_target_version(target_version) if target_version else config.version
-    on_progress = _build_progress_handler(ctx)
+    async with state.migration_lock:
+        doc = state.require_model()
 
-    try:
-        report = await idfkit.async_migrate(
-            doc,
-            target,
-            energyplus=config,
-            keep_work_dir=keep_work_dir,
-            on_progress=on_progress,
+        try:
+            config = find_energyplus(path=energyplus_dir)
+        except EnergyPlusNotFoundError as exc:
+            raise ToolError(
+                "EnergyPlus installation not found. Install EnergyPlus matching the target "
+                "version or pass energyplus_dir pointing at the install root."
+            ) from exc
+
+        target = _parse_target_version(target_version) if target_version else config.version
+        on_progress = _build_progress_handler(ctx)
+
+        try:
+            report = await idfkit.async_migrate(
+                doc,
+                target,
+                energyplus=config,
+                keep_work_dir=keep_work_dir,
+                on_progress=on_progress,
+            )
+        except VersionMismatchError as exc:
+            current: tuple[int, int, int] = exc.current
+            dest: tuple[int, int, int] = exc.target
+            chain = ", ".join(f"{_vstr(a)} -> {_vstr(b)}" for a, b in exc.migration_chain)
+            raise ToolError(
+                f"Cannot migrate {_vstr(current)} -> {_vstr(dest)}: direction is "
+                f"{exc.direction}. " + (f"Migration chain: [{chain}]." if chain else "No migration path is available.")
+            ) from exc
+        except MigrationError as exc:
+            completed = ", ".join(f"{_vstr(a)} -> {_vstr(b)}" for a, b in exc.completed_steps) or "none"
+            tail = (exc.stderr or "")[-_STDERR_TAIL_CHARS:]
+            from_v = _vstr(exc.from_version) if exc.from_version is not None else "?"
+            to_v = _vstr(exc.to_version) if exc.to_version is not None else "?"
+            raise ToolError(
+                f"Migration failed at {from_v} -> {to_v} "
+                f"(exit {exc.exit_code}). Completed steps before failure: [{completed}]. "
+                f"stderr tail: {tail!r}"
+            ) from exc
+        except UnsupportedVersionError as exc:
+            raise ToolError(str(exc)) from exc
+
+        migrated_doc = cast("IDFDocument[Literal[True]] | None", report.migrated_model)
+        state.document = migrated_doc
+        if migrated_doc is not None:
+            state.schema = migrated_doc.schema
+        state.migration_report = report
+        state.record_change(
+            "migrate_model",
+            f"{_vstr(report.source_version)} -> {_vstr(report.target_version)}",
         )
-    except VersionMismatchError as exc:
-        current: tuple[int, int, int] = exc.current
-        dest: tuple[int, int, int] = exc.target
-        chain = ", ".join(f"{_vstr(a)} -> {_vstr(b)}" for a, b in exc.migration_chain)
-        raise ToolError(
-            f"Cannot migrate {_vstr(current)} -> {_vstr(dest)}: direction is "
-            f"{exc.direction}. " + (f"Migration chain: [{chain}]." if chain else "No migration path is available.")
-        ) from exc
-    except MigrationError as exc:
-        completed = ", ".join(f"{_vstr(a)} -> {_vstr(b)}" for a, b in exc.completed_steps) or "none"
-        tail = (exc.stderr or "")[-_STDERR_TAIL_CHARS:]
-        from_v = _vstr(exc.from_version) if exc.from_version is not None else "?"
-        to_v = _vstr(exc.to_version) if exc.to_version is not None else "?"
-        raise ToolError(
-            f"Migration failed at {from_v} -> {to_v} "
-            f"(exit {exc.exit_code}). Completed steps before failure: [{completed}]. "
-            f"stderr tail: {tail!r}"
-        ) from exc
-    except UnsupportedVersionError as exc:
-        raise ToolError(str(exc)) from exc
+        state.save_session()
 
-    migrated_doc = cast("IDFDocument[Literal[True]] | None", report.migrated_model)
-    state.document = migrated_doc
-    if migrated_doc is not None:
-        state.schema = migrated_doc.schema
-    state.migration_report = report
-    state.record_change(
-        "migrate_model",
-        f"{_vstr(report.source_version)} -> {_vstr(report.target_version)}",
-    )
-    state.save_session()
+        logger.info(
+            "Migrated model %s -> %s (%d step%s)",
+            _vstr(report.source_version),
+            _vstr(report.target_version),
+            len(report.steps),
+            "" if len(report.steps) == 1 else "s",
+        )
 
-    logger.info(
-        "Migrated model %s -> %s (%d step%s)",
-        _vstr(report.source_version),
-        _vstr(report.target_version),
-        len(report.steps),
-        "" if len(report.steps) == 1 else "s",
-    )
-
-    return _build_result(report)
+        return _build_result(report)

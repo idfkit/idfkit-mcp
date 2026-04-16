@@ -8,6 +8,7 @@ used, behaving identically to the previous singleton approach.
 
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import dataclasses
 import logging
@@ -188,6 +189,12 @@ class ServerState:
 
     # In-memory mutation log (not persisted; reset on clear_session)
     change_log: list[dict[str, str]] = dataclasses.field(default_factory=lambda: [])
+
+    # Per-session locks to prevent concurrent long-running operations.
+    # The EnergyPlus transition binaries share a working directory and cannot
+    # run in parallel; concurrent simulations race on state.simulation_result.
+    migration_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock, repr=False)
+    simulation_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock, repr=False)
 
     def require_model(self) -> IDFDocument[Literal[True]]:
         """Return the active document, auto-restoring from session if needed."""
@@ -418,22 +425,14 @@ class ServerState:
             logging.getLogger(__name__).info("Restored weather file from session: %s", wp)
 
     def clear_session(self) -> None:
-        """Delete the session file and reset all restorable state."""
+        """Delete the session file and reset model/simulation state.
+
+        Uploads are preserved so the user can re-load without re-uploading.
+        """
         if self.persistence_enabled:
             session_path = _session_file_path()
             if session_path.exists():
                 session_path.unlink()
-        uploads_dir = session_uploads_dir(self.session_id)
-        if uploads_dir.exists():
-            import shutil
-
-            shutil.rmtree(uploads_dir, ignore_errors=True)
-        try:
-            from idfkit_mcp.server import uploads as _uploads
-        except ImportError:
-            _uploads = None
-        if _uploads is not None:
-            _uploads.clear_scope(self.session_id)
         self.document = None
         self.schema = None
         self.file_path = None

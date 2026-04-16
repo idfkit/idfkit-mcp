@@ -67,6 +67,11 @@ class IdfUploadStore(FileUpload):
 
     Pass ``root`` (or set the ``IDFKIT_MCP_UPLOAD_DIR`` env var when constructed
     via ``server.py``) to persist uploads to disk under ``<root>/<session>/``.
+
+    .. todo:: Uploads accumulate over time because ``clear_session`` no longer
+       removes them (uploads are user data, not ephemeral state). For long-lived
+       deployed servers this needs a cleanup strategy — e.g. TTL-based eviction,
+       max total size per session, or a periodic sweep of stale scope directories.
     """
 
     def __init__(self, *, root: Path | None = None, **kwargs: object) -> None:

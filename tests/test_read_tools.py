@@ -84,16 +84,17 @@ class TestLoadModel:
             await call_tool(client, "load_model", {"upload_name": "does-not-exist.idf"})
 
 
-class TestClearSessionRemovesUploads:
-    async def test_clear_session_deletes_upload_dir(self, client: object) -> None:
+class TestClearSessionPreservesUploads:
+    async def test_clear_session_keeps_upload_dir(self, client: object) -> None:
         state = get_state()
         uploads_dir = session_uploads_dir(state.session_id)
         uploads_dir.mkdir(parents=True, exist_ok=True)
-        (uploads_dir / "stale.idf").write_text("dummy")
+        (uploads_dir / "model.idf").write_text("dummy")
         assert uploads_dir.exists()
 
         await call_tool(client, "clear_session", {})
-        assert not uploads_dir.exists()
+        assert uploads_dir.exists(), "uploads should survive clear_session"
+        assert (uploads_dir / "model.idf").exists()
 
 
 class TestReadFileToolHidden:

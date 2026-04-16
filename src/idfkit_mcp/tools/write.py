@@ -242,7 +242,16 @@ def save_model(
 
 @tool(annotations=_DESTRUCTIVE)
 def clear_session() -> ClearSessionResult:
-    """Reset session state. Does not delete files on disk."""
+    """Reset model and simulation state so you can start fresh.
+
+    Unloads the current model, schema, simulation results, migration report,
+    and weather file. Uploaded files are kept so the user can re-load them
+    without re-uploading.
+
+    WARNING: Only call this when the user explicitly asks to start over.
+    Do NOT call this to recover from tool errors — those errors are
+    recoverable by retrying the failed tool or calling load_model again.
+    """
     state = get_state()
     state.clear_session()
     return ClearSessionResult(status="cleared")
