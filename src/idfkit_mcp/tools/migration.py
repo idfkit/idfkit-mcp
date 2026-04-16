@@ -201,6 +201,8 @@ async def migrate_model(
     async with state.migration_lock:
         doc = state.require_model()
 
+        requested_target = _parse_target_version(target_version) if target_version else None
+
         try:
             config = find_energyplus(path=energyplus_dir)
         except EnergyPlusNotFoundError as exc:
@@ -209,7 +211,7 @@ async def migrate_model(
                 "version or pass energyplus_dir pointing at the install root."
             ) from exc
 
-        target = _parse_target_version(target_version) if target_version else config.version
+        target = requested_target if requested_target is not None else config.version
         on_progress = _build_progress_handler(ctx)
 
         try:
