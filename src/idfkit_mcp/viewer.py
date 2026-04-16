@@ -35,9 +35,12 @@ VIEWER_HTML = r"""<!DOCTYPE html>
     --accent-dim:    rgba(232, 131, 74, 0.25);
   }
 
-  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--canvas-bg); }
+  /* min-height floors the autoResize max-content measurement the MCP Apps SDK
+     reports to the host, otherwise the 100%-chained children collapse and the
+     host sizes the iframe too short for a 3D viewport. */
+  html, body { width: 100%; height: 100%; min-height: 560px; overflow: hidden; background: var(--canvas-bg); }
 
-  #viewport { width: 100%; height: 100%; display: block; }
+  #viewport { width: 100%; height: 100%; min-height: 560px; display: block; }
 
   /* -- Floating toolbar -- */
   .toolbar {
