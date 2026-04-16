@@ -20,18 +20,14 @@ ENV PATH="/app/.venv/bin:$PATH" \
     IDFKIT_MCP_PORT=8000
 
 WORKDIR /app
-COPY --from=builder /app/.venv /app/.venv
 
-RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
-USER appuser
+RUN useradd --create-home --uid 10001 appuser
 
 EXPOSE 8000
-
 ENTRYPOINT ["idfkit-mcp"]
 
-FROM runtime-base AS sim
+FROM runtime-base AS sim-base
 
-USER root
 ARG ENERGYPLUS_TARBALL_URL
 ARG ENERGYPLUS_TARBALL_SHA256
 
@@ -47,11 +43,17 @@ RUN wget -O /tmp/energyplus.tar.gz "$ENERGYPLUS_TARBALL_URL" \
     && rm -f /tmp/energyplus.tar.gz \
     && test -x /opt/EnergyPlus/energyplus \
     && /opt/EnergyPlus/energyplus --version >/dev/null \
-    && chown -R appuser:appuser /opt/EnergyPlus /app/.venv
+    && chown -R appuser:appuser /opt/EnergyPlus
 
 ENV ENERGYPLUS_DIR=/opt/EnergyPlus \
     PATH="/opt/EnergyPlus:${PATH}"
 
+FROM sim-base AS sim
+
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 USER appuser
 
 FROM runtime-base AS runtime
+
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
+USER appuser
