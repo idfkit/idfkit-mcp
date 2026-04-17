@@ -12,6 +12,7 @@ from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
 from fastmcp.exceptions import ToolError
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
+from fastmcp.tools.base import ToolResult
 from idfkit import IDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -34,6 +35,7 @@ from idfkit_mcp.models import (
     UnmetHoursRow,
 )
 from idfkit_mcp.state import get_state
+from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
 
 logger = logging.getLogger(__name__)
 
@@ -297,15 +299,16 @@ async def run_simulation(
         #   3. Document recommended client timeouts.
         # Start with (1); escalate to (2) if agents still time out. Same pattern applies to
         # migration.py:_build_progress_handler.
-        result = await async_simulate(
-            sim_doc,
-            weather="" if weather is None else weather,
-            design_day=design_day,
-            annual=annual,
-            energyplus=config,
-            output_dir=resolved_output_dir,
-            on_progress=_build_progress_handler(ctx),
-        )
+        with BillingProbe() as probe:
+            result = await async_simulate(
+                sim_doc,
+                weather="" if weather is None else weather,
+                design_day=design_day,
+                annual=annual,
+                energyplus=config,
+                output_dir=resolved_output_dir,
+                on_progress=_build_progress_handler(ctx),
+            )
 
         state.simulation_result = result
         state.save_session()
@@ -317,7 +320,7 @@ async def run_simulation(
 
         errors = result.errors
 
-        return RunSimulationResult.model_validate({
+        structured = RunSimulationResult.model_validate({
             "success": result.success,
             "runtime_seconds": round(result.runtime_seconds, 2),
             "output_directory": str(result.run_dir),
@@ -329,6 +332,10 @@ async def run_simulation(
             "errors": _serialize_simulation_errors(errors),
             "simulation_complete": errors.simulation_complete,
         })
+        billing = build_billing_meta(tool="run_simulation", probe=probe, run_dir=result.run_dir)
+        # Returning ToolResult lets us attach _meta.billing while FastMCP still
+        # derives the tools/list output schema from the annotated return type.
+        return ToolResult(structured_content=structured, meta={"billing": billing})  # type: ignore[return-value]
 
 
 _GJ_TO_KWH = 277.778

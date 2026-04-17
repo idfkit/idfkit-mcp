@@ -149,6 +149,59 @@ class TestRunSimulation:
         assert sqlite_object is not None
         assert sqlite_object.option_type == "Simple"  # unchanged
 
+    async def test_emits_meta_billing_on_response(
+        self, client: object, state_with_model: ServerState, tmp_path: Path
+    ) -> None:
+        """run_simulation attaches _meta.billing with runtime/cpu/artifact stats."""
+        fake_config = SimpleNamespace(
+            version=(25, 2, 0),
+            install_dir=Path("/fake/energyplus"),
+            executable=Path("/fake/energyplus/energyplus"),
+        )
+        fake_errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=0,
+            warning_count=0,
+            has_fatal=False,
+            has_severe=False,
+            simulation_complete=True,
+        )
+        run_dir = tmp_path / "fake-run"
+        run_dir.mkdir()
+        # Synthesise two artifacts so the emitter has something to report.
+        (run_dir / "eplusout.sql").write_bytes(b"x" * 500)
+        (run_dir / "eplusout.err").write_text("done")
+
+        fake_result = SimpleNamespace(
+            success=True,
+            runtime_seconds=0.1,
+            run_dir=run_dir,
+            errors=fake_errors,
+        )
+
+        async def _fake_simulate(_doc: object, **_kwargs: object) -> object:
+            return fake_result
+
+        with (
+            patch("idfkit.simulation.config.find_energyplus", return_value=fake_config),
+            patch("idfkit.simulation.async_simulate", side_effect=_fake_simulate),
+        ):
+            # Use client.call_tool directly so we get the full CallToolResult
+            # including meta — the conftest helper discards it.
+            raw = await client.call_tool("run_simulation", {"design_day": True})  # type: ignore[attr-defined]
+
+        assert raw.structured_content["success"] is True
+        billing = (raw.meta or {}).get("billing")
+        assert billing is not None, "run_simulation must emit _meta.billing"
+        assert billing["schema_version"] == "1"
+        assert billing["tool"] == "run_simulation"
+        assert billing["runtime_ms"] >= 0
+        assert billing["cpu_seconds"] >= 0.0
+        artifact_names = {a["name"] for a in billing["artifacts"]}
+        assert artifact_names == {"eplusout.sql", "eplusout.err"}
+        eplusout_sql = next(a for a in billing["artifacts"] if a["name"] == "eplusout.sql")
+        assert eplusout_sql["bytes"] == 500
+
 
 class TestListOutputVariables:
     async def test_no_simulation(self, client: object) -> None:
