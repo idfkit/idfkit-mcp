@@ -13,7 +13,7 @@ An [MCP](https://modelcontextprotocol.io/) server that lets AI assistants work d
 - **Explore the schema** — ask what fields a `ZoneHVAC:IdealLoadsAirSystem` accepts, what values are valid, and get links to the official EnergyPlus documentation
 - **Search the docs** — full-text search across the EnergyPlus I/O Reference, Engineering Reference, and other documentation sets hosted on [docs.idfkit.com](https://docs.idfkit.com)
 
-Built on [idfkit](https://github.com/idfkit/idfkit), it supports **EnergyPlus 8.9 through 25.2** (16 versions with bundled schemas). Schema exploration, model editing, and validation work out of the box with no external dependencies. Running simulations requires a local [EnergyPlus](https://energyplus.net/downloads) install — the server discovers it automatically via `PATH`, the `ENERGYPLUS_DIR` env var, or standard OS install locations. A Docker image with EnergyPlus bundled is also available.
+Built on [idfkit](https://github.com/idfkit/idfkit), it supports **EnergyPlus 8.9 through 26.1** (17 versions with bundled schemas). Schema exploration, model editing, and validation work out of the box with no external dependencies. Running simulations requires a local [EnergyPlus](https://energyplus.net/downloads) install — the server discovers it automatically via `PATH`, the `ENERGYPLUS_DIR` env var, or standard OS install locations. A Docker image with EnergyPlus bundled is also available.
 
 **[Documentation](https://mcp.idfkit.com/docs/)** | **[GitHub](https://github.com/idfkit/idfkit-mcp/)**
 
