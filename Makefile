@@ -55,20 +55,34 @@ serve-http: ## Run the MCP server locally in streamable-http mode on :8000
 	@echo "🚀 Starting idfkit-mcp on http://127.0.0.1:8000/mcp/"
 	@uv run python -m idfkit_mcp.server --transport http --port 8000
 
+.PHONY: sync-wasm-assets
+sync-wasm-assets: ## Copy EnergyPlus WASM assets from envelop into the package
+	@test -d ../envelop/public/energyplus || \
+		(echo "❌ ../envelop/public/energyplus not found. Build envelop first or run from the monorepo."; exit 1)
+	@rm -rf src/idfkit_mcp/assets/energyplus
+	@mkdir -p src/idfkit_mcp/assets
+	@cp -R ../envelop/public/energyplus src/idfkit_mcp/assets/energyplus
+	@echo "✔ Synced $$(du -sh src/idfkit_mcp/assets/energyplus | cut -f1) of WASM assets"
+
 .PHONY: docker-build
-docker-build: ## Build base Docker image (no EnergyPlus)
+docker-build: ## Build base Docker image (no EnergyPlus — bundles WASM assets)
+	@test -d ../envelop/public/energyplus || \
+		(echo "❌ ../envelop/public/energyplus not found. This Dockerfile expects to be built from the monorepo root."; exit 1)
 	@echo "🚀 Building Docker image idfkit-mcp:latest (target runtime)"
-	@docker build --target runtime -t idfkit-mcp:latest .
+	@cd .. && docker build --target runtime -f idfkit-mcp/Dockerfile -t idfkit-mcp:latest .
 
 .PHONY: docker-build-sim
 docker-build-sim: ## Build simulation Docker image (requires ENERGYPLUS_TARBALL_URL)
 	@test -n "$(ENERGYPLUS_TARBALL_URL)" || (echo "❌ Set ENERGYPLUS_TARBALL_URL to an EnergyPlus Linux .tar.gz URL"; exit 1)
+	@test -d ../envelop/public/energyplus || \
+		(echo "❌ ../envelop/public/energyplus not found. Run from the monorepo root."; exit 1)
 	@echo "🚀 Building Docker image idfkit-mcp:sim (target sim)"
-	@docker build \
+	@cd .. && docker build \
 		$(if $(DOCKER_PLATFORM),--platform $(DOCKER_PLATFORM),) \
 		--target sim \
 		--build-arg ENERGYPLUS_TARBALL_URL="$(ENERGYPLUS_TARBALL_URL)" \
 		$(if $(ENERGYPLUS_TARBALL_SHA256),--build-arg ENERGYPLUS_TARBALL_SHA256="$(ENERGYPLUS_TARBALL_SHA256)",) \
+		-f idfkit-mcp/Dockerfile \
 		-t idfkit-mcp:sim .
 
 .PHONY: docker-run

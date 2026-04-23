@@ -167,10 +167,25 @@ class TestUploadSimulationResultInMemory:
         names = {v["name"] for v in vars_result["variables"]}
         assert "Zone Mean Air Temperature" in names
 
-    async def test_missing_sql_rejected(self, client: Any, tmp_path: Path) -> None:
-        files = {"eplusout.err": base64.b64encode(b"").decode("ascii")}
-        with pytest.raises(ToolError, match=r"eplusout\.sql"):
-            await call_tool(client, "upload_simulation_result", {"files": files})
+    async def test_missing_sql_still_accepted_for_failed_sims(self, client: Any, tmp_path: Path) -> None:
+        """Failed browser runs upload eplusout.err without a .sql — the server must
+        accept the diagnostic payload and mark the result as a non-SQL-available run."""
+        err_text = (
+            "Program Version,EnergyPlus, Version 25.2.0-test\n"
+            "  **  Fatal  ** Zone referenced by Surface not found\n"
+            "  ...Summary of Errors that led to program termination:\n"
+        )
+        files = {"eplusout.err": base64.b64encode(err_text.encode("latin-1")).decode("ascii")}
+        result = await call_tool(client, "upload_simulation_result", {"files": files, "run_id": "failed-no-sql"})
+        assert isinstance(result, dict)
+        assert result["mode"] == "upload"
+        # Fatal in err → server flips success to False.
+        assert result["success"] is False
+        assert result["artifacts_written"] == ["eplusout.err"]
+
+    async def test_empty_files_rejected(self, client: Any, tmp_path: Path) -> None:
+        with pytest.raises(ToolError, match="empty"):
+            await call_tool(client, "upload_simulation_result", {"files": {}})
 
     async def test_disallowed_filename_rejected(self, client: Any, tmp_path: Path) -> None:
         source = tmp_path / "source_run"
