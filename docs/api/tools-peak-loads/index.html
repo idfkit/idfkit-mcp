@@ -2260,7 +2260,8 @@ SensibleHeatGainSummary and HVACSizingSummary reports.</p>
 <span class="normal"><a href="#__codelineno-0-423">423</a></span>
 <span class="normal"><a href="#__codelineno-0-424">424</a></span>
 <span class="normal"><a href="#__codelineno-0-425">425</a></span>
-<span class="normal"><a href="#__codelineno-0-426">426</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="nd">@resource</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span>
+<span class="normal"><a href="#__codelineno-0-427">427</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="nd">@resource</span><span class="p">(</span>
 </span><span id="__span-0-411"><a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="s2">&quot;ui://idfkit/peak-loads-viewer.html&quot;</span><span class="p">,</span>
 </span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;peak_loads_viewer&quot;</span><span class="p">,</span>
 </span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Peak Load Viewer&quot;</span><span class="p">,</span>
@@ -2269,14 +2270,15 @@ SensibleHeatGainSummary and HVACSizingSummary reports.</p>
 </span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>        <span class="s2">&quot;ui&quot;</span><span class="p">:</span> <span class="n">app_config_to_meta_dict</span><span class="p">(</span>
 </span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>            <span class="n">AppConfig</span><span class="p">(</span>
 </span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>                <span class="n">csp</span><span class="o">=</span><span class="n">ResourceCSP</span><span class="p">(</span><span class="n">resourceDomains</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;https://unpkg.com&quot;</span><span class="p">]),</span>
-</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>                <span class="n">prefersBorder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>            <span class="p">)</span>
-</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="p">)</span>
-</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="p">},</span>
-</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="p">)</span>
-</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="k">def</span><span class="w"> </span><span class="nf">peak_loads_viewer_html</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the self-contained peak load viewer HTML.&quot;&quot;&quot;</span>
-</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="k">return</span> <span class="n">PEAK_LOADS_VIEWER_HTML</span>
+</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>                <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;peak-loads-viewer.idfkit.com&quot;</span><span class="p">,</span>
+</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>                <span class="n">prefersBorder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>            <span class="p">)</span>
+</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>        <span class="p">)</span>
+</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="p">},</span>
+</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="p">)</span>
+</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="k">def</span><span class="w"> </span><span class="nf">peak_loads_viewer_html</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the self-contained peak load viewer HTML.&quot;&quot;&quot;</span>
+</span><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="k">return</span> <span class="n">PEAK_LOADS_VIEWER_HTML</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
