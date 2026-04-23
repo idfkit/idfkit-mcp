@@ -80,6 +80,19 @@ class IdfUploadStore(FileUpload):
         self._root = root
         if root is not None:
             root.mkdir(parents=True, exist_ok=True)
+        self._set_prefab_renderer_domain("file-manager.idfkit.com")
+
+    def _set_prefab_renderer_domain(self, domain: str) -> None:
+        # fastmcp auto-registers ui://prefab/renderer.html without a `domain`,
+        # which trips ChatGPT's "Widget domain is not set" submission check.
+        # No public API to configure it yet, so mutate the resource meta in place.
+        key = "resource:ui://prefab/renderer.html@"
+        resource = self._local._components.get(key)  # pyright: ignore[reportPrivateUsage]
+        if resource is None:
+            return
+        meta = dict(resource.meta or {})
+        meta["ui"] = {**meta.get("ui", {}), "domain": domain}
+        resource.meta = meta
 
     def _get_scope_key(self, ctx: Context) -> str:
         from idfkit_mcp.state import current_session_id
