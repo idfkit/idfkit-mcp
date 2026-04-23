@@ -113,7 +113,14 @@ class TestToolSchemas:
         """
         # Tools with intentionally dynamic dict parameters that cannot be
         # constrained to a static schema.
-        dynamic_schema_tools = {"add_object", "batch_add_objects", "update_object"}
+        dynamic_schema_tools = {
+            "add_object",
+            "batch_add_objects",
+            "update_object",
+            # upload_simulation_result takes {filename: base64-bytes} — the key
+            # set is an allowlist enforced at runtime, not in the schema.
+            "upload_simulation_result",
+        }
 
         for tool in tools:
             if tool.name in dynamic_schema_tools:

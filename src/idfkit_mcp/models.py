@@ -7,6 +7,8 @@ FastMCP can populate both ``content`` (text) and ``structuredContent``
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -398,6 +400,19 @@ class RunSimulationResult(BaseModel):
     energyplus: EnergyPlusInfo
     errors: SimulationErrorDetail
     simulation_complete: bool
+
+
+class UploadSimulationResultResult(RunSimulationResult):
+    """Response from ``upload_simulation_result``.
+
+    Mirrors ``RunSimulationResult`` so clients can consume either response
+    generically. Adds ``mode="upload"`` to distinguish client-produced runs
+    from server-executed ones, and ``artifacts_written`` to echo which
+    files actually landed on disk.
+    """
+
+    mode: Literal["upload"] = "upload"
+    artifacts_written: list[str] = []
 
 
 class ResultsErrorSummary(BaseModel):

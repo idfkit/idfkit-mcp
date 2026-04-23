@@ -50,6 +50,11 @@ docs-test: ## Test if documentation can be built without warnings or errors
 docs: ## Build and serve the documentation
 	@uv run zensical serve --dev-addr localhost:8001
 
+.PHONY: serve-http
+serve-http: ## Run the MCP server locally in streamable-http mode on :8000
+	@echo "🚀 Starting idfkit-mcp on http://127.0.0.1:8000/mcp/"
+	@uv run python -m idfkit_mcp.server --transport http --port 8000
+
 .PHONY: docker-build
 docker-build: ## Build base Docker image (no EnergyPlus)
 	@echo "🚀 Building Docker image idfkit-mcp:latest (target runtime)"

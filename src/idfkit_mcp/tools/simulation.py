@@ -33,6 +33,7 @@ from idfkit_mcp.models import (
     SimulationReportResult,
     TabularRow,
     UnmetHoursRow,
+    UploadSimulationResultResult,
 )
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
@@ -42,6 +43,30 @@ logger = logging.getLogger(__name__)
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+_UPLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+
+# EnergyPlus output filenames accepted by upload_simulation_result. A strict
+# allowlist keeps the attack surface minimal (no path traversal, no arbitrary
+# file writes) and matches what SimulationResult._find_output_file looks for.
+_UPLOAD_ALLOWED_FILENAMES = frozenset({
+    "eplusout.sql",
+    "eplusout.err",
+    "eplusout.eio",
+    "eplusout.rdd",
+    "eplusout.mdd",
+    "eplusout.end",
+    "eplusout.audit",
+    "eplusout.htm",
+    "eplustbl.htm",
+    "eplusmap.csv",
+    "epluszsz.csv",
+    "eplusout.csv",
+})
+
+# Aggregate decoded-payload cap for a single upload_simulation_result call.
+# 50 MB covers typical design-day and small annual SQL outputs; larger annual
+# sub-hourly runs are future work (chunked upload).
+_UPLOAD_MAX_TOTAL_BYTES = 50 * 1024 * 1024
 
 # Valid EnergyPlus reporting frequencies for time series queries.
 ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPeriod", "Annual"]
@@ -335,6 +360,164 @@ async def run_simulation(
         billing = build_billing_meta(tool="run_simulation", probe=probe, run_dir=result.run_dir)
         # Returning ToolResult lets us attach _meta.billing while FastMCP still
         # derives the tools/list output schema from the annotated return type.
+        return ToolResult(structured_content=structured, meta={"billing": billing})  # type: ignore[return-value]
+
+
+def _decode_upload_artifacts(files: dict[str, str]) -> dict[str, bytes]:
+    """Validate filenames and decode base64 payloads for upload_simulation_result.
+
+    Enforces the filename allowlist and the aggregate size cap. Returns a
+    ``{filename: raw_bytes}`` mapping when all checks pass; raises ``ToolError``
+    with a user-facing message otherwise.
+    """
+    import base64
+    import binascii
+
+    if not files:
+        raise ToolError("files must not be empty — at minimum provide 'eplusout.sql'.")
+    if "eplusout.sql" not in files:
+        raise ToolError("Required artifact 'eplusout.sql' missing from files.")
+    for name in files:
+        if name not in _UPLOAD_ALLOWED_FILENAMES:
+            raise ToolError(f"Filename {name!r} is not allowed. Accepted: {sorted(_UPLOAD_ALLOWED_FILENAMES)}")
+
+    decoded: dict[str, bytes] = {}
+    total = 0
+    for name, payload in files.items():
+        try:
+            blob = base64.b64decode(payload, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ToolError(f"Artifact {name!r} is not valid base64: {exc}") from exc
+        total += len(blob)
+        if total > _UPLOAD_MAX_TOTAL_BYTES:
+            raise ToolError(
+                f"Uploaded payload exceeds {_UPLOAD_MAX_TOTAL_BYTES} bytes "
+                f"(got {total} across {len(decoded) + 1} files)."
+            )
+        decoded[name] = blob
+    return decoded
+
+
+def _resolve_upload_run_dir(run_id: str | None, session_id: str) -> Any:
+    """Resolve a unique run directory for an uploaded simulation result.
+
+    Honors IDFKIT_MCP_SIMULATION_DIR when set (same parent as run_simulation),
+    otherwise creates a tempdir. Always returns a freshly-created directory so
+    concurrent uploads within a session don't collide.
+    """
+    import os
+    import tempfile
+    import uuid
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    suffix = run_id or uuid.uuid4().hex[:8]
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    env = os.environ.get("IDFKIT_MCP_SIMULATION_DIR")
+    if env:
+        run_dir = Path(env) / f"{session_id}-{stamp}-upload-{suffix}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        return run_dir
+    return Path(tempfile.mkdtemp(prefix=f"idfkit-upload-{session_id}-{suffix}-"))
+
+
+@tool(annotations=_UPLOAD)
+async def upload_simulation_result(
+    files: Annotated[
+        dict[str, str],
+        Field(
+            description=(
+                "EnergyPlus output artifacts as filename -> base64 bytes. "
+                "Must include 'eplusout.sql'. Other accepted names: eplusout.err, "
+                "eplusout.eio, eplusout.rdd, eplusout.mdd, eplusout.end, "
+                "eplusout.audit, eplusout.htm, eplustbl.htm, eplusmap.csv, "
+                "epluszsz.csv, eplusout.csv."
+            ),
+        ),
+    ],
+    energyplus_version: Annotated[
+        str | None,
+        Field(description="Version of EnergyPlus that produced the artifacts (e.g. '25.2.0')."),
+    ] = None,
+    run_id: Annotated[
+        str | None,
+        Field(description="Client-provided run identifier, used in the run-directory name."),
+    ] = None,
+    runtime_seconds: Annotated[
+        float | None,
+        Field(description="Client-measured wall-clock runtime to propagate into the result."),
+    ] = None,
+    ctx: Context | None = None,
+) -> UploadSimulationResultResult:
+    """Ingest pre-computed EnergyPlus output artifacts produced outside the server.
+
+    Materializes the uploaded artifacts into session state exactly as if
+    ``run_simulation`` had produced them. After this call, every
+    ``idfkit://simulation/*`` resource and every analysis tool
+    (``query_timeseries``, ``query_simulation_table``, ``analyze_peak_loads``,
+    ``view_simulation_report``) reads the uploaded SQL file transparently.
+
+    Primary use case: client-side (browser/WASM) EnergyPlus execution where
+    the server never invokes the EnergyPlus binary. Size cap: 50 MB total
+    across all artifacts.
+
+    Preconditions: none (no loaded model required).
+    Side effects: writes files to a session-scoped run directory and
+    replaces ``state.simulation_result``.
+    Next step: read ``idfkit://simulation/results`` to verify diagnostics.
+    """
+    from idfkit.simulation.result import SimulationResult
+
+    state = get_state()
+
+    if state.simulation_lock.locked():
+        raise ToolError("A simulation is already in progress for this session. Wait for it to finish.")
+
+    async with state.simulation_lock:
+        decoded = _decode_upload_artifacts(files)
+        total = sum(len(b) for b in decoded.values())
+
+        run_dir = _resolve_upload_run_dir(run_id, state.session_id)
+        logger.info("Receiving uploaded simulation artifacts into %s (%d bytes)", run_dir, total)
+
+        with BillingProbe() as probe:
+            written: list[str] = []
+            for name, blob in decoded.items():
+                (run_dir / name).write_bytes(blob)
+                written.append(name)
+
+            # Same factory session-restore uses — guarantees the object is
+            # shape-equivalent to a server-produced SimulationResult.
+            result = SimulationResult.from_directory(run_dir)
+            if runtime_seconds is not None:
+                result.runtime_seconds = runtime_seconds
+            errors_report = result.errors
+            if errors_report.has_fatal:
+                result.success = False
+
+            state.simulation_result = result
+            state.save_session()
+
+        if ctx is not None:
+            await ctx.info(
+                f"Uploaded {len(written)} artifact(s) to {run_dir} ({total} bytes, success={result.success})."
+            )
+
+        structured = UploadSimulationResultResult.model_validate({
+            "mode": "upload",
+            "success": result.success,
+            "runtime_seconds": round(result.runtime_seconds, 2),
+            "output_directory": str(result.run_dir),
+            "energyplus": {
+                "version": energyplus_version or "unknown",
+                "install_dir": "(client-provided)",
+                "executable": "(client-provided)",
+            },
+            "errors": _serialize_simulation_errors(errors_report),
+            "simulation_complete": errors_report.simulation_complete,
+            "artifacts_written": sorted(written),
+        })
+        billing = build_billing_meta(tool="upload_simulation_result", probe=probe, run_dir=run_dir)
         return ToolResult(structured_content=structured, meta={"billing": billing})  # type: ignore[return-value]
 
 
