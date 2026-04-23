@@ -416,6 +416,7 @@ def analyze_peak_loads() -> PeakLoadAnalysisResult:
         "ui": app_config_to_meta_dict(
             AppConfig(
                 csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+                domain="peak-loads-viewer.idfkit.com",
                 prefersBorder=False,
             )
         )

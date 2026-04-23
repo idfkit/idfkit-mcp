@@ -225,6 +225,7 @@ def view_schedules(
         "ui": app_config_to_meta_dict(
             AppConfig(
                 csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+                domain="schedule-viewer.idfkit.com",
                 prefersBorder=False,
             )
         )

@@ -900,6 +900,7 @@ def view_simulation_report() -> SimulationReportResult:
         "ui": app_config_to_meta_dict(
             AppConfig(
                 csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+                domain="report-viewer.idfkit.com",
                 prefersBorder=False,
             )
         )

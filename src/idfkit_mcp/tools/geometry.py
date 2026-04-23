@@ -146,6 +146,7 @@ def view_geometry(
         "ui": app_config_to_meta_dict(
             AppConfig(
                 csp=ResourceCSP(resourceDomains=["https://cdn.jsdelivr.net", "https://unpkg.com"]),
+                domain="geometry-viewer.idfkit.com",
                 prefersBorder=False,
             )
         )
