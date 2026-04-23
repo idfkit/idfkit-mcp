@@ -56,6 +56,17 @@ sanitize-and-coerce: the attacker lands in a shared bucket they can see is
 not theirs, instead of a quietly-redirected attacker-controlled path.
 """
 
+_SAFE_IDENTITY_TOKEN = re.compile(r"[A-Za-z0-9_\-:/+=\.]{1,512}")
+"""Permissive input validation for OAuth/ChatGPT identity tokens.
+
+OpenAI's hosted MCP connector sends ``_meta["openai/session"]`` values that
+look like ``v1/<base64>`` — they legitimately contain ``/`` and ``+``. Gateway
+principal headers can likewise embed ``:`` as a separator. These values are
+*always* hashed before use as filesystem path components (see
+``_stable_session_id``), so this regex only screens out obvious garbage like
+NULs or control bytes.
+"""
+
 
 def _cache_base_dir() -> Path:
     """Return the platform-appropriate idfkit cache base directory."""
@@ -88,13 +99,24 @@ def current_session_id() -> str:
     return _current_session_id.get()
 
 
-def _session_file_path() -> Path:
-    """Return the session file path, keyed by a hash of the current working directory."""
+def _session_file_path(session_id: str | None = None) -> Path:
+    """Return the session file path for a given session ID.
+
+    For identity-bound sessions (``principal_…`` / ``openai_…``) the file is
+    keyed by the identity itself, so the same user finds the same state across
+    connector reconnects and transport-session rotations. For ``stdio`` (and
+    any unrecognized session_id passed in), we fall back to hashing the current
+    working directory — that preserves the original per-project isolation for
+    the stdio single-client case.
+    """
     import hashlib
 
-    cwd = str(Path.cwd().resolve())
-    cwd_hash = hashlib.sha256(cwd.encode()).hexdigest()[:12]
-    return _session_cache_dir() / f"{cwd_hash}.json"
+    if session_id and (session_id.startswith("principal_") or session_id.startswith("openai_")):
+        key = session_id
+    else:
+        key = str(Path.cwd().resolve())
+    key_hash = hashlib.sha256(key.encode()).hexdigest()[:12]
+    return _session_cache_dir() / f"{key_hash}.json"
 
 
 def _docs_cache_dir() -> Path:
@@ -132,12 +154,12 @@ def _download_search_index(version: str, cache_path: Path) -> dict[str, Any]:
     return data
 
 
-def _read_session_file() -> dict[str, Any] | None:
+def _read_session_file(session_id: str | None = None) -> dict[str, Any] | None:
     """Read and validate the session file, returning None on any failure."""
     import json
     import logging
 
-    session_path = _session_file_path()
+    session_path = _session_file_path(session_id)
     if not session_path.exists():
         return None
 
@@ -348,7 +370,7 @@ class ServerState:
 
         import logging
 
-        session_path = _session_file_path()
+        session_path = _session_file_path(self.session_id)
         try:
             session_path.parent.mkdir(parents=True, exist_ok=True)
             session_path.write_text(json.dumps(data, indent=2))
@@ -361,7 +383,7 @@ class ServerState:
             return
         self._session_restored = True
 
-        data = _read_session_file()
+        data = _read_session_file(self.session_id)
         if data is None:
             return
 
@@ -430,7 +452,7 @@ class ServerState:
         Uploads are preserved so the user can re-load without re-uploading.
         """
         if self.persistence_enabled:
-            session_path = _session_file_path()
+            session_path = _session_file_path(self.session_id)
             if session_path.exists():
                 session_path.unlink()
         self.document = None
@@ -443,29 +465,100 @@ class ServerState:
         self._session_restored = False
 
 
-def _extract_session_id(ctx: Any) -> str:
-    """Extract the MCP session ID from a FastMCP ``Context``.
+def _hash_identity(value: str) -> str:
+    """Return a short, filesystem-safe hash of an identity token."""
+    import hashlib
 
-    Falls back to ``"stdio"`` when no session header is present (e.g. stdio
-    transport or direct function calls in tests).
-    """
+    return hashlib.sha256(value.encode()).hexdigest()[:24]
+
+
+def _request_header(ctx: Any, name: str) -> str | None:
+    """Return an HTTP request header value from a FastMCP context, if any."""
     try:
         request = ctx.request_context.request
-        if request is not None and hasattr(request, "headers"):
-            sid = request.headers.get("mcp-session-id")
-            if sid and _SAFE_SESSION_ID.fullmatch(sid):
-                return sid
-            if sid:
-                logger.warning("Rejecting malformed mcp-session-id (%d chars)", len(sid))
     except Exception:
-        logger.debug("Could not extract session ID from context", exc_info=True)
+        return None
+    if request is None or not hasattr(request, "headers"):
+        return None
+    value = request.headers.get(name)
+    return value if isinstance(value, str) else None
+
+
+def _extract_openai_session(message: Any) -> str | None:
+    """Return ``_meta["openai/session"]`` from a tool/resource request, if any.
+
+    OpenAI's hosted MCP connector rotates the transport-level ``mcp-session-id``
+    per tool call but sends a stable ``openai/session`` in the JSON-RPC params'
+    ``_meta``. See openai/openai-apps-sdk-examples#165.
+    """
+    if message is None:
+        return None
+    meta = getattr(message, "meta", None)
+    if meta is None:
+        return None
+    # Pydantic stores unknown ``_meta`` fields (which include ``/`` in the
+    # key) in ``model_extra`` because ``extra="allow"`` is set on the type.
+    extra_raw = getattr(meta, "model_extra", None)
+    if not isinstance(extra_raw, dict):
+        return None
+    from typing import cast
+
+    extra = cast("dict[str, Any]", extra_raw)
+    value = extra.get("openai/session")
+    return value if isinstance(value, str) and value else None
+
+
+def _extract_session_id(ctx: Any, message: Any = None) -> str:
+    """Resolve a stable session identifier from the current request.
+
+    Priority (first match wins):
+
+    1. ``X-Idfkit-Principal`` request header — a trusted, gateway-injected
+       authenticated principal (e.g. ``tenant_id:actor_identity``). Stable
+       across client reconnects and transport-session rotation.
+    2. ``_meta["openai/session"]`` on the tool-call params — sent by ChatGPT's
+       hosted MCP connector (see openai-apps-sdk-examples#165). Stable within
+       a conversation even when ``mcp-session-id`` rotates per call.
+    3. ``Mcp-Session-Id`` request header — the MCP transport-level session.
+       Works for well-behaved clients (Claude Desktop, Cursor, stdio tests).
+    4. ``"stdio"`` fallback.
+
+    Identity tokens from (1) and (2) are hashed before being returned, so the
+    session ID is always safe to use as a filesystem path component.
+    """
+    # 1. Gateway-injected authenticated principal (trusted)
+    principal = _request_header(ctx, "x-idfkit-principal")
+    if principal:
+        if _SAFE_IDENTITY_TOKEN.fullmatch(principal):
+            return f"principal_{_hash_identity(principal)}"
+        logger.warning("Rejecting malformed x-idfkit-principal (%d chars)", len(principal))
+
+    # 2. OpenAI connector's openai/session in the tool-call _meta
+    openai_session = _extract_openai_session(message)
+    if openai_session:
+        if _SAFE_IDENTITY_TOKEN.fullmatch(openai_session):
+            return f"openai_{_hash_identity(openai_session)}"
+        logger.warning("Rejecting malformed openai/session (%d chars)", len(openai_session))
+
+    # 3. Transport-level MCP session ID
+    sid = _request_header(ctx, "mcp-session-id")
+    if sid:
+        if _SAFE_SESSION_ID.fullmatch(sid):
+            return sid
+        logger.warning("Rejecting malformed mcp-session-id (%d chars)", len(sid))
+
     return "stdio"
 
 
 @contextmanager
-def session_scope_from_context(ctx: Any) -> Iterator[str]:
-    """Temporarily bind the current session ID from a FastMCP context."""
-    session_id = _extract_session_id(ctx) if ctx is not None else "local"
+def session_scope_from_context(ctx: Any, message: Any = None) -> Iterator[str]:
+    """Temporarily bind the current session ID from a FastMCP context.
+
+    ``message`` is the JSON-RPC params object (e.g. ``CallToolRequestParams``)
+    and is used to pick up identity hints from ``_meta`` when the transport
+    session is unreliable.
+    """
+    session_id = _extract_session_id(ctx, message) if ctx is not None else "local"
     token = _current_session_id.set(session_id)
     try:
         yield session_id
@@ -491,9 +584,11 @@ def get_state() -> ServerState:
         logger.info("Evicted session %s (capacity %d)", evicted_id, _MAX_SESSIONS)
 
     state = ServerState(session_id=session_id)
-    # HTTP sessions are ephemeral — no point persisting to disk
-    if session_id != "stdio":
-        state.persistence_enabled = False
+    # Persistence requires an identifier that is stable across process restarts.
+    # ``stdio`` (keyed by cwd) and identity-bound sessions (``principal_…`` /
+    # ``openai_…``) qualify. Raw transport ``mcp-session-id`` does not — it
+    # rotates on reconnect (and, for OpenAI's connector, per tool call).
+    state.persistence_enabled = session_id == "stdio" or session_id.startswith(("principal_", "openai_"))
     _sessions[session_id] = state
     logger.debug("Created session %s", session_id)
     return state

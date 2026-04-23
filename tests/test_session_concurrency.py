@@ -126,6 +126,78 @@ class TestSessionIdSanitization:
         assert _extract_session_id(self._ctx_with_sid("a" * 129)) == "stdio"
 
 
+class TestLayeredSessionResolution:
+    """Identity sources resolve in priority order, regardless of ``mcp-session-id`` rotation.
+
+    OpenAI's hosted MCP connector rotates ``mcp-session-id`` per tool call but
+    sends a stable ``_meta["openai/session"]`` (openai-apps-sdk-examples#165).
+    The gateway can forward an authenticated principal via ``x-idfkit-principal``
+    that is even more stable. Both must produce session IDs that are (a) the
+    same across calls from the same principal/conversation, and (b)
+    filesystem-safe (hashed).
+    """
+
+    @staticmethod
+    def _ctx(headers: dict[str, str] | None = None) -> object:
+        return types.SimpleNamespace(
+            request_context=types.SimpleNamespace(request=types.SimpleNamespace(headers=headers or {}))
+        )
+
+    @staticmethod
+    def _message_with_openai_session(value: str | None) -> object:
+        """Mimic a Pydantic ``CallToolRequestParams`` with ``_meta.openai/session``."""
+        model_extra = {"openai/session": value} if value is not None else {}
+        meta = types.SimpleNamespace(model_extra=model_extra)
+        return types.SimpleNamespace(meta=meta, name="t", arguments={})
+
+    def test_openai_session_survives_rotated_mcp_session_id(self) -> None:
+        """ChatGPT's per-call transport rotation still produces a stable bucket."""
+        stable_openai_sid = "v1/3hcF2IvUSD41ujMbfMGV5j4jJHQVKAEBSuy160vtVkteI6jPlxbLjBZTfzgEM7UusowFL1LJxmRu"
+        msg = self._message_with_openai_session(stable_openai_sid)
+
+        first = _extract_session_id(self._ctx({"mcp-session-id": "rotated-1"}), msg)
+        second = _extract_session_id(self._ctx({"mcp-session-id": "rotated-2"}), msg)
+
+        assert first == second
+        assert first.startswith("openai_")
+        # Different openai/session values must resolve to different buckets.
+        other = _extract_session_id(self._ctx({}), self._message_with_openai_session("v1/different"))
+        assert other != first
+
+    def test_principal_header_takes_precedence_over_openai_session(self) -> None:
+        """Gateway-injected auth identity wins over connector-supplied session."""
+        ctx = self._ctx({
+            "x-idfkit-principal": "t_abc123:oauth:oi_xyz",
+            "mcp-session-id": "whatever",
+        })
+        msg = self._message_with_openai_session("v1/should-be-ignored")
+
+        sid = _extract_session_id(ctx, msg)
+        assert sid.startswith("principal_")
+
+    def test_mcp_session_id_used_when_nothing_else_present(self) -> None:
+        """Well-behaved clients (Claude Desktop, stdio) keep working unchanged."""
+        ctx = self._ctx({"mcp-session-id": "stable-session-from-claude"})
+        assert _extract_session_id(ctx, None) == "stable-session-from-claude"
+
+    def test_falls_back_to_stdio_when_no_identity_available(self) -> None:
+        assert _extract_session_id(self._ctx({}), None) == "stdio"
+
+    def test_rejects_malformed_openai_session(self) -> None:
+        """Control bytes and NULs must be rejected."""
+        msg = self._message_with_openai_session("bad\x00session")
+        assert _extract_session_id(self._ctx({}), msg) == "stdio"
+
+    def test_session_id_is_filesystem_safe(self) -> None:
+        """Hashed identity tokens contain only path-safe characters."""
+        msg = self._message_with_openai_session("v1/has/slashes+and=equals")
+        sid = _extract_session_id(self._ctx({}), msg)
+        # No path-traversal, no separators
+        assert "/" not in sid
+        assert "\\" not in sid
+        assert ".." not in sid
+
+
 @pytest.mark.asyncio
 class TestConcurrentReads:
     """Concurrent read-only tools on the same session don't interfere."""

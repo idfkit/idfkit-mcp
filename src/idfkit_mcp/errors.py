@@ -87,7 +87,7 @@ class ToolExecutionMiddleware(Middleware):
     async def on_read_resource(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
         from idfkit_mcp.state import session_scope_from_context
 
-        with session_scope_from_context(context.fastmcp_context) as session_id:
+        with session_scope_from_context(context.fastmcp_context, context.message) as session_id:
             logger.debug("READ resource | session=%s | %s", session_id, context.message.uri)
             return await call_next(context)
 
@@ -103,7 +103,7 @@ class ToolExecutionMiddleware(Middleware):
         else:
             tool_args = {}
 
-        with session_scope_from_context(fastmcp_context) as session_id:
+        with session_scope_from_context(fastmcp_context, context.message) as session_id:
             logger.debug(
                 "CALL %s | session=%s | %s",
                 tool_name,

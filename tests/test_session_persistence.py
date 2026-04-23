@@ -17,7 +17,11 @@ from tests.conftest import call_tool
 def _enable_persistence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Enable persistence with a temp session file for the test."""
     session_file = tmp_path / "test_session.json"
-    monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: session_file)
+
+    def _fake_path(session_id: str | None = None) -> Path:
+        return session_file
+
+    monkeypatch.setattr("idfkit_mcp.state._session_file_path", _fake_path)
     state = get_state()
     state.persistence_enabled = True
     state._session_restored = False
@@ -167,7 +171,11 @@ class TestSaveSessionFailure:
         readonly_dir.mkdir()
         readonly_dir.chmod(0o444)
         bad_path = readonly_dir / "session.json"
-        monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: bad_path)
+
+        def _bad_path(session_id: str | None = None) -> Path:
+            return bad_path
+
+        monkeypatch.setattr("idfkit_mcp.state._session_file_path", _bad_path)
 
         state = get_state()
         state.persistence_enabled = True
@@ -185,7 +193,11 @@ class TestSaveSessionFailure:
 class TestPersistenceDisabled:
     def test_save_is_noop_when_disabled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         session_file = tmp_path / "should_not_exist.json"
-        monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: session_file)
+
+        def _fake_path(session_id: str | None = None) -> Path:
+            return session_file
+
+        monkeypatch.setattr("idfkit_mcp.state._session_file_path", _fake_path)
         state = get_state()
         # persistence_enabled is False (set by conftest)
         assert state.persistence_enabled is False
@@ -199,7 +211,11 @@ class TestPersistenceDisabled:
         session_file.write_text(
             json.dumps({"version": 1, "cwd": str(tmp_path), "updated_at": "2026-01-01T00:00:00+00:00"})
         )
-        monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: session_file)
+
+        def _fake_path(session_id: str | None = None) -> Path:
+            return session_file
+
+        monkeypatch.setattr("idfkit_mcp.state._session_file_path", _fake_path)
 
         state = get_state()
         state._session_restored = False
@@ -273,10 +289,95 @@ class TestNewModelNoSession:
         self, client: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         session_file = tmp_path / "session.json"
-        monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: session_file)
+
+        def _fake_path(session_id: str | None = None) -> Path:
+            return session_file
+
+        monkeypatch.setattr("idfkit_mcp.state._session_file_path", _fake_path)
         state = get_state()
         state.persistence_enabled = True
         state._session_restored = False
 
         await call_tool(client, "new_model")
         assert not session_file.exists()
+
+
+class TestIdentityBoundPersistence:
+    """Identity-bound sessions (``principal_…`` / ``openai_…``) re-enable disk persistence.
+
+    HTTP sessions keyed by ``mcp-session-id`` still skip persistence — the ID
+    rotates on reconnect (and per-call for ChatGPT's connector), so there's
+    nothing to restore to.
+
+    These tests call ``reset_sessions()`` then bind a session ID directly
+    (bypassing the autouse fixture's ``persistence_enabled = False`` override
+    on the default stdio session) so we see the default ``get_state()`` gate.
+    """
+
+    def test_stdio_session_persists(self) -> None:
+        from idfkit_mcp.state import (
+            _current_session_id,  # pyright: ignore[reportPrivateUsage]
+            get_state,
+            reset_sessions,
+        )
+
+        reset_sessions()
+        token = _current_session_id.set("stdio")
+        try:
+            assert get_state().persistence_enabled is True
+        finally:
+            _current_session_id.reset(token)
+
+    def test_openai_identity_session_persists(self) -> None:
+        from idfkit_mcp.state import (
+            _current_session_id,  # pyright: ignore[reportPrivateUsage]
+            get_state,
+            reset_sessions,
+        )
+
+        reset_sessions()
+        token = _current_session_id.set("openai_abc123def456")
+        try:
+            assert get_state().persistence_enabled is True
+        finally:
+            _current_session_id.reset(token)
+
+    def test_principal_session_persists(self) -> None:
+        from idfkit_mcp.state import (
+            _current_session_id,  # pyright: ignore[reportPrivateUsage]
+            get_state,
+            reset_sessions,
+        )
+
+        reset_sessions()
+        token = _current_session_id.set("principal_abc123def456")
+        try:
+            assert get_state().persistence_enabled is True
+        finally:
+            _current_session_id.reset(token)
+
+    def test_raw_mcp_session_does_not_persist(self) -> None:
+        """Rotating transport session IDs would pollute the cache; no persistence."""
+        from idfkit_mcp.state import (
+            _current_session_id,  # pyright: ignore[reportPrivateUsage]
+            get_state,
+            reset_sessions,
+        )
+
+        reset_sessions()
+        token = _current_session_id.set("7f8e9d6c-4b3a-2109")
+        try:
+            assert get_state().persistence_enabled is False
+        finally:
+            _current_session_id.reset(token)
+
+    def test_identity_bound_paths_differ_from_cwd_path(self) -> None:
+        """Two different openai sessions must get different cache files."""
+        from idfkit_mcp.state import _session_file_path  # pyright: ignore[reportPrivateUsage]
+
+        stdio_path = _session_file_path("stdio")
+        openai_a = _session_file_path("openai_aaa111")
+        openai_b = _session_file_path("openai_bbb222")
+
+        assert stdio_path != openai_a
+        assert openai_a != openai_b

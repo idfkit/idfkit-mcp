@@ -386,7 +386,11 @@ class TestSessionPersistenceIsCheap:
         )
 
         session_file = tmp_path / "session.json"
-        monkeypatch.setattr("idfkit_mcp.state._session_file_path", lambda: session_file)
+
+        def _fake_path(session_id: str | None = None) -> Path:
+            return session_file
+
+        monkeypatch.setattr("idfkit_mcp.state._session_file_path", _fake_path)
 
         state.save_session()
 
