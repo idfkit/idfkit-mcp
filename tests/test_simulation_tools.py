@@ -347,6 +347,71 @@ class TestExportTimeseries:
             )
 
 
+class TestSerializeSimulationErrors:
+    """Truncation flags must reflect when sample arrays drop messages."""
+
+    def _fake_msg(self, text: str) -> SimpleNamespace:
+        return SimpleNamespace(message=text, details=[])
+
+    def test_warnings_under_cap_no_truncation_flag(self) -> None:
+        from idfkit_mcp.tools.simulation import _serialize_simulation_errors
+
+        warnings_list = [self._fake_msg(f"W{i}") for i in range(3)]
+        errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=0,
+            warning_count=3,
+            has_fatal=False,
+            has_severe=False,
+            fatal=[],
+            severe=[],
+            warnings=warnings_list,
+        )
+        out = _serialize_simulation_errors(errors)
+        assert out["warnings"] == 3
+        assert len(out["warning_messages"]) == 3
+        assert out["warning_messages_truncated"] is False
+
+    def test_warnings_over_cap_sets_truncation_flag(self) -> None:
+        from idfkit_mcp.tools.simulation import _ERROR_MESSAGE_SAMPLE_CAP, _serialize_simulation_errors
+
+        warnings_list = [self._fake_msg(f"W{i}") for i in range(258)]
+        errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=0,
+            warning_count=258,
+            has_fatal=False,
+            has_severe=False,
+            fatal=[],
+            severe=[],
+            warnings=warnings_list,
+        )
+        out = _serialize_simulation_errors(errors)
+        # Total stays truthful at 258; sample is bounded; flag is set.
+        assert out["warnings"] == 258
+        assert len(out["warning_messages"]) == _ERROR_MESSAGE_SAMPLE_CAP
+        assert out["warning_messages_truncated"] is True
+
+    def test_severe_over_cap_sets_truncation_flag(self) -> None:
+        from idfkit_mcp.tools.simulation import _ERROR_MESSAGE_SAMPLE_CAP, _serialize_simulation_errors
+
+        severe_list = [self._fake_msg(f"S{i}") for i in range(15)]
+        errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=15,
+            warning_count=0,
+            has_fatal=False,
+            has_severe=True,
+            fatal=[],
+            severe=severe_list,
+            warnings=[],
+        )
+        out = _serialize_simulation_errors(errors)
+        assert out["severe"] == 15
+        assert len(out["severe_messages"]) == _ERROR_MESSAGE_SAMPLE_CAP
+        assert out["severe_messages_truncated"] is True
+
+
 class TestEnsureSqliteOutput:
     """Unit tests for _ensure_sqlite_output pre-flight function."""
 

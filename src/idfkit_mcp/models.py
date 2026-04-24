@@ -381,7 +381,14 @@ class ErrorMessage(BaseModel):
 
 
 class SimulationErrorDetail(BaseModel):
-    """Error summary from a simulation run."""
+    """Error summary from a simulation run.
+
+    ``severe_messages`` and ``warning_messages`` carry only a sample of
+    the underlying messages (the server caps the array to keep tool
+    responses small). The ``*_truncated`` flags tell consumers when more
+    messages exist beyond what's in the array, so a UI can render
+    "10 of 258 shown" instead of guessing.
+    """
 
     fatal: int
     severe: int
@@ -389,6 +396,8 @@ class SimulationErrorDetail(BaseModel):
     fatal_messages: list[ErrorMessage] | None = None
     severe_messages: list[ErrorMessage] | None = None
     warning_messages: list[ErrorMessage] | None = None
+    severe_messages_truncated: bool = False
+    warning_messages_truncated: bool = False
 
 
 class RunSimulationResult(BaseModel):
@@ -471,6 +480,11 @@ class GetResultsSummaryResult(BaseModel):
 
     Combines raw simulation output with structured QA diagnostics to drive the
     agent QA loop: simulate → read this resource → identify issues → fix → repeat.
+
+    ``severe_messages`` is sampled from the full set of severes; the
+    truncation flag tells consumers when more exist than are shown.
+    ``classified_warnings`` is *not* truncated — that's the canonical
+    full-warning view.
     """
 
     success: bool
@@ -479,6 +493,7 @@ class GetResultsSummaryResult(BaseModel):
     errors: ResultsErrorSummary
     fatal_messages: list[ErrorMessage] | None = None
     severe_messages: list[ErrorMessage] | None = None
+    severe_messages_truncated: bool = False
     # --- QA diagnostics (populated when SQL output is available) ---
     sql_available: bool = False
     unmet_hours: list[UnmetHoursRow] | None = None
