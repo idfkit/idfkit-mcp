@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
@@ -84,29 +85,96 @@ _ZONE_SUMMARY_AGGREGATE_ROWS = frozenset({
 """Aggregate row names in the EnergyPlus Zone Summary table that must be excluded from per-zone area lookups."""
 
 
-def _get_zone_areas(sql: Any) -> dict[str, float]:
-    """Return {zone_name: area_m2} from the InputVerification report."""
+@dataclass(frozen=True)
+class ZoneAreaInfo:
+    """Per-zone geometry metadata from the EnergyPlus Zone Summary table.
+
+    `area_m2` is the zone's own floor area (single instance). EnergyPlus's zone-level
+    peak results are reported without the multiplier applied, so `area_m2` is the
+    correct denominator for per-zone W/m² density.
+
+    Facility roll-ups must use `effective_area_m2` (area * multiplier), gated by
+    `part_of_total_area` -- matching how EnergyPlus computes "Total Facility" peaks.
+    """
+
+    area_m2: float
+    multiplier: int
+    part_of_total_area: bool
+
+    @property
+    def effective_area_m2(self) -> float:
+        """Area contribution to the building total, or 0 if excluded from facility rollup."""
+        return self.area_m2 * self.multiplier if self.part_of_total_area else 0.0
+
+
+def _get_zone_areas(sql: Any) -> dict[str, ZoneAreaInfo]:
+    """Return {zone_name: ZoneAreaInfo} from the InputVerification report.
+
+    Pulls Area, Multiplier, and "Part of Total Floor Area" in a single query so the
+    facility total correctly applies zone multipliers and only includes zones that
+    count toward the building floor area.
+    """
     rows = sql.get_tabular_data(
         report_name="InputVerificationandResultsSummary",
         table_name="Zone Summary",
-        column_name="Area",
     )
-    areas: dict[str, float] = {}
+
+    # Group columns by zone row
+    by_zone: dict[str, dict[str, str]] = {}
     for r in rows:
         key = r.row_name.upper()
         if key in _ZONE_SUMMARY_AGGREGATE_ROWS:
             continue
+        by_zone.setdefault(key, {})[r.column_name] = r.value
+
+    areas: dict[str, ZoneAreaInfo] = {}
+    for zone_key, cols in by_zone.items():
+        area_str = cols.get("Area")
+        if area_str is None:
+            continue
+        try:
+            area = float(area_str)
+        except (ValueError, TypeError):
+            continue
+
+        # EnergyPlus reports the combined (Zone.Multiplier * ZoneList.Multiplier)
+        # as "Multipliers" (plural) in this table. Fall back to "Multiplier" in case
+        # of older EnergyPlus versions that used the singular form.
+        multiplier = 1
         with contextlib.suppress(ValueError, TypeError):
-            areas[key] = float(r.value)
+            mult_str = cols.get("Multipliers") or cols.get("Multiplier")
+            if mult_str is not None:
+                multiplier = max(1, int(float(mult_str)))
+
+        # Zones with "Part of Total Floor Area = No" do not contribute to building totals.
+        # Default to True if the column is missing, to preserve behavior on older SQL outputs.
+        part_flag = (cols.get("Part of Total Floor Area") or "Yes").strip().upper()
+        part_of_total = part_flag != "NO"
+
+        areas[zone_key] = ZoneAreaInfo(
+            area_m2=area,
+            multiplier=multiplier,
+            part_of_total_area=part_of_total,
+        )
     return areas
+
+
+def _facility_total_area_m2(zone_areas: dict[str, ZoneAreaInfo]) -> float:
+    """Multiplier-weighted total floor area for the facility rollup."""
+    return sum(info.effective_area_m2 for info in zone_areas.values())
 
 
 def _parse_peak_components(
     sql: Any,
     table_name: str,
-    zone_areas: dict[str, float],
+    zone_areas: dict[str, ZoneAreaInfo],
 ) -> FacilityPeakSummary:
-    """Parse a Peak Cooling/Heating Sensible Heat Gain Components table."""
+    """Parse a Peak Cooling/Heating Sensible Heat Gain Components table.
+
+    EnergyPlus reports zone-level rows WITHOUT the multiplier applied, and the
+    "Total Facility" row WITH multipliers. Per-zone W/m² therefore uses the zone's
+    own area; facility W/m² uses the multiplier-weighted total.
+    """
     rows = sql.get_tabular_data(
         report_name="SensibleHeatGainSummary",
         table_name=table_name,
@@ -129,7 +197,8 @@ def _parse_peak_components(
 
         components = _extract_components(columns)
         peak_w = sum(abs(c.value_w) for c in components if c.value_w > 0)
-        area = zone_areas.get(zone_name.upper())
+        info = zone_areas.get(zone_name.upper())
+        area = info.area_m2 if info else None
 
         zones.append(
             ZonePeakLoad(
@@ -137,6 +206,7 @@ def _parse_peak_components(
                 peak_w=round(peak_w, 1),
                 peak_w_per_m2=round(peak_w / area, 1) if area and area > 0 else None,
                 floor_area_m2=round(area, 2) if area else None,
+                multiplier=info.multiplier if info else 1,
                 peak_timestamp=columns.get("Time of Peak {TIMESTAMP}"),
                 components=components,
             )
@@ -145,14 +215,19 @@ def _parse_peak_components(
     # Sort zones by peak descending
     zones.sort(key=lambda z: z.peak_w, reverse=True)
 
-    # Facility total
-    total_area = sum(zone_areas.values()) if zone_areas else 0
+    # Facility total — multiplier-weighted, matching the "Total Facility" peak's scope.
+    total_area = _facility_total_area_m2(zone_areas)
     if facility_data:
         fac_components = _extract_components(facility_data)
         fac_peak = sum(abs(c.value_w) for c in fac_components if c.value_w > 0)
     else:
+        # Fallback: reconstruct facility peak from zone rows using multipliers,
+        # since zone rows are per-instance.
         fac_components = []
-        fac_peak = sum(z.peak_w for z in zones)
+        fac_peak = sum(
+            z.peak_w * (zone_areas[z.zone_name.upper()].multiplier if z.zone_name.upper() in zone_areas else 1)
+            for z in zones
+        )
 
     fac_timestamp = facility_data.get("Time of Peak {TIMESTAMP}") if facility_data else None
 
@@ -191,8 +266,12 @@ def _extract_components(columns: dict[str, str]) -> list[PeakLoadComponent]:
     return components
 
 
-def _parse_sizing(sql: Any, table_name: str, zone_areas: dict[str, float]) -> list[DesignDaySizing]:
-    """Parse Zone Sensible Cooling/Heating sizing tables."""
+def _parse_sizing(sql: Any, table_name: str, zone_areas: dict[str, ZoneAreaInfo]) -> list[DesignDaySizing]:
+    """Parse Zone Sensible Cooling/Heating sizing tables.
+
+    Zone-level sizing loads are reported per-instance (no multiplier), so per-zone
+    W/m² uses the zone's raw area.
+    """
     rows = sql.get_tabular_data(report_name="HVACSizingSummary", table_name=table_name)
 
     by_zone: dict[str, dict[str, str]] = {}
@@ -204,7 +283,8 @@ def _parse_sizing(sql: Any, table_name: str, zone_areas: dict[str, float]) -> li
     for zone_name, cols in by_zone.items():
         calc_load = _safe_float(cols.get("Calculated Design Load"))
         user_load = _safe_float(cols.get("User Design Load"))
-        area = zone_areas.get(zone_name.upper())
+        info = zone_areas.get(zone_name.upper())
+        area = info.area_m2 if info else None
         load_per_m2 = None
         if user_load is not None and area and area > 0:
             load_per_m2 = round(user_load / area, 1)
@@ -358,7 +438,7 @@ def build_peak_load_analysis() -> PeakLoadAnalysisResult:
 
     with _open_sql(result) as sql:
         zone_areas = _get_zone_areas(sql)
-        total_area = sum(zone_areas.values())
+        total_area = _facility_total_area_m2(zone_areas)
 
         cooling = _parse_peak_components(sql, "Peak Cooling Sensible Heat Gain Components", zone_areas)
         heating = _parse_peak_components(sql, "Peak Heating Sensible Heat Gain Components", zone_areas)
