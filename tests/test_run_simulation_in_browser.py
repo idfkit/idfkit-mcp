@@ -109,6 +109,25 @@ class TestRunSimulationInBrowser:
         with pytest.raises(ToolError, match="Could not read"):
             await call_tool(client, "run_simulation_in_browser", {"weather_file": missing})
 
+    async def test_handoff_includes_wasm_candidates_from_disk(
+        self, client: Any, state_with_model: ServerState, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The iframe gets the concrete WASM filenames found on disk so a
+        version bump never requires iframe code changes."""
+        (tmp_path / "energyplus.js").write_text("// fake glue\n")
+        (tmp_path / "energyplus.js-27.0.wasm").write_bytes(b"\x00asm")
+        (tmp_path / "energyplus.wasm").write_bytes(b"\x00asm")
+        monkeypatch.setenv("IDFKIT_MCP_ENERGYPLUS_DIR", str(tmp_path))
+
+        raw = await client.call_tool("run_simulation_in_browser", {"design_day": True})
+        browser_run = (raw.meta or {})["browser_run"]
+        candidates = browser_run["wasm_candidates"]
+        assert "energyplus.js-27.0.wasm" in candidates
+        assert "energyplus.wasm" in candidates
+        # Versioned candidate must come before the unversioned fallback so
+        # the iframe tries the specific bundle first.
+        assert candidates.index("energyplus.js-27.0.wasm") < candidates.index("energyplus.wasm")
+
 
 class TestSimulatorUIResource:
     async def test_simulator_html_resource_is_registered(self, client: Any) -> None:
@@ -202,6 +221,33 @@ class TestFetchEnergyPlusAsset:
         monkeypatch.setenv("IDFKIT_MCP_ENERGYPLUS_DIR", str(tmp_path))
         with pytest.raises(ToolError, match="WASM assets are not installed"):
             await call_tool(client, "fetch_energyplus_asset", {"filename": "Energy+.idd"})
+
+    async def test_allowlist_reflects_installed_files_including_future_versions(
+        self, client: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A new envelop bundle with a different .wasm filename must be fetchable
+        without editing the allowlist — the scan picks it up from disk."""
+        (tmp_path / "energyplus.js").write_text("// fake glue\n")
+        # Simulate a future EnergyPlus bump shipping a new .wasm filename.
+        future_wasm = b"\x00asm future"
+        (tmp_path / "energyplus.js-99.9.wasm").write_bytes(future_wasm)
+        monkeypatch.setenv("IDFKIT_MCP_ENERGYPLUS_DIR", str(tmp_path))
+
+        result = await call_tool(client, "fetch_energyplus_asset", {"filename": "energyplus.js-99.9.wasm"})
+        assert isinstance(result, dict)
+        assert base64.b64decode(result["content_base64"]) == future_wasm
+
+    async def test_allowlist_rejects_files_outside_glob_patterns(
+        self, client: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A file that happens to sit in the assets dir but isn't covered by
+        any allowed glob must be refused — the glob list is the security
+        boundary, not the filesystem contents."""
+        (tmp_path / "energyplus.js").write_text("// fake glue\n")
+        (tmp_path / "secret.config").write_text("x=1")
+        monkeypatch.setenv("IDFKIT_MCP_ENERGYPLUS_DIR", str(tmp_path))
+        with pytest.raises(ToolError, match="allowlist"):
+            await call_tool(client, "fetch_energyplus_asset", {"filename": "secret.config"})
 
 
 class TestEnergyPlusAssetRoute:

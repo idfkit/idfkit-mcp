@@ -366,18 +366,18 @@ async def run_simulation(
         return ToolResult(structured_content=structured, meta={"billing": billing})  # type: ignore[return-value]
 
 
-# Filenames the simulator iframe is allowed to fetch via fetch_energyplus_asset.
-# Kept aligned with what's under envelop/public/energyplus/ and with what
-# simulator_viewer.py's iframe requests. No traversal: substring-matched
-# exactly against this set before touching the filesystem.
-_ENERGYPLUS_ASSET_ALLOWLIST = frozenset({
+# Filename patterns the simulator iframe is allowed to fetch via
+# fetch_energyplus_asset. The concrete allowlist is built at call time from
+# the contents of the installed assets directory, so a new envelop bundle
+# (e.g. EnergyPlus 27.x with a different .wasm filename) "just works"
+# without touching this file. Kept deliberately narrow to preserve the
+# attack-surface guarantee.
+_ALLOWED_ASSET_GLOBS: tuple[str, ...] = (
     "energyplus.js",
-    "energyplus.wasm",
-    "energyplus.js-26.1.wasm",
+    "energyplus*.wasm",  # covers energyplus.wasm AND energyplus.js-<ver>.wasm
     "Energy+.idd",
-    "datasets/FluidPropertiesRefData.idf",
-    "datasets/GlycolPropertiesRefData.idf",
-})
+    "datasets/*.idf",
+)
 
 
 def _resolve_energyplus_assets_dir() -> Any:
@@ -390,6 +390,33 @@ def _resolve_energyplus_assets_dir() -> Any:
         Path(override).resolve()
         if override
         else Path(str(importlib_files("idfkit_mcp") / "assets" / "energyplus")).resolve()
+    )
+
+
+def _allowed_energyplus_assets() -> frozenset[str]:
+    """Return the current allowlist by scanning the installed assets dir.
+
+    Rebuilt on every call so a post-deploy sync picks up automatically;
+    the directory is tiny (< 20 entries) and this isn't a hot path.
+    """
+    base = _resolve_energyplus_assets_dir()
+    if not base.is_dir():
+        return frozenset()
+    allowed: set[str] = set()
+    for pattern in _ALLOWED_ASSET_GLOBS:
+        for path in base.glob(pattern):
+            if path.is_file():
+                allowed.add(path.relative_to(base).as_posix())
+    return frozenset(allowed)
+
+
+def _wasm_binary_candidates() -> list[str]:
+    """Return WASM binary filenames ordered by specificity (versioned first)."""
+    # Versioned variants first so the iframe tries the specific bundle
+    # before falling back to the unversioned alias.
+    return sorted(
+        (name for name in _allowed_energyplus_assets() if name.endswith(".wasm")),
+        key=lambda n: (n == "energyplus.wasm", n),
     )
 
 
@@ -442,14 +469,15 @@ def fetch_energyplus_asset(
     """
     import base64
 
-    if filename not in _ENERGYPLUS_ASSET_ALLOWLIST:
-        raise ToolError(f"Asset {filename!r} is not in the allowlist. Allowed: {sorted(_ENERGYPLUS_ASSET_ALLOWLIST)}")
     base = _resolve_energyplus_assets_dir()
     if not base.is_dir() or not (base / "energyplus.js").is_file():
         raise ToolError(
             "EnergyPlus WASM assets are not installed on the server. "
             "Run `make sync-wasm-assets` or set IDFKIT_MCP_ENERGYPLUS_DIR."
         )
+    allowed = _allowed_energyplus_assets()
+    if filename not in allowed:
+        raise ToolError(f"Asset {filename!r} is not in the allowlist. Allowed: {sorted(allowed)}")
     # Resolve and re-validate against base to defend against any future
     # allowlist drift that might permit a traversal-shaped filename.
     requested = (base / filename).resolve()
@@ -568,6 +596,9 @@ async def run_simulation_in_browser(
         "upload_tool_name": "upload_simulation_result",
         "asset_tool_name": "fetch_energyplus_asset",
         "allowed_output_filenames": sorted(_UPLOAD_ALLOWED_FILENAMES),
+        # Computed server-side from the installed bundle so a new envelop
+        # build with a different WASM filename works without iframe edits.
+        "wasm_candidates": _wasm_binary_candidates(),
     }
 
     logger.info(

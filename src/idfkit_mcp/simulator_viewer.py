@@ -218,10 +218,17 @@ function mbStr(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1);
 }
 
-const WASM_CANDIDATE_NAMES = ['energyplus.js-26.1.wasm', 'energyplus.wasm'];
-async function fetchWasmBinary(onProgress) {
+// Fallback candidate list used only if the server-provided payload omits
+// wasm_candidates (older handoff shape). Keep in sync opportunistically
+// but the server-side scan is the source of truth.
+const WASM_CANDIDATE_FALLBACK = ['energyplus.js-26.1.wasm', 'energyplus.wasm'];
+
+async function fetchWasmBinary(candidates, onProgress) {
+  const names = (Array.isArray(candidates) && candidates.length > 0)
+    ? candidates
+    : WASM_CANDIDATE_FALLBACK;
   let lastErr = null;
-  for (const name of WASM_CANDIDATE_NAMES) {
+  for (const name of names) {
     try {
       log('Requesting ' + name);
       const bytes = await fetchAssetViaMcp(name, onProgress);
@@ -235,12 +242,12 @@ async function fetchWasmBinary(onProgress) {
   throw lastErr || new Error('No WASM binary could be fetched');
 }
 
-async function loadWasmModule() {
+async function loadWasmModule(wasmCandidates) {
   setStatus('Fetching EnergyPlus WASM binary…', null);
   setProgress(5, 'fetching wasm');
 
   // WASM download maps to the 5%-13% band; each chunk updates the bar.
-  const wasmBinary = await fetchWasmBinary((got, total) => {
+  const wasmBinary = await fetchWasmBinary(wasmCandidates, (got, total) => {
     if (total > 0) {
       const frac = got / total;
       setProgress(5 + frac * 8, mbStr(got) + ' / ' + mbStr(total) + ' MB');
@@ -351,7 +358,7 @@ async function runSimulation(payload) {
   setProgress(2, 'starting');
 
   try {
-    const mod = await loadWasmModule();
+    const mod = await loadWasmModule(payload.wasm_candidates);
     await loadRequiredDataFiles(mod);
 
     setProgress(28, 'writing inputs');
