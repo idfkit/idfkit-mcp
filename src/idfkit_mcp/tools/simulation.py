@@ -119,13 +119,6 @@ def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | N
     )
 
 
-# Cap on the number of severe / warning sample messages embedded directly in
-# tool responses. Keeps payloads small for noisy simulations; the *_truncated
-# flags on the response model communicate when more messages exist than are
-# shown so UIs can render "10 of 258 shown" without inferring the cap.
-_ERROR_MESSAGE_SAMPLE_CAP = 10
-
-
 def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
     """Serialize simulation error counts and representative messages."""
     error_detail: dict[str, Any] = {
@@ -137,14 +130,12 @@ def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
         error_detail["fatal_messages"] = [{"message": m.message, "details": list(m.details)} for m in errors.fatal]
     if errors.has_severe:
         error_detail["severe_messages"] = [
-            {"message": m.message, "details": list(m.details)} for m in errors.severe[:_ERROR_MESSAGE_SAMPLE_CAP]
+            {"message": m.message, "details": list(m.details)} for m in errors.severe[:10]
         ]
-        error_detail["severe_messages_truncated"] = errors.severe_count > _ERROR_MESSAGE_SAMPLE_CAP
     if errors.warning_count > 0:
         error_detail["warning_messages"] = [
-            {"message": m.message, "details": list(m.details)} for m in errors.warnings[:_ERROR_MESSAGE_SAMPLE_CAP]
+            {"message": m.message, "details": list(m.details)} for m in errors.warnings[:10]
         ]
-        error_detail["warning_messages_truncated"] = errors.warning_count > _ERROR_MESSAGE_SAMPLE_CAP
     return error_detail
 
 
@@ -993,10 +984,7 @@ def get_results_summary() -> GetResultsSummaryResult:
 
     errors = result.errors
     fatal_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.fatal]
-    severe_msgs = [
-        {"message": m.message, "details": list(m.details)} for m in errors.severe[:_ERROR_MESSAGE_SAMPLE_CAP]
-    ]
-    severe_truncated = errors.severe_count > _ERROR_MESSAGE_SAMPLE_CAP
+    severe_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.severe[:10]]
 
     classified = _classify_warnings(errors)
 
@@ -1041,7 +1029,6 @@ def get_results_summary() -> GetResultsSummaryResult:
         },
         "fatal_messages": fatal_msgs if fatal_msgs else None,
         "severe_messages": severe_msgs if severe_msgs else None,
-        "severe_messages_truncated": severe_truncated,
         "sql_available": sql_available,
         "unmet_hours": [u.model_dump() for u in unmet_hours] if sql_available else None,
         "total_unmet_heating_hours": total_unmet_heating if sql_available else None,
