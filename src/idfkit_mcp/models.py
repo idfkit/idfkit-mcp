@@ -600,6 +600,7 @@ class ZonePeakLoad(BaseModel):
     peak_w: float
     peak_w_per_m2: float | None = None
     floor_area_m2: float | None = None
+    multiplier: int = 1
     peak_timestamp: str | None = None
     components: list[PeakLoadComponent] = []
 
