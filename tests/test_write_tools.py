@@ -91,7 +91,12 @@ class TestAddObject:
             )
 
     async def test_extensible_array_form_succeeds(self, client: object, state_with_model: ServerState) -> None:
-        """The correct vertices-array shape must be accepted and round-trip."""
+        """The vertices-array shape must be normalized to the flat numbered shape.
+
+        idfkit's IDF writer serializes the canonical flat shape; passing the
+        epJSON array straight through produces malformed IDF text. Our layer
+        accepts the agent-friendly array form and expands it.
+        """
         result = await call_tool(
             client,
             "add_object",
@@ -112,8 +117,11 @@ class TestAddObject:
             },
         )
         assert result["name"] == "WallB"
-        assert isinstance(result["vertices"], list)
-        assert len(result["vertices"]) == 3
+        # Normalized to flat numbered keys for idfkit's IDF writer.
+        assert result["vertex_x_coordinate"] == 0
+        assert result["vertex_x_coordinate_2"] == 1
+        assert result["vertex_x_coordinate_3"] == 1
+        assert result.get("vertices") is None
 
 
 class TestBatchAddObjects:

@@ -23,6 +23,7 @@ from idfkit_mcp.models import (
     SaveModelResult,
 )
 from idfkit_mcp.serializers import (
+    expand_extensible_array,
     find_flat_extensible_fields,
     get_extensible_group_info,
     serialize_object,
@@ -36,25 +37,27 @@ _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempot
 _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-def _check_extensible_shape(schema: EpJSONSchema, object_type: str, fields: dict[str, Any]) -> None:
-    """Raise if extensible inner fields were passed at the top level.
+def _normalize_extensible_fields(schema: EpJSONSchema, object_type: str, fields: dict[str, Any]) -> dict[str, Any]:
+    """Validate and normalize an extensible object's fields.
 
-    Extensible objects (e.g. ``BuildingSurface:Detailed``) require items under
-    an array wrapper key (``vertices``). Passing flat ``vertex_x_coordinate``
-    style fields silently stores only the first item, producing a malformed
-    object that fails much later at simulation time. This guard nudges agents
-    to the correct shape with a copy-pasteable example.
+    - When the wrapper-key array is passed (e.g. ``vertices=[{...}, ...]``,
+      the canonical epJSON shape), expand it into the flat numbered shape
+      idfkit's IDF writer expects. Without this, ``write_idf`` would dump
+      ``repr(dict)`` into the IDF text.
+    - When the wrapper key is missing but flat extensible inner fields appear
+      (e.g. ``vertex_x_coordinate=0`` alone), raise a ``ToolError`` with the
+      correct shape — that mistake silently stores a single item.
     """
     if object_type not in schema.object_types:
-        return
+        return fields
     wrapper_key, item_field_names = get_extensible_group_info(schema, object_type)
     if not wrapper_key or not item_field_names:
-        return
+        return fields
     if wrapper_key in fields:
-        return
+        return expand_extensible_array(wrapper_key, item_field_names, fields)
     flat = find_flat_extensible_fields(item_field_names, fields)
     if not flat:
-        return
+        return fields
     example_item = dict.fromkeys(item_field_names, 0.0)
     raise ToolError(
         f"'{object_type}' is extensible — pass items under the '{wrapper_key}' "
@@ -97,7 +100,7 @@ def add_object(
     state = get_state()
     doc = state.require_model()
     kwargs = fields or {}
-    _check_extensible_shape(state.require_schema(), object_type, kwargs)
+    kwargs = _normalize_extensible_fields(state.require_schema(), object_type, kwargs)
     obj = doc.add(object_type, name, **kwargs)
     logger.info("Added %s %r", object_type, name)
     logger.debug("add_object fields: %s", kwargs)
@@ -127,7 +130,7 @@ def batch_add_objects(
 
             obj_name: str = spec.get("name", "")
             obj_fields: dict[str, Any] = spec.get("fields") or {}
-            _check_extensible_shape(schema, obj_type, obj_fields)
+            obj_fields = _normalize_extensible_fields(schema, obj_type, obj_fields)
             obj = doc.add(obj_type, obj_name, **obj_fields)
             results.append({"index": i, **serialize_object(obj, brief=True)})
             success_count += 1

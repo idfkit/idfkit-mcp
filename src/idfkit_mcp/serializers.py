@@ -150,6 +150,32 @@ def find_flat_extensible_fields(item_field_names: list[str], fields: dict[str, A
     return flat
 
 
+def expand_extensible_array(wrapper_key: str, item_field_names: list[str], fields: dict[str, Any]) -> dict[str, Any]:
+    """Expand ``{wrapper_key: [{...}, ...]}`` into flat numbered fields.
+
+    idfkit's IDF writer serializes the canonical flat shape (first item with
+    no suffix, subsequent items with ``_2``, ``_3`` suffixes). The epJSON
+    schema instead uses an array under *wrapper_key*. We accept the schema
+    shape from agents and normalize to the flat shape so both ``write_idf``
+    and ``write_epjson`` produce well-formed output.
+    """
+    raw_items = fields.get(wrapper_key)
+    if not isinstance(raw_items, list):
+        return fields
+    items = cast("list[Any]", raw_items)
+    expanded = {k: v for k, v in fields.items() if k != wrapper_key}
+    for idx, raw_item in enumerate(items, start=1):
+        if not isinstance(raw_item, dict):
+            continue
+        item = cast("dict[str, Any]", raw_item)
+        for fname in item_field_names:
+            if fname not in item:
+                continue
+            key = fname if idx == 1 else f"{fname}_{idx}"
+            expanded[key] = item[fname]
+    return expanded
+
+
 def _example_item(item_fields: list[dict[str, Any]]) -> dict[str, Any]:
     """Build a one-item example payload for an extensible group."""
     example: dict[str, Any] = {}
