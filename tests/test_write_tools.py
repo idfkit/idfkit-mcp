@@ -46,6 +46,75 @@ class TestAddObject:
         with pytest.raises(ToolError):
             await call_tool(client, "add_object", {"object_type": "Zone", "name": "Test"})
 
+    async def test_extensible_flat_fields_blocked(self, client: object, state_with_model: ServerState) -> None:
+        """Passing flat vertex_* fields instead of a vertices array must raise."""
+        with pytest.raises(ToolError, match="vertices"):
+            await call_tool(
+                client,
+                "add_object",
+                {
+                    "object_type": "BuildingSurface:Detailed",
+                    "name": "WallA",
+                    "fields": {
+                        "surface_type": "Wall",
+                        "construction_name": "C1",
+                        "zone_name": "Z1",
+                        "outside_boundary_condition": "Outdoors",
+                        "vertex_x_coordinate": 0,
+                        "vertex_y_coordinate": 0,
+                        "vertex_z_coordinate": 0,
+                    },
+                },
+            )
+
+    async def test_extensible_numbered_legacy_fields_blocked(
+        self, client: object, state_with_model: ServerState
+    ) -> None:
+        """Legacy IDD-style numbered fields (vertex_1_x_coordinate) must also raise."""
+        with pytest.raises(ToolError, match="vertices"):
+            await call_tool(
+                client,
+                "add_object",
+                {
+                    "object_type": "BuildingSurface:Detailed",
+                    "name": "WallA",
+                    "fields": {
+                        "surface_type": "Wall",
+                        "construction_name": "C1",
+                        "zone_name": "Z1",
+                        "outside_boundary_condition": "Outdoors",
+                        "vertex_1_x_coordinate": 0,
+                        "vertex_1_y_coordinate": 0,
+                        "vertex_1_z_coordinate": 0,
+                    },
+                },
+            )
+
+    async def test_extensible_array_form_succeeds(self, client: object, state_with_model: ServerState) -> None:
+        """The correct vertices-array shape must be accepted and round-trip."""
+        result = await call_tool(
+            client,
+            "add_object",
+            {
+                "object_type": "BuildingSurface:Detailed",
+                "name": "WallB",
+                "fields": {
+                    "surface_type": "Wall",
+                    "construction_name": "C1",
+                    "zone_name": "Z1",
+                    "outside_boundary_condition": "Outdoors",
+                    "vertices": [
+                        {"vertex_x_coordinate": 0, "vertex_y_coordinate": 0, "vertex_z_coordinate": 0},
+                        {"vertex_x_coordinate": 1, "vertex_y_coordinate": 0, "vertex_z_coordinate": 0},
+                        {"vertex_x_coordinate": 1, "vertex_y_coordinate": 0, "vertex_z_coordinate": 1},
+                    ],
+                },
+            },
+        )
+        assert result["name"] == "WallB"
+        assert isinstance(result["vertices"], list)
+        assert len(result["vertices"]) == 3
+
 
 class TestBatchAddObjects:
     async def test_batch_add(self, client: object, state_with_model: ServerState) -> None:

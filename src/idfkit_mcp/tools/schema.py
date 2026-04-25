@@ -38,7 +38,7 @@ def _cached_describe(obj_type: str, schema_id: int) -> dict[str, object]:
     if id(schema) != schema_id:
         schema = _gs().get_or_load_schema(None)
     desc = _describe(schema, obj_type)
-    return serialize_object_description(desc)
+    return serialize_object_description(desc, schema=schema)
 
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
