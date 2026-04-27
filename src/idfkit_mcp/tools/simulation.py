@@ -162,7 +162,7 @@ def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
     if "Output:Table:SummaryReports" not in doc:
         doc.add(
             "Output:Table:SummaryReports",
-            data={
+            fields={
                 f"report_name{'_' + str(i) if i > 1 else ''}": name
                 for i, name in enumerate(sorted(_REQUIRED_SUMMARY_REPORTS), 1)
             },

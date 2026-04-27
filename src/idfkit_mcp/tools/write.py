@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
-
-if TYPE_CHECKING:
-    from idfkit.schema import EpJSONSchema
 
 from idfkit_mcp.models import (
     BatchAddResult,
@@ -22,12 +19,7 @@ from idfkit_mcp.models import (
     RenameObjectResult,
     SaveModelResult,
 )
-from idfkit_mcp.serializers import (
-    expand_extensible_array,
-    find_flat_extensible_fields,
-    get_extensible_group_info,
-    serialize_object,
-)
+from idfkit_mcp.serializers import serialize_object
 from idfkit_mcp.state import get_state
 
 logger = logging.getLogger(__name__)
@@ -35,36 +27,6 @@ logger = logging.getLogger(__name__)
 _MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
 _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
-
-
-def _normalize_extensible_fields(schema: EpJSONSchema, object_type: str, fields: dict[str, Any]) -> dict[str, Any]:
-    """Validate and normalize an extensible object's fields.
-
-    - When the wrapper-key array is passed (e.g. ``vertices=[{...}, ...]``,
-      the canonical epJSON shape), expand it into the flat numbered shape
-      idfkit's IDF writer expects. Without this, ``write_idf`` would dump
-      ``repr(dict)`` into the IDF text.
-    - When the wrapper key is missing but flat extensible inner fields appear
-      (e.g. ``vertex_x_coordinate=0`` alone), raise a ``ToolError`` with the
-      correct shape — that mistake silently stores a single item.
-    """
-    if object_type not in schema.object_types:
-        return fields
-    wrapper_key, item_field_names = get_extensible_group_info(schema, object_type)
-    if not wrapper_key or not item_field_names:
-        return fields
-    if wrapper_key in fields:
-        return expand_extensible_array(wrapper_key, item_field_names, fields)
-    flat = find_flat_extensible_fields(item_field_names, fields)
-    if not flat:
-        return fields
-    example_item = dict.fromkeys(item_field_names, 0.0)
-    raise ToolError(
-        f"'{object_type}' is extensible — pass items under the '{wrapper_key}' "
-        f"key as an array, not as flat fields {flat!r}. Example: "
-        f'"{wrapper_key}": [{example_item!r}, {example_item!r}, {example_item!r}]. '
-        f"Call describe_object_type for the full extensible_group spec."
-    )
 
 
 @tool(annotations=_MUTATE)
@@ -100,7 +62,6 @@ def add_object(
     state = get_state()
     doc = state.require_model()
     kwargs = fields or {}
-    kwargs = _normalize_extensible_fields(state.require_schema(), object_type, kwargs)
     obj = doc.add(object_type, name, **kwargs)
     logger.info("Added %s %r", object_type, name)
     logger.debug("add_object fields: %s", kwargs)
@@ -114,7 +75,6 @@ def batch_add_objects(
     """Add multiple objects in one call. Continues on errors."""
     state = get_state()
     doc = state.require_model()
-    schema = state.require_schema()
 
     results: list[dict[str, object]] = []
     success_count = 0
@@ -130,7 +90,6 @@ def batch_add_objects(
 
             obj_name: str = spec.get("name", "")
             obj_fields: dict[str, Any] = spec.get("fields") or {}
-            obj_fields = _normalize_extensible_fields(schema, obj_type, obj_fields)
             obj = doc.add(obj_type, obj_name, **obj_fields)
             results.append({"index": i, **serialize_object(obj, brief=True)})
             success_count += 1

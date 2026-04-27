@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import re
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from idfkit.introspection import FieldDescription, ObjectDescription
@@ -11,14 +10,6 @@ if TYPE_CHECKING:
     from idfkit.schema import EpJSONSchema
     from idfkit.validation import ValidationError, ValidationResult
     from idfkit.weather.station import WeatherStation
-
-
-# A trailing "_<digit>" or an inner "_<digit>_" segment indicates a numbered
-# variant of an extensible inner field (e.g. "vertex_x_coordinate_2",
-# "vertex_1_x_coordinate"). Used when matching agent-supplied flat keys against
-# the canonical extensible-group inner field names.
-_NUMBERED_SUFFIX = re.compile(r"_\d+$")
-_NUMBERED_INFIX = re.compile(r"_\d+_")
 
 
 def serialize_object(obj: IDFObject, schema: EpJSONSchema | None = None, brief: bool = False) -> dict[str, Any]:
@@ -106,74 +97,11 @@ def get_extensible_group_info(schema: EpJSONSchema, obj_type: str) -> tuple[str 
 
     *wrapper_key* is the name of the epJSON array property that holds repeated
     items (e.g. ``"vertices"`` for ``BuildingSurface:Detailed``). It is ``None``
-    if the object is not extensible or no matching array property is found.
+    if the object is not extensible.
     """
-    if not schema.is_extensible(obj_type):
-        return None, []
+    wrapper_key = schema.get_extensible_wrapper_key(obj_type)
     item_fields = list(schema.get_extensible_field_names(obj_type))
-    obj_schema: dict[str, Any] = schema.get_object_schema(obj_type) or {}
-    item_set = set(item_fields)
-    pattern_props: dict[str, Any] = obj_schema.get("patternProperties") or {}
-    for raw_pat in pattern_props.values():
-        pat_val = cast("dict[str, Any]", raw_pat) if isinstance(raw_pat, dict) else None
-        if pat_val is None:
-            continue
-        props: dict[str, Any] = pat_val.get("properties") or {}
-        for prop_name, raw_def in props.items():
-            prop_def = cast("dict[str, Any]", raw_def) if isinstance(raw_def, dict) else None
-            if prop_def is None or prop_def.get("type") != "array":
-                continue
-            items: dict[str, Any] = prop_def.get("items") or {}
-            inner_props: dict[str, Any] = items.get("properties") or {}
-            if set(inner_props.keys()) == item_set:
-                return prop_name, item_fields
-    return None, item_fields
-
-
-def find_flat_extensible_fields(item_field_names: list[str], fields: dict[str, Any]) -> list[str]:
-    """Return field keys that look like extensible inner fields passed at the top level.
-
-    Matches the canonical inner names plus common numbered variants
-    (``vertex_x_coordinate_2``, ``vertex_1_x_coordinate``).
-    """
-    inner_set = set(item_field_names)
-    flat: list[str] = []
-    for key in fields:
-        if key in inner_set:
-            flat.append(key)
-            continue
-        if _NUMBERED_SUFFIX.sub("", key) in inner_set:
-            flat.append(key)
-            continue
-        if _NUMBERED_INFIX.sub("_", key) in inner_set:
-            flat.append(key)
-    return flat
-
-
-def expand_extensible_array(wrapper_key: str, item_field_names: list[str], fields: dict[str, Any]) -> dict[str, Any]:
-    """Expand ``{wrapper_key: [{...}, ...]}`` into flat numbered fields.
-
-    idfkit's IDF writer serializes the canonical flat shape (first item with
-    no suffix, subsequent items with ``_2``, ``_3`` suffixes). The epJSON
-    schema instead uses an array under *wrapper_key*. We accept the schema
-    shape from agents and normalize to the flat shape so both ``write_idf``
-    and ``write_epjson`` produce well-formed output.
-    """
-    raw_items = fields.get(wrapper_key)
-    if not isinstance(raw_items, list):
-        return fields
-    items = cast("list[Any]", raw_items)
-    expanded = {k: v for k, v in fields.items() if k != wrapper_key}
-    for idx, raw_item in enumerate(items, start=1):
-        if not isinstance(raw_item, dict):
-            continue
-        item = cast("dict[str, Any]", raw_item)
-        for fname in item_field_names:
-            if fname not in item:
-                continue
-            key = fname if idx == 1 else f"{fname}_{idx}"
-            expanded[key] = item[fname]
-    return expanded
+    return wrapper_key, item_fields
 
 
 def _example_item(item_fields: list[dict[str, Any]]) -> dict[str, Any]:

@@ -46,57 +46,8 @@ class TestAddObject:
         with pytest.raises(ToolError):
             await call_tool(client, "add_object", {"object_type": "Zone", "name": "Test"})
 
-    async def test_extensible_flat_fields_blocked(self, client: object, state_with_model: ServerState) -> None:
-        """Passing flat vertex_* fields instead of a vertices array must raise."""
-        with pytest.raises(ToolError, match="vertices"):
-            await call_tool(
-                client,
-                "add_object",
-                {
-                    "object_type": "BuildingSurface:Detailed",
-                    "name": "WallA",
-                    "fields": {
-                        "surface_type": "Wall",
-                        "construction_name": "C1",
-                        "zone_name": "Z1",
-                        "outside_boundary_condition": "Outdoors",
-                        "vertex_x_coordinate": 0,
-                        "vertex_y_coordinate": 0,
-                        "vertex_z_coordinate": 0,
-                    },
-                },
-            )
-
-    async def test_extensible_numbered_legacy_fields_blocked(
-        self, client: object, state_with_model: ServerState
-    ) -> None:
-        """Legacy IDD-style numbered fields (vertex_1_x_coordinate) must also raise."""
-        with pytest.raises(ToolError, match="vertices"):
-            await call_tool(
-                client,
-                "add_object",
-                {
-                    "object_type": "BuildingSurface:Detailed",
-                    "name": "WallA",
-                    "fields": {
-                        "surface_type": "Wall",
-                        "construction_name": "C1",
-                        "zone_name": "Z1",
-                        "outside_boundary_condition": "Outdoors",
-                        "vertex_1_x_coordinate": 0,
-                        "vertex_1_y_coordinate": 0,
-                        "vertex_1_z_coordinate": 0,
-                    },
-                },
-            )
-
     async def test_extensible_array_form_succeeds(self, client: object, state_with_model: ServerState) -> None:
-        """The vertices-array shape must be normalized to the flat numbered shape.
-
-        idfkit's IDF writer serializes the canonical flat shape; passing the
-        epJSON array straight through produces malformed IDF text. Our layer
-        accepts the agent-friendly array form and expands it.
-        """
+        """The vertices-array shape must be stored canonically and round-trip through write_idf."""
         result = await call_tool(
             client,
             "add_object",
@@ -117,11 +68,10 @@ class TestAddObject:
             },
         )
         assert result["name"] == "WallB"
-        # Normalized to flat numbered keys for idfkit's IDF writer.
-        assert result["vertex_x_coordinate"] == 0
-        assert result["vertex_x_coordinate_2"] == 1
-        assert result["vertex_x_coordinate_3"] == 1
-        assert result.get("vertices") is None
+        # idfkit 0.10+ stores extensible groups canonically as a list of dicts.
+        assert isinstance(result["vertices"], list)
+        assert len(result["vertices"]) == 3
+        assert result["vertices"][1]["vertex_x_coordinate"] == 1
 
 
 class TestBatchAddObjects:
