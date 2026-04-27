@@ -73,8 +73,13 @@ def serialize_object_description(desc: ObjectDescription, schema: EpJSONSchema |
                 "item_fields": item_fields,
                 "example": {wrapper_key: [_example_item(item_fields) for _ in range(3)]},
                 "note": (
-                    f"Pass an array under '{wrapper_key}'. Each item contains "
-                    f"{', '.join(item_field_names)}. Repeat the item for each entry."
+                    f"REQUIRED shape: pass repeated entries as an array under "
+                    f"'{wrapper_key}'. Each item is an object with "
+                    f"{', '.join(item_field_names)}. Do NOT flatten the items "
+                    f"into top-level keys (e.g. '{item_field_names[0]}_2', "
+                    f"'{item_field_names[0]}_3'); flat keys may appear to work "
+                    f"but bypass the structured shape this tool returns and the "
+                    f"shape used by validate_model and the simulation engine."
                 ),
             }
 
