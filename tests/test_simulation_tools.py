@@ -416,7 +416,7 @@ class TestEnsureSummaryReports:
         from idfkit_mcp.tools.simulation import _ensure_summary_reports
 
         doc = state_with_model.require_model()
-        doc.add("Output:Table:SummaryReports", data={"report_name": "AnnualBuildingUtilityPerformanceSummary"})
+        doc.add("Output:Table:SummaryReports", fields={"report_name": "AnnualBuildingUtilityPerformanceSummary"})
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         # Original report preserved
@@ -439,7 +439,7 @@ class TestEnsureSummaryReports:
         from idfkit_mcp.tools.simulation import _ensure_summary_reports
 
         doc = state_with_model.require_model()
-        doc.add("Output:Table:SummaryReports", data={"report_name": "AllSummary"})
+        doc.add("Output:Table:SummaryReports", fields={"report_name": "AllSummary"})
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         # Should not append anything — AllSummary covers everything
@@ -455,7 +455,7 @@ class TestEnsureSummaryReports:
         data: dict[str, str] = {}
         for i, name in enumerate(_REQUIRED_SUMMARY_REPORTS, 1):
             data["report_name" if i == 1 else f"report_name_{i}"] = name
-        doc.add("Output:Table:SummaryReports", data=data)
+        doc.add("Output:Table:SummaryReports", fields=data)
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         # Nothing appended beyond what's already there

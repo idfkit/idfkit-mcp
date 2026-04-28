@@ -49,17 +49,76 @@ def serialize_object(obj: IDFObject, schema: EpJSONSchema | None = None, brief: 
     return {**result, **obj.to_dict()}
 
 
-def serialize_object_description(desc: ObjectDescription) -> dict[str, Any]:
-    """Convert an ObjectDescription to a dict."""
-    return {
+def serialize_object_description(desc: ObjectDescription, schema: EpJSONSchema | None = None) -> dict[str, Any]:
+    """Convert an ObjectDescription to a dict.
+
+    When *schema* is provided and the object type is extensible, the inner
+    extensible item fields are lifted out of the flat ``fields`` list into an
+    ``extensible_group`` entry that names the array wrapper key and shows an
+    example payload. This matches the actual epJSON shape that ``add_object``
+    expects (e.g. ``{"vertices": [{...}, {...}, ...]}``).
+    """
+    fields_serialized = [serialize_field_description(f) for f in desc.fields]
+
+    extensible_group: dict[str, Any] | None = None
+    if schema is not None and desc.is_extensible:
+        wrapper_key, item_field_names = get_extensible_group_info(schema, desc.obj_type)
+        if wrapper_key and item_field_names:
+            inner_set = set(item_field_names)
+            base_fields = [f for f in fields_serialized if f["name"] not in inner_set]
+            item_fields = [f for f in fields_serialized if f["name"] in inner_set]
+            fields_serialized = base_fields
+            extensible_group = {
+                "key": wrapper_key,
+                "item_fields": item_fields,
+                "example": {wrapper_key: [_example_item(item_fields) for _ in range(3)]},
+                "note": (
+                    f"REQUIRED shape: pass repeated entries as an array under "
+                    f"'{wrapper_key}'. Each item is an object with "
+                    f"{', '.join(item_field_names)}. Do NOT flatten the items "
+                    f"into top-level keys (e.g. '{item_field_names[0]}_2', "
+                    f"'{item_field_names[0]}_3'); flat keys may appear to work "
+                    f"but bypass the structured shape this tool returns and the "
+                    f"shape used by validate_model and the simulation engine."
+                ),
+            }
+
+    result: dict[str, Any] = {
         "object_type": desc.obj_type,
         "memo": desc.memo,
         "has_name": desc.has_name,
         "is_extensible": desc.is_extensible,
         "extensible_size": desc.extensible_size,
         "required_fields": desc.required_fields,
-        "fields": [serialize_field_description(f) for f in desc.fields],
+        "fields": fields_serialized,
     }
+    if extensible_group is not None:
+        result["extensible_group"] = extensible_group
+    return result
+
+
+def get_extensible_group_info(schema: EpJSONSchema, obj_type: str) -> tuple[str | None, list[str]]:
+    """Return ``(wrapper_key, item_field_names)`` for an extensible object.
+
+    *wrapper_key* is the name of the epJSON array property that holds repeated
+    items (e.g. ``"vertices"`` for ``BuildingSurface:Detailed``). It is ``None``
+    if the object is not extensible.
+    """
+    wrapper_key = schema.get_extensible_wrapper_key(obj_type)
+    item_fields = list(schema.get_extensible_field_names(obj_type))
+    return wrapper_key, item_fields
+
+
+def _example_item(item_fields: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a one-item example payload for an extensible group."""
+    example: dict[str, Any] = {}
+    for f in item_fields:
+        ftype = f.get("field_type")
+        if ftype == "number":
+            example[f["name"]] = 0.0
+        else:
+            example[f["name"]] = ""
+    return example
 
 
 def serialize_field_description(f: FieldDescription) -> dict[str, Any]:

@@ -84,6 +84,21 @@ class ListObjectTypesResult(BaseModel):
     groups: dict[str, GroupInfo]
 
 
+class ExtensibleGroupInfo(BaseModel):
+    """Describes the array wrapper key for an object type's extensible group.
+
+    ``add_object`` expects items to be passed under ``key`` as a list of dicts
+    matching ``item_fields`` — e.g. ``{"vertices": [{"vertex_x_coordinate": ...},
+    {"vertex_x_coordinate": ...}, ...]}``. ``example`` is a literal payload an
+    agent can copy and adapt.
+    """
+
+    key: str
+    item_fields: list[FieldDescriptionModel]
+    example: dict[str, list[dict[str, object]]]
+    note: str
+
+
 class DescribeObjectTypeResult(BaseModel):
     """Response from ``describe_object_type``."""
 
@@ -94,6 +109,7 @@ class DescribeObjectTypeResult(BaseModel):
     extensible_size: int | None
     required_fields: list[str]
     fields: list[FieldDescriptionModel]
+    extensible_group: ExtensibleGroupInfo | None = None
     doc_url: str | None = None
 
 

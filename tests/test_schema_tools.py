@@ -78,6 +78,30 @@ class TestDescribeObjectType:
         with pytest.raises(ToolError):
             await call_tool(client, "describe_object_type", {"object_type": "NonExistent"})
 
+    async def test_extensible_group_for_building_surface(self, client: object) -> None:
+        result = await call_tool(
+            client,
+            "describe_object_type",
+            {"object_type": "BuildingSurface:Detailed"},
+            DescribeObjectTypeResult,
+        )
+        assert result.is_extensible is True
+        # Inner extensible fields should be lifted out of the flat fields list.
+        flat_names = [f.name for f in result.fields]
+        assert "vertex_x_coordinate" not in flat_names
+        assert "surface_type" in flat_names
+        assert result.extensible_group is not None
+        assert result.extensible_group.key == "vertices"
+        item_names = [f.name for f in result.extensible_group.item_fields]
+        assert item_names == ["vertex_x_coordinate", "vertex_y_coordinate", "vertex_z_coordinate"]
+        assert "vertices" in result.extensible_group.example
+        assert len(result.extensible_group.example["vertices"]) >= 1
+
+    async def test_extensible_group_absent_for_non_extensible(self, client: object) -> None:
+        result = await call_tool(client, "describe_object_type", {"object_type": "Zone"}, DescribeObjectTypeResult)
+        assert result.is_extensible is False
+        assert result.extensible_group is None
+
 
 class TestSearchSchema:
     async def test_search_zone(self, client: object) -> None:

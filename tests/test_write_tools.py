@@ -46,6 +46,33 @@ class TestAddObject:
         with pytest.raises(ToolError):
             await call_tool(client, "add_object", {"object_type": "Zone", "name": "Test"})
 
+    async def test_extensible_array_form_succeeds(self, client: object, state_with_model: ServerState) -> None:
+        """The vertices-array shape must be stored canonically and round-trip through write_idf."""
+        result = await call_tool(
+            client,
+            "add_object",
+            {
+                "object_type": "BuildingSurface:Detailed",
+                "name": "WallB",
+                "fields": {
+                    "surface_type": "Wall",
+                    "construction_name": "C1",
+                    "zone_name": "Z1",
+                    "outside_boundary_condition": "Outdoors",
+                    "vertices": [
+                        {"vertex_x_coordinate": 0, "vertex_y_coordinate": 0, "vertex_z_coordinate": 0},
+                        {"vertex_x_coordinate": 1, "vertex_y_coordinate": 0, "vertex_z_coordinate": 0},
+                        {"vertex_x_coordinate": 1, "vertex_y_coordinate": 0, "vertex_z_coordinate": 1},
+                    ],
+                },
+            },
+        )
+        assert result["name"] == "WallB"
+        # idfkit 0.10+ stores extensible groups canonically as a list of dicts.
+        assert isinstance(result["vertices"], list)
+        assert len(result["vertices"]) == 3
+        assert result["vertices"][1]["vertex_x_coordinate"] == 1
+
 
 class TestBatchAddObjects:
     async def test_batch_add(self, client: object, state_with_model: ServerState) -> None:
