@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from sqlite3 import OperationalError
 from typing import Annotated, Any, Literal
@@ -20,6 +21,7 @@ from pydantic import Field
 from idfkit_mcp.models import (
     ClassifiedWarning,
     EndUseRow,
+    EnergyPlusAssetResult,
     ExportTimeseriesResult,
     GetResultsSummaryResult,
     ListOutputVariablesResult,
@@ -28,11 +30,13 @@ from idfkit_mcp.models import (
     ReportSection,
     ReportTable,
     ReportTableRow,
+    RunInBrowserHandoff,
     RunSimulationResult,
     SimulationQAFlag,
     SimulationReportResult,
     TabularRow,
     UnmetHoursRow,
+    UploadSimulationResultResult,
 )
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
@@ -42,6 +46,30 @@ logger = logging.getLogger(__name__)
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
 _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+_UPLOAD = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+
+# EnergyPlus output filenames accepted by upload_simulation_result. A strict
+# allowlist keeps the attack surface minimal (no path traversal, no arbitrary
+# file writes) and matches what SimulationResult._find_output_file looks for.
+_UPLOAD_ALLOWED_FILENAMES = frozenset({
+    "eplusout.sql",
+    "eplusout.err",
+    "eplusout.eio",
+    "eplusout.rdd",
+    "eplusout.mdd",
+    "eplusout.end",
+    "eplusout.audit",
+    "eplusout.htm",
+    "eplustbl.htm",
+    "eplusmap.csv",
+    "epluszsz.csv",
+    "eplusout.csv",
+})
+
+# Aggregate decoded-payload cap for a single upload_simulation_result call.
+# 50 MB covers typical design-day and small annual SQL outputs; larger annual
+# sub-hourly runs are future work (chunked upload).
+_UPLOAD_MAX_TOTAL_BYTES = 50 * 1024 * 1024
 
 # Valid EnergyPlus reporting frequencies for time series queries.
 ReportingFrequency = Literal["Timestep", "Hourly", "Daily", "Monthly", "RunPeriod", "Annual"]
@@ -324,6 +352,422 @@ async def run_simulation(
         return ToolResult(structured_content=structured, meta={"billing": billing})  # type: ignore[return-value]
 
 
+# Filename patterns the simulator iframe is allowed to fetch via
+# fetch_energyplus_asset. The concrete allowlist is built at call time from
+# the contents of the installed assets directory, so a new envelop bundle
+# (e.g. EnergyPlus 27.x with a different .wasm filename) "just works"
+# without touching this file. Kept deliberately narrow to preserve the
+# attack-surface guarantee.
+_ALLOWED_ASSET_GLOBS: tuple[str, ...] = (
+    "energyplus.js",
+    "energyplus*.wasm",  # covers energyplus.wasm AND energyplus.js-<ver>.wasm
+    "Energy+.idd",
+    "datasets/*.idf",
+)
+
+
+def _resolve_energyplus_assets_dir() -> Any:
+    """Resolve the EnergyPlus WASM assets directory, honoring the env override."""
+    from importlib.resources import files as importlib_files
+    from pathlib import Path
+
+    override = os.environ.get("IDFKIT_MCP_ENERGYPLUS_DIR")
+    return (
+        Path(override).resolve()
+        if override
+        else Path(str(importlib_files("idfkit_mcp") / "assets" / "energyplus")).resolve()
+    )
+
+
+def _allowed_energyplus_assets() -> frozenset[str]:
+    """Return the current allowlist by scanning the installed assets dir.
+
+    Rebuilt on every call so a post-deploy sync picks up automatically;
+    the directory is tiny (< 20 entries) and this isn't a hot path.
+    """
+    base = _resolve_energyplus_assets_dir()
+    if not base.is_dir():
+        return frozenset()
+    allowed: set[str] = set()
+    for pattern in _ALLOWED_ASSET_GLOBS:
+        for path in base.glob(pattern):
+            if path.is_file():
+                allowed.add(path.relative_to(base).as_posix())
+    return frozenset(allowed)
+
+
+def _wasm_binary_candidates() -> list[str]:
+    """Return WASM binary filenames ordered by specificity (versioned first)."""
+    # Versioned variants first so the iframe tries the specific bundle
+    # before falling back to the unversioned alias.
+    return sorted(
+        (name for name in _allowed_energyplus_assets() if name.endswith(".wasm")),
+        key=lambda n: (n == "energyplus.wasm", n),
+    )
+
+
+# Upper bound on a single chunk response (pre-base64). Keeps individual
+# MCP messages well under conservative JSON-RPC size ceilings. 4 MB raw
+# ≈ 5.3 MB base64 ≈ ~6 MB JSON framing.
+_ENERGYPLUS_ASSET_MAX_CHUNK_BYTES = 4 * 1024 * 1024
+
+
+@tool(annotations=_READ_ONLY)
+def fetch_energyplus_asset(
+    filename: Annotated[
+        str,
+        Field(
+            description="Asset filename (e.g. 'energyplus.js', 'energyplus.js-26.1.wasm', 'Energy+.idd', 'datasets/FluidPropertiesRefData.idf')."
+        ),
+    ],
+    offset: Annotated[
+        int,
+        Field(description="Byte offset within the file to start reading. Default 0.", ge=0),
+    ] = 0,
+    chunk_size: Annotated[
+        int,
+        Field(
+            description=(
+                "Maximum bytes to return in this response. 0 means 'read to "
+                "end' (still capped at 4 MB). Callers that want real progress "
+                "should loop with offsets of chunk_size stride."
+            ),
+            ge=0,
+        ),
+    ] = 0,
+) -> EnergyPlusAssetResult:
+    """Return an EnergyPlus WASM asset (or a slice of one) as base64.
+
+    The ``run_simulation_in_browser`` companion iframe calls this via the
+    MCP Apps SDK to load the Emscripten glue, WASM binary, IDD, and
+    dataset files without cross-origin HTTP fetches. A strict filename
+    allowlist prevents path traversal; only the files shipped in
+    ``idfkit-mcp/assets/energyplus/`` are readable.
+
+    Range fetching: the iframe pulls the 30 MB WASM binary in ~1 MB
+    slices using ``offset`` + ``chunk_size`` so its progress bar can
+    advance on bytes received rather than in file-sized jumps. Responses
+    carry ``total_size`` and ``is_last`` to drive the loop.
+
+    This tool is mechanical plumbing — not something agents or humans
+    should call directly. It exists solely as a transport for the
+    sandboxed iframe.
+    """
+    import base64
+
+    base = _resolve_energyplus_assets_dir()
+    if not base.is_dir() or not (base / "energyplus.js").is_file():
+        raise ToolError(
+            "EnergyPlus WASM assets are not installed on the server. "
+            "Run `make sync-wasm-assets` or set IDFKIT_MCP_ENERGYPLUS_DIR."
+        )
+    allowed = _allowed_energyplus_assets()
+    if filename not in allowed:
+        raise ToolError(f"Asset {filename!r} is not in the allowlist. Allowed: {sorted(allowed)}")
+    # Resolve and re-validate against base to defend against any future
+    # allowlist drift that might permit a traversal-shaped filename.
+    requested = (base / filename).resolve()
+    if not requested.is_relative_to(base) or not requested.is_file():
+        raise ToolError(f"Asset file not found: {filename!r}")
+
+    total_size = requested.stat().st_size
+    if offset > total_size:
+        raise ToolError(f"offset {offset} exceeds file size {total_size} for {filename!r}")
+
+    # chunk_size == 0 → "read to end" (still capped).
+    requested_bytes = chunk_size if chunk_size > 0 else total_size - offset
+    effective = min(requested_bytes, _ENERGYPLUS_ASSET_MAX_CHUNK_BYTES, total_size - offset)
+
+    if effective <= 0:
+        # offset == total_size (reading past EOF is explicit; this is the terminal call).
+        data = b""
+    else:
+        with requested.open("rb") as fh:
+            fh.seek(offset)
+            data = fh.read(effective)
+
+    return EnergyPlusAssetResult(
+        filename=filename,
+        content_base64=base64.b64encode(data).decode("ascii"),
+        size=len(data),
+        offset=offset,
+        total_size=total_size,
+        is_last=(offset + len(data)) >= total_size,
+    )
+
+
+@tool(
+    annotations=_RUN,
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                resourceUri="ui://idfkit/simulator.html",
+                prefersBorder=False,
+                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
+            )
+        )
+    },
+)
+async def run_simulation_in_browser(
+    weather_file: Annotated[str | None, Field(description="EPW path (default: last downloaded).")] = None,
+    design_day: Annotated[bool, Field(description="Design-day only (-D flag).")] = False,
+    annual: Annotated[bool, Field(description="Annual simulation (-a flag).")] = False,
+    energyplus_version: Annotated[
+        str | None,
+        Field(description='Advisory: expected EnergyPlus version "X.Y.Z" for display only.'),
+    ] = None,
+) -> RunInBrowserHandoff:
+    """Run EnergyPlus client-side via the browser WASM build instead of a server binary.
+
+    Returns a handoff payload that the companion ``ui://idfkit/simulator.html``
+    resource consumes in a sandboxed iframe. The iframe loads EnergyPlus (WASM)
+    from this server's ``/assets/energyplus/`` route, runs the simulation on
+    the user's machine, and posts the outputs back via ``upload_simulation_result``
+    so every ``idfkit://simulation/*`` resource reads the same session state.
+
+    Requires an MCP Apps-capable client to render the iframe; non-UI clients
+    will see only the handoff payload and cannot complete the run.
+
+    Preconditions: model loaded; weather file set via ``download_weather_file``
+    or ``weather_file=...``, or ``design_day=True``.
+    Side effects: none server-side; the iframe calls ``upload_simulation_result``
+    which writes artifacts and replaces ``state.simulation_result``.
+    """
+    import base64
+    import uuid
+
+    from idfkit import write_idf
+
+    state = get_state()
+
+    if state.simulation_lock.locked():
+        raise ToolError("A simulation is already in progress for this session. Wait for it to finish.")
+
+    # Do NOT hold simulation_lock here: the server-side call is a handoff.
+    # upload_simulation_result re-acquires the lock when the iframe posts back.
+    doc = state.require_model()
+    weather = _resolve_weather_path(weather_file, design_day)
+
+    # Pre-flight on a copy so the user's loaded model is untouched.
+    sim_doc = doc.copy()
+    _ensure_sqlite_output(sim_doc)
+    _ensure_summary_reports(sim_doc)
+
+    idf_text = write_idf(sim_doc)
+    if idf_text is None:
+        # write_idf returns str when filepath is None; guard for type-narrowing.
+        raise ToolError("Failed to serialize the loaded model to IDF text.")
+
+    epw_b64: str | None = None
+    if weather is not None:
+        from pathlib import Path
+
+        try:
+            epw_bytes = Path(weather).read_bytes()
+        except OSError as exc:
+            raise ToolError(f"Could not read weather file {weather!r}: {exc}") from exc
+        epw_b64 = base64.b64encode(epw_bytes).decode("ascii")
+
+    run_id = uuid.uuid4().hex[:12]
+    doc_version = ".".join(str(p) for p in doc.version)
+    expected_version = energyplus_version or doc_version
+
+    browser_run: dict[str, Any] = {
+        "run_id": run_id,
+        "idf": idf_text,
+        "epw": epw_b64,
+        "design_day": design_day,
+        "annual": annual,
+        "expected_energyplus_version": expected_version,
+        "upload_tool_name": "upload_simulation_result",
+        "asset_tool_name": "fetch_energyplus_asset",
+        "allowed_output_filenames": sorted(_UPLOAD_ALLOWED_FILENAMES),
+        # Computed server-side from the installed bundle so a new envelop
+        # build with a different WASM filename works without iframe edits.
+        "wasm_candidates": _wasm_binary_candidates(),
+    }
+
+    logger.info(
+        "Prepared browser simulation handoff run_id=%s idf=%d bytes epw=%s design_day=%s annual=%s",
+        run_id,
+        len(idf_text),
+        "yes" if epw_b64 else "no",
+        design_day,
+        annual,
+    )
+
+    structured = RunInBrowserHandoff(
+        run_id=run_id,
+        message=(
+            "EnergyPlus will run in your browser. Results appear once the iframe "
+            "uploads them back via upload_simulation_result."
+        ),
+    )
+    return ToolResult(  # type: ignore[return-value]
+        structured_content=structured,
+        meta={"browser_run": browser_run},
+    )
+
+
+def _decode_upload_artifacts(files: dict[str, str]) -> dict[str, bytes]:
+    """Validate filenames and decode base64 payloads for upload_simulation_result.
+
+    Enforces the filename allowlist and the aggregate size cap. Returns a
+    ``{filename: raw_bytes}`` mapping when all checks pass; raises ``ToolError``
+    with a user-facing message otherwise.
+    """
+    import base64
+    import binascii
+
+    if not files:
+        raise ToolError("files must not be empty — provide at least one EnergyPlus output artifact.")
+    for name in files:
+        if name not in _UPLOAD_ALLOWED_FILENAMES:
+            raise ToolError(f"Filename {name!r} is not allowed. Accepted: {sorted(_UPLOAD_ALLOWED_FILENAMES)}")
+    # A failed simulation will not produce eplusout.sql, but callers
+    # still upload whatever diagnostics (err/end) exist so the server
+    # can surface the failure through idfkit://simulation/results.
+
+    decoded: dict[str, bytes] = {}
+    total = 0
+    for name, payload in files.items():
+        try:
+            blob = base64.b64decode(payload, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ToolError(f"Artifact {name!r} is not valid base64: {exc}") from exc
+        total += len(blob)
+        if total > _UPLOAD_MAX_TOTAL_BYTES:
+            raise ToolError(
+                f"Uploaded payload exceeds {_UPLOAD_MAX_TOTAL_BYTES} bytes "
+                f"(got {total} across {len(decoded) + 1} files)."
+            )
+        decoded[name] = blob
+    return decoded
+
+
+def _resolve_upload_run_dir(run_id: str | None, session_id: str) -> Any:
+    """Resolve a unique run directory for an uploaded simulation result.
+
+    Honors IDFKIT_MCP_SIMULATION_DIR when set (same parent as run_simulation),
+    otherwise creates a tempdir. Always returns a freshly-created directory so
+    concurrent uploads within a session don't collide.
+    """
+    import os
+    import tempfile
+    import uuid
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    suffix = run_id or uuid.uuid4().hex[:8]
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    env = os.environ.get("IDFKIT_MCP_SIMULATION_DIR")
+    if env:
+        run_dir = Path(env) / f"{session_id}-{stamp}-upload-{suffix}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        return run_dir
+    return Path(tempfile.mkdtemp(prefix=f"idfkit-upload-{session_id}-{suffix}-"))
+
+
+@tool(annotations=_UPLOAD)
+async def upload_simulation_result(
+    files: Annotated[
+        dict[str, str],
+        Field(
+            description=(
+                "EnergyPlus output artifacts as filename -> base64 bytes. "
+                "Must include 'eplusout.sql'. Other accepted names: eplusout.err, "
+                "eplusout.eio, eplusout.rdd, eplusout.mdd, eplusout.end, "
+                "eplusout.audit, eplusout.htm, eplustbl.htm, eplusmap.csv, "
+                "epluszsz.csv, eplusout.csv."
+            ),
+        ),
+    ],
+    energyplus_version: Annotated[
+        str | None,
+        Field(description="Version of EnergyPlus that produced the artifacts (e.g. '25.2.0')."),
+    ] = None,
+    run_id: Annotated[
+        str | None,
+        Field(description="Client-provided run identifier, used in the run-directory name."),
+    ] = None,
+    runtime_seconds: Annotated[
+        float | None,
+        Field(description="Client-measured wall-clock runtime to propagate into the result."),
+    ] = None,
+    ctx: Context | None = None,
+) -> UploadSimulationResultResult:
+    """Ingest pre-computed EnergyPlus output artifacts produced outside the server.
+
+    Materializes the uploaded artifacts into session state exactly as if
+    ``run_simulation`` had produced them. After this call, every
+    ``idfkit://simulation/*`` resource and every analysis tool
+    (``query_timeseries``, ``query_simulation_table``, ``analyze_peak_loads``,
+    ``view_simulation_report``) reads the uploaded SQL file transparently.
+
+    Primary use case: client-side (browser/WASM) EnergyPlus execution where
+    the server never invokes the EnergyPlus binary. Size cap: 50 MB total
+    across all artifacts.
+
+    Preconditions: none (no loaded model required).
+    Side effects: writes files to a session-scoped run directory and
+    replaces ``state.simulation_result``.
+    Next step: read ``idfkit://simulation/results`` to verify diagnostics.
+    """
+    from idfkit.simulation.result import SimulationResult
+
+    state = get_state()
+
+    if state.simulation_lock.locked():
+        raise ToolError("A simulation is already in progress for this session. Wait for it to finish.")
+
+    async with state.simulation_lock:
+        decoded = _decode_upload_artifacts(files)
+        total = sum(len(b) for b in decoded.values())
+
+        run_dir = _resolve_upload_run_dir(run_id, state.session_id)
+        logger.info("Receiving uploaded simulation artifacts into %s (%d bytes)", run_dir, total)
+
+        with BillingProbe() as probe:
+            written: list[str] = []
+            for name, blob in decoded.items():
+                (run_dir / name).write_bytes(blob)
+                written.append(name)
+
+            # Same factory session-restore uses — guarantees the object is
+            # shape-equivalent to a server-produced SimulationResult.
+            result = SimulationResult.from_directory(run_dir)
+            if runtime_seconds is not None:
+                result.runtime_seconds = runtime_seconds
+            errors_report = result.errors
+            if errors_report.has_fatal:
+                result.success = False
+
+            state.simulation_result = result
+            state.save_session()
+
+        if ctx is not None:
+            await ctx.info(
+                f"Uploaded {len(written)} artifact(s) to {run_dir} ({total} bytes, success={result.success})."
+            )
+
+        structured = UploadSimulationResultResult.model_validate({
+            "mode": "upload",
+            "success": result.success,
+            "runtime_seconds": round(result.runtime_seconds, 2),
+            "output_directory": str(result.run_dir),
+            "energyplus": {
+                "version": energyplus_version or "unknown",
+                "install_dir": "(client-provided)",
+                "executable": "(client-provided)",
+            },
+            "errors": _serialize_simulation_errors(errors_report),
+            "simulation_complete": errors_report.simulation_complete,
+            "artifacts_written": sorted(written),
+        })
+        billing = build_billing_meta(tool="upload_simulation_result", probe=probe, run_dir=run_dir)
+        return ToolResult(structured_content=structured, meta={"billing": billing})  # type: ignore[return-value]
+
+
 _GJ_TO_KWH = 277.778
 """Conversion factor: 1 GJ = 277.778 kWh (EnergyPlus tabular energy is in GJ by default)."""
 
@@ -506,11 +950,20 @@ def _build_qa_flags(
     return flags
 
 
+@tool(annotations=_READ_ONLY)
 def get_results_summary() -> GetResultsSummaryResult:
-    """Build results summary with QA diagnostics from the last simulation.
+    """Return post-run QA diagnostics from the last simulation — the primary QA signal.
 
-    This function powers the ``idfkit://simulation/results`` resource — the primary
-    feedback signal for the agent QA loop.
+    Equivalent to reading the ``idfkit://simulation/results`` resource, but
+    callable as a tool so agents whose clients don't auto-expose resource
+    reads can still pull the diagnostics programmatically.
+
+    Returns: fatal/severe/warning counts, SQL-backed unmet hours by zone,
+    end-use energy breakdown, classified warnings, and QA flags.
+
+    Preconditions: a simulation has been run (server-side or via
+    ``run_simulation_in_browser`` + ``upload_simulation_result``).
+    Side effects: none — read-only.
     """
     state = get_state()
     result = state.require_simulation_result()
@@ -897,6 +1350,42 @@ def report_viewer_html() -> str:
     from idfkit_mcp.report_viewer import REPORT_VIEWER_HTML
 
     return REPORT_VIEWER_HTML
+
+
+def _simulator_csp() -> ResourceCSP:
+    """Build the simulator iframe CSP.
+
+    The iframe loads the MCP Apps SDK from unpkg and the Emscripten glue
+    from a same-origin ``blob:`` URL (the glue arrives via the MCP
+    Apps SDK's tool channel and is turned into a Blob in-iframe). No
+    network fetches happen from the iframe directly, so no additional
+    resource or connect origins are required.
+    """
+    return ResourceCSP(resourceDomains=["https://unpkg.com", "blob:"])
+
+
+@resource(
+    "ui://idfkit/simulator.html",
+    name="simulator_viewer",
+    title="Browser EnergyPlus Simulator",
+    description="Runs EnergyPlus WASM in the browser and uploads outputs to the server.",
+    meta={
+        "ui": app_config_to_meta_dict(
+            AppConfig(
+                csp=_simulator_csp(),
+                prefersBorder=False,
+            )
+        )
+    },
+)
+def simulator_viewer_html() -> str:
+    """Return the self-contained browser simulator HTML."""
+    from idfkit_mcp.simulator_viewer import render_simulator_html
+
+    return render_simulator_html(
+        allowed_output_filenames=sorted(_UPLOAD_ALLOWED_FILENAMES),
+        upload_tool_name="upload_simulation_result",
+    )
 
 
 @tool(annotations=_EXPORT)

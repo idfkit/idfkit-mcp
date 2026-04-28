@@ -7,6 +7,8 @@ FastMCP can populate both ``content`` (text) and ``structuredContent``
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -414,6 +416,61 @@ class RunSimulationResult(BaseModel):
     energyplus: EnergyPlusInfo
     errors: SimulationErrorDetail
     simulation_complete: bool
+
+
+class UploadSimulationResultResult(RunSimulationResult):
+    """Response from ``upload_simulation_result``.
+
+    Mirrors ``RunSimulationResult`` so clients can consume either response
+    generically. Adds ``mode="upload"`` to distinguish client-produced runs
+    from server-executed ones, and ``artifacts_written`` to echo which
+    files actually landed on disk.
+    """
+
+    mode: Literal["upload"] = "upload"
+    artifacts_written: list[str] = []
+
+
+class RunInBrowserHandoff(BaseModel):
+    """Response from ``run_simulation_in_browser``.
+
+    Minimal agent-facing handoff. The IDF / EPW payload and the iframe
+    wiring live on the tool-call ``_meta`` dict (key ``browser_run``) so the
+    agent transcript stays small while the UI resource still receives
+    everything it needs.
+    """
+
+    mode: Literal["browser_handoff"] = "browser_handoff"
+    run_id: str
+    message: str
+
+
+class EnergyPlusAssetResult(BaseModel):
+    """Response from ``fetch_energyplus_asset``.
+
+    Returns one EnergyPlus WASM asset (glue JS, binary, IDD, or a dataset
+    file) base64-encoded so the browser iframe can load it through the
+    MCP Apps SDK's tool-call channel, bypassing cross-origin fetch /
+    CSP / mixed-content constraints that block direct HTTP access in
+    sandboxed MCP App iframes.
+
+    Supports range fetching: when ``offset`` / ``chunk_size`` are set, the
+    response carries only that slice. The iframe uses this to pull the
+    30 MB WASM binary in ~1 MB chunks so its progress bar can advance on
+    bytes received rather than only between files.
+    """
+
+    filename: str
+    content_base64: str
+    # Bytes returned in this response (may be less than chunk_size when
+    # offset + chunk_size exceeds the file size).
+    size: int
+    # Byte offset this chunk starts at within the full file.
+    offset: int = 0
+    # Total size of the source file in bytes — lets the iframe compute %.
+    total_size: int = 0
+    # True when this chunk is the last one for the given file.
+    is_last: bool = True
 
 
 class ResultsErrorSummary(BaseModel):
