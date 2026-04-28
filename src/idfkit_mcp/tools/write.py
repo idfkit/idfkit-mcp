@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Annotated, Any, Literal
 
 from fastmcp.exceptions import ToolError
@@ -27,6 +30,21 @@ logger = logging.getLogger(__name__)
 _MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 _DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
 _SAVE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+
+
+@contextmanager
+def _capture_deprecations() -> Iterator[list[str]]:
+    """Yield a list that, on block exit, holds DeprecationWarning messages emitted inside.
+
+    Lets callers surface idfkit deprecations (e.g. flat-extensible keys like
+    ``vertex_x_coordinate_2``) on the tool response instead of dropping them
+    on the server's stderr where the agent never sees them.
+    """
+    messages: list[str] = []
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        yield messages
+    messages.extend(str(w.message) for w in caught if issubclass(w.category, DeprecationWarning))
 
 
 @tool(annotations=_MUTATE)
@@ -62,10 +80,14 @@ def add_object(
     state = get_state()
     doc = state.require_model()
     kwargs = fields or {}
-    obj = doc.add(object_type, name, **kwargs)
+    with _capture_deprecations() as deprecations:
+        obj = doc.add(object_type, name, **kwargs)
     logger.info("Added %s %r", object_type, name)
     logger.debug("add_object fields: %s", kwargs)
-    return serialize_object(obj)
+    result = serialize_object(obj)
+    if deprecations:
+        result["warnings"] = deprecations
+    return result
 
 
 @tool(annotations=_MUTATE)
@@ -90,8 +112,12 @@ def batch_add_objects(
 
             obj_name: str = spec.get("name", "")
             obj_fields: dict[str, Any] = spec.get("fields") or {}
-            obj = doc.add(obj_type, obj_name, **obj_fields)
-            results.append({"index": i, **serialize_object(obj, brief=True)})
+            with _capture_deprecations() as deprecations:
+                obj = doc.add(obj_type, obj_name, **obj_fields)
+            entry: dict[str, object] = {"index": i, **serialize_object(obj, brief=True)}
+            if deprecations:
+                entry["warnings"] = deprecations
+            results.append(entry)
             success_count += 1
         except Exception as e:
             results.append({"index": i, "error": str(e)})
@@ -116,12 +142,16 @@ def update_object(
     if obj is None:
         raise ToolError(f"Object '{name}' of type '{object_type}' not found.")
 
-    for field_name, value in fields.items():
-        setattr(obj, field_name, value)
+    with _capture_deprecations() as deprecations:
+        for field_name, value in fields.items():
+            setattr(obj, field_name, value)
 
     logger.info("Updated %s %r (%d fields)", object_type, name, len(fields))
     logger.debug("update_object fields: %s", fields)
-    return serialize_object(obj)
+    result = serialize_object(obj)
+    if deprecations:
+        result["warnings"] = deprecations
+    return result
 
 
 @tool(annotations=_DESTRUCTIVE)
