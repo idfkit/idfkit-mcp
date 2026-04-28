@@ -102,6 +102,38 @@ class TestDescribeObjectType:
         assert result.is_extensible is False
         assert result.extensible_group is None
 
+    async def test_extensible_example_uses_enum_first_value(self, client: object) -> None:
+        """Item fields with enum_values should seed the example with a real value."""
+        result = await call_tool(
+            client,
+            "describe_object_type",
+            {"object_type": "AirLoopHVAC:SupplyPath"},
+            DescribeObjectTypeResult,
+        )
+        assert result.extensible_group is not None
+        wrapper_key = result.extensible_group.key
+        first_item = result.extensible_group.example[wrapper_key][0]
+        enum_field = next(f for f in result.extensible_group.item_fields if f.name == "component_object_type")
+        assert enum_field.enum_values
+        assert first_item["component_object_type"] in enum_field.enum_values
+        assert first_item["component_object_type"] != ""
+
+    async def test_extensible_example_uses_placeholder_for_object_list(self, client: object) -> None:
+        """Object-list (reference) item fields should get a clearly-placeholder string."""
+        result = await call_tool(
+            client,
+            "describe_object_type",
+            {"object_type": "Branch"},
+            DescribeObjectTypeResult,
+        )
+        assert result.extensible_group is not None
+        wrapper_key = result.extensible_group.key
+        first_item = result.extensible_group.example[wrapper_key][0]
+        # component_object_type is an object-list reference -> angle-bracketed placeholder
+        value = first_item["component_object_type"]
+        assert value.startswith("<") and value.endswith(">")
+        assert value != ""
+
 
 class TestSearchSchema:
     async def test_search_zone(self, client: object) -> None:

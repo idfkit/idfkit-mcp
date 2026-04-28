@@ -162,10 +162,7 @@ def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
     if "Output:Table:SummaryReports" not in doc:
         doc.add(
             "Output:Table:SummaryReports",
-            fields={
-                f"report_name{'_' + str(i) if i > 1 else ''}": name
-                for i, name in enumerate(sorted(_REQUIRED_SUMMARY_REPORTS), 1)
-            },
+            fields={"reports": [{"report_name": name} for name in sorted(_REQUIRED_SUMMARY_REPORTS)]},
         )
         logger.info("Added Output:Table:SummaryReports with %s", sorted(_REQUIRED_SUMMARY_REPORTS))
         return
@@ -174,16 +171,7 @@ def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
     if not obj:
         return
 
-    # Collect existing report names and find the next available index.
-    existing: set[str] = set()
-    idx = 1
-    while True:
-        field = "report_name" if idx == 1 else f"report_name_{idx}"
-        val = getattr(obj, field, None)
-        if val is None:
-            break
-        existing.add(val)
-        idx += 1
+    existing = {group.report_name for group in obj.reports if group.report_name is not None}
 
     # "AllSummary" or "AllSummaryAndMonthly" already include everything.
     if existing & {
@@ -200,9 +188,7 @@ def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
         return
 
     for name in sorted(missing):
-        field = "report_name" if idx == 1 else f"report_name_{idx}"
-        setattr(obj, field, name)
-        idx += 1
+        obj.reports.append({"report_name": name})
     logger.info("Added missing summary reports: %s", sorted(missing))
 
 

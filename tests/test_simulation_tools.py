@@ -401,63 +401,52 @@ class TestEnsureSummaryReports:
     """Unit tests for _ensure_summary_reports pre-flight function."""
 
     def test_adds_reports_when_missing(self, state_with_model: ServerState) -> None:
-        from idfkit_mcp.tools.simulation import _ensure_summary_reports
+        from idfkit_mcp.tools.simulation import _REQUIRED_SUMMARY_REPORTS, _ensure_summary_reports
 
         doc = state_with_model.require_model()
         assert "Output:Table:SummaryReports" not in doc
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         assert obj is not None
-        from idfkit_mcp.tools.simulation import _REQUIRED_SUMMARY_REPORTS
-
-        assert obj.report_name in _REQUIRED_SUMMARY_REPORTS
+        names = {group.report_name for group in obj.reports}
+        assert names == set(_REQUIRED_SUMMARY_REPORTS)
 
     def test_appends_missing_reports_to_existing(self, state_with_model: ServerState) -> None:
         from idfkit_mcp.tools.simulation import _ensure_summary_reports
 
         doc = state_with_model.require_model()
-        doc.add("Output:Table:SummaryReports", fields={"report_name": "AnnualBuildingUtilityPerformanceSummary"})
+        doc.add(
+            "Output:Table:SummaryReports",
+            fields={"reports": [{"report_name": "AnnualBuildingUtilityPerformanceSummary"}]},
+        )
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
+        existing = {group.report_name for group in obj.reports}
         # Original report preserved
-        assert obj.report_name == "AnnualBuildingUtilityPerformanceSummary"
+        assert "AnnualBuildingUtilityPerformanceSummary" in existing
         # New ones appended
-        existing = set()
-        idx = 1
-        while True:
-            field = "report_name" if idx == 1 else f"report_name_{idx}"
-            val = getattr(obj, field, None)
-            if val is None:
-                break
-            existing.add(val)
-            idx += 1
         assert "SensibleHeatGainSummary" in existing
         assert "HVACSizingSummary" in existing
-        assert "AnnualBuildingUtilityPerformanceSummary" in existing
 
     def test_skips_when_all_summary_present(self, state_with_model: ServerState) -> None:
         from idfkit_mcp.tools.simulation import _ensure_summary_reports
 
         doc = state_with_model.require_model()
-        doc.add("Output:Table:SummaryReports", fields={"report_name": "AllSummary"})
+        doc.add("Output:Table:SummaryReports", fields={"reports": [{"report_name": "AllSummary"}]})
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         # Should not append anything — AllSummary covers everything
-        assert obj.report_name == "AllSummary"
-        assert getattr(obj, "report_name_2", None) is None
+        assert [group.report_name for group in obj.reports] == ["AllSummary"]
 
     def test_skips_when_already_present(self, state_with_model: ServerState) -> None:
-        from idfkit_mcp.tools.simulation import _ensure_summary_reports
+        from idfkit_mcp.tools.simulation import _REQUIRED_SUMMARY_REPORTS, _ensure_summary_reports
 
         doc = state_with_model.require_model()
-        from idfkit_mcp.tools.simulation import _REQUIRED_SUMMARY_REPORTS
-
-        data: dict[str, str] = {}
-        for i, name in enumerate(_REQUIRED_SUMMARY_REPORTS, 1):
-            data["report_name" if i == 1 else f"report_name_{i}"] = name
-        doc.add("Output:Table:SummaryReports", fields=data)
+        doc.add(
+            "Output:Table:SummaryReports",
+            fields={"reports": [{"report_name": name} for name in sorted(_REQUIRED_SUMMARY_REPORTS)]},
+        )
         _ensure_summary_reports(doc)
         obj = doc["Output:Table:SummaryReports"].first()
         # Nothing appended beyond what's already there
-        next_field = f"report_name_{len(_REQUIRED_SUMMARY_REPORTS) + 1}"
-        assert getattr(obj, next_field, None) is None
+        assert len(obj.reports) == len(_REQUIRED_SUMMARY_REPORTS)
