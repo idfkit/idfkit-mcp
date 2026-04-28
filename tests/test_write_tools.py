@@ -75,6 +75,44 @@ class TestAddObject:
         # Structured form must not surface a deprecation warning.
         assert "warnings" not in result
 
+    async def test_flat_extensible_keys_surface_deprecation_warning(
+        self, client: object, state_with_model: ServerState
+    ) -> None:
+        """Flat-numbered extensible kwargs still work but the response must surface idfkit's deprecation.
+
+        idfkit 0.10.3 emits the warning from ``_normalize_extensible_input`` when ``.add()``
+        rewrites flat kwargs to the canonical wrapper form, so the response wrapper picks
+        it up and exposes it under ``warnings``.
+        """
+        result = await call_tool(
+            client,
+            "add_object",
+            {
+                "object_type": "BuildingSurface:Detailed",
+                "name": "FlatWall",
+                "fields": {
+                    "surface_type": "Wall",
+                    "construction_name": "C1",
+                    "zone_name": "Z1",
+                    "outside_boundary_condition": "Outdoors",
+                    "vertex_x_coordinate_1": 0,
+                    "vertex_y_coordinate_1": 0,
+                    "vertex_z_coordinate_1": 0,
+                    "vertex_x_coordinate_2": 1,
+                    "vertex_y_coordinate_2": 0,
+                    "vertex_z_coordinate_2": 0,
+                    "vertex_x_coordinate_3": 1,
+                    "vertex_y_coordinate_3": 0,
+                    "vertex_z_coordinate_3": 1,
+                },
+            },
+        )
+        assert result["name"] == "FlatWall"
+        assert isinstance(result["vertices"], list)
+        assert len(result["vertices"]) == 3
+        assert "warnings" in result
+        assert any("deprecated" in w.lower() for w in result["warnings"])
+
 
 class TestBatchAddObjects:
     async def test_batch_add(self, client: object, state_with_model: ServerState) -> None:
@@ -102,6 +140,37 @@ class TestBatchAddObjects:
         objects = [{"name": "Test"}]
         result = await call_tool(client, "batch_add_objects", {"objects": objects}, BatchAddResult)
         assert result.errors == 1
+
+    async def test_batch_attaches_deprecation_warnings_per_entry(
+        self, client: object, state_with_model: ServerState
+    ) -> None:
+        """Per-object deprecation warnings should appear only on the entry that triggered them."""
+        objects = [
+            {"object_type": "Zone", "name": "ZoneA"},
+            {
+                "object_type": "BuildingSurface:Detailed",
+                "name": "FlatWall",
+                "fields": {
+                    "surface_type": "Wall",
+                    "construction_name": "C1",
+                    "zone_name": "ZoneA",
+                    "outside_boundary_condition": "Outdoors",
+                    "vertex_x_coordinate_1": 0,
+                    "vertex_y_coordinate_1": 0,
+                    "vertex_z_coordinate_1": 0,
+                    "vertex_x_coordinate_2": 1,
+                    "vertex_y_coordinate_2": 0,
+                    "vertex_z_coordinate_2": 0,
+                    "vertex_x_coordinate_3": 1,
+                    "vertex_y_coordinate_3": 0,
+                    "vertex_z_coordinate_3": 1,
+                },
+            },
+        ]
+        result = await call_tool(client, "batch_add_objects", {"objects": objects}, BatchAddResult)
+        assert result.success == 2
+        assert "warnings" not in result.results[0]
+        assert "warnings" in result.results[1]
 
 
 class TestUpdateObject:
