@@ -110,14 +110,29 @@ def get_extensible_group_info(schema: EpJSONSchema, obj_type: str) -> tuple[str 
 
 
 def _example_item(item_fields: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build a one-item example payload for an extensible group."""
+    """Build a one-item example payload for an extensible group.
+
+    Use informative placeholders so agents copying the payload can tell which
+    slots need real values: first enum value for enum fields, an angle-bracketed
+    reference hint for object-list fields, and ``""`` for plain strings.
+    """
     example: dict[str, Any] = {}
     for f in item_fields:
         ftype = f.get("field_type")
         if ftype == "number":
             example[f["name"]] = 0.0
-        else:
-            example[f["name"]] = ""
+            continue
+        enum_values = f.get("enum_values")
+        if enum_values:
+            non_empty = [v for v in enum_values if v]
+            example[f["name"]] = non_empty[0] if non_empty else ""
+            continue
+        if f.get("is_reference"):
+            object_list: list[str] = f.get("object_list") or []
+            target: str = object_list[0] if object_list else "reference"
+            example[f["name"]] = f"<{target}-name>"
+            continue
+        example[f["name"]] = ""
     return example
 
 
