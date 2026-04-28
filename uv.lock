@@ -751,11 +751,11 @@ wheels = [
 
 [[package]]
 name = "idfkit"
-version = "0.10.0"
+version = "0.10.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cb/6b/8b1c8d20bedbef74aa6abe5ceecbd1bbb7e1e7e51f9380e14fe64d97242a/idfkit-0.10.0.tar.gz", hash = "sha256:609be14c44b8f5389f099d23fa149b3596c582d147fa0a34cbdba1e2702ac996", size = 15184655, upload-time = "2026-04-27T14:02:23.487Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/55/00d680e97710d8ad5a1e5ad573509a0c780f15b8b697a63b015c6eab9084/idfkit-0.10.2.tar.gz", hash = "sha256:d44659da8cd1ea10353eb61acc29d2ada2c538497fca61b66e78a221a864a8d9", size = 15186805, upload-time = "2026-04-28T01:16:39.83Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/12/2b7c294b8c9ed4ed1ba4d3e70f07b7c71ca04d5423661d986f9e97992159/idfkit-0.10.0-py3-none-any.whl", hash = "sha256:c694865ef75464db00cad59d6f2b535461ad864d5c0b8def7013073434660f18", size = 14021015, upload-time = "2026-04-27T14:02:20.369Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/fc/576a523a669656c4f948aa4469b9ca56255f6ce0e937459102550c55588a/idfkit-0.10.2-py3-none-any.whl", hash = "sha256:39d3f3c8882d7e436e1caf99cd4d0e21dfcf85a55275f08fc1245e644d9ebf8c", size = 14021718, upload-time = "2026-04-28T01:16:37.308Z" },
 ]
 
 [[package]]
@@ -788,7 +788,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", extras = ["apps"], specifier = ">=3.2.0" },
-    { name = "idfkit", specifier = "==0.10.0" },
+    { name = "idfkit", specifier = "==0.10.2" },
     { name = "mcp", specifier = ">=1.2.0" },
     { name = "openstudio", specifier = "==3.11.0" },
     { name = "pydantic", specifier = ">=2.0.0" },

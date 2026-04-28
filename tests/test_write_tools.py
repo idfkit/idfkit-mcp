@@ -72,6 +72,8 @@ class TestAddObject:
         assert isinstance(result["vertices"], list)
         assert len(result["vertices"]) == 3
         assert result["vertices"][1]["vertex_x_coordinate"] == 1
+        # Structured form must not surface a deprecation warning.
+        assert "warnings" not in result
 
 
 class TestBatchAddObjects:
@@ -125,6 +127,41 @@ class TestUpdateObject:
             await call_tool(
                 client, "update_object", {"object_type": "Zone", "name": "Missing", "fields": {"x_origin": 5.0}}
             )
+
+    async def test_update_with_flat_extensible_key_surfaces_deprecation_warning(
+        self, client: object, state_with_model: ServerState
+    ) -> None:
+        """Updating an extensible field via a flat numbered key emits a deprecation warning."""
+        await call_tool(
+            client,
+            "add_object",
+            {
+                "object_type": "BuildingSurface:Detailed",
+                "name": "Wall1",
+                "fields": {
+                    "surface_type": "Wall",
+                    "construction_name": "C1",
+                    "zone_name": "Z1",
+                    "outside_boundary_condition": "Outdoors",
+                    "vertices": [
+                        {"vertex_x_coordinate": 0, "vertex_y_coordinate": 0, "vertex_z_coordinate": 0},
+                        {"vertex_x_coordinate": 1, "vertex_y_coordinate": 0, "vertex_z_coordinate": 0},
+                        {"vertex_x_coordinate": 1, "vertex_y_coordinate": 0, "vertex_z_coordinate": 1},
+                    ],
+                },
+            },
+        )
+        result = await call_tool(
+            client,
+            "update_object",
+            {
+                "object_type": "BuildingSurface:Detailed",
+                "name": "Wall1",
+                "fields": {"vertex_z_coordinate_1": 2.5},
+            },
+        )
+        assert "warnings" in result
+        assert any("deprecated" in w.lower() for w in result["warnings"])
 
 
 class TestRemoveObject:
