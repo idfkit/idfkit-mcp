@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
 from fastmcp.resources.function_resource import resource
@@ -15,6 +15,9 @@ from pydantic import Field
 
 from idfkit_mcp.schedule_viewer import SCHEDULE_VIEWER_HTML
 from idfkit_mcp.state import get_state
+
+if TYPE_CHECKING:
+    from idfkit import IDFDocument, IDFObject
 
 logger = logging.getLogger(__name__)
 
@@ -41,16 +44,14 @@ _ALL_SCHEDULE_TYPES = (
 _MAX_SCHEDULES = 30
 
 
-def _resolve_type_limits(doc: object, limits_name: str | None) -> dict[str, object] | None:
+def _resolve_type_limits(doc: IDFDocument[bool], limits_name: str | None) -> dict[str, object] | None:
     """Look up ScheduleTypeLimits and extract bounds."""
     if not limits_name:
         return None
-    collection = doc.get_collection("ScheduleTypeLimits")  # type: ignore[union-attr]
+    collection = doc.get_collection("ScheduleTypeLimits")
     if not collection:
         return None
-    from typing import Any, cast
-
-    obj: Any = cast(Any, collection).get(limits_name)
+    obj = collection.get(limits_name)
     if obj is None:
         return None
     lower = getattr(obj, "lower_limit_value", None)
@@ -59,24 +60,24 @@ def _resolve_type_limits(doc: object, limits_name: str | None) -> dict[str, obje
     unit_type = getattr(obj, "unit_type", None) or "Dimensionless"
     return {
         "name": limits_name,
-        "lower": float(lower) if lower is not None else None,  # type: ignore[arg-type]
-        "upper": float(upper) if upper is not None else None,  # type: ignore[arg-type]
+        "lower": float(lower) if lower is not None else None,
+        "upper": float(upper) if upper is not None else None,
         "numericType": str(numeric_type),
         "unitType": str(unit_type),
     }
 
 
 def _evaluate_one(
-    obj: object,
+    obj: IDFObject,
     obj_type: str,
-    doc: object,
+    doc: IDFDocument[bool],
     year: int,
 ) -> dict[str, object] | None:
     """Evaluate a single schedule object, returning None on failure."""
     from idfkit.schedules.evaluate import ScheduleEvaluationError, values
 
     try:
-        vals = values(obj, year=year, document=doc)  # type: ignore[arg-type]
+        vals = values(obj, year=year, document=doc)
     except ScheduleEvaluationError as e:
         logger.warning("Failed to evaluate schedule '%s': %s", getattr(obj, "name", "?"), e)
         return None
@@ -91,19 +92,17 @@ def _evaluate_one(
 
 def _find_schedule_by_name(
     name: str,
-    doc: object,
+    doc: IDFDocument[bool],
     year: int,
 ) -> tuple[list[dict[str, object]], list[str]]:
     """Search all schedule types for a specific named schedule."""
-    from typing import Any, cast
-
     schedules: list[dict[str, object]] = []
     skipped: list[str] = []
     for obj_type in _ALL_SCHEDULE_TYPES:
-        collection = doc.get_collection(obj_type)  # type: ignore[union-attr]
+        collection = doc.get_collection(obj_type)
         if not collection:
             continue
-        obj: Any = cast(Any, collection).get(name)
+        obj = collection.get(name)
         if obj is not None:
             result = _evaluate_one(obj, obj_type, doc, year)
             if result is not None:
@@ -118,16 +117,14 @@ def _find_schedule_by_name(
 
 
 def _collect_all_schedules(
-    doc: object,
+    doc: IDFDocument[bool],
     year: int,
 ) -> tuple[list[dict[str, object]], list[str]]:
     """Collect and evaluate all top-level schedules from the model."""
-    from typing import Any, cast
-
     schedules: list[dict[str, object]] = []
     skipped: list[str] = []
     for obj_type in _TOP_LEVEL_SCHEDULE_TYPES:
-        collection: Any = cast(Any, doc).get_collection(obj_type)
+        collection = doc.get_collection(obj_type)
         if not collection:
             continue
         for obj in collection:
