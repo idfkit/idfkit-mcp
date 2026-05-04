@@ -162,6 +162,32 @@ class TestRestoreEdgeCases:
         # a no-op, the state stays the same
         assert state.document is None
 
+    def test_http_restore_model_rejects_disallowed_path(
+        self, _enable_persistence: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        session_file = _enable_persistence
+        allowed_root = tmp_path / "allowed"
+        allowed_root.mkdir()
+        model_path = tmp_path / "outside.idf"
+        write_idf(new_document(), model_path)
+        session_file.write_text(
+            json.dumps({
+                "version": 1,
+                "cwd": str(tmp_path),
+                "file_path": str(model_path),
+                "updated_at": "2026-01-01T00:00:00+00:00",
+            })
+        )
+        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(allowed_root))
+
+        state = get_state()
+        state._session_restored = False
+        state._try_restore_session()
+
+        assert state.document is None
+        assert state.file_path is None
+
 
 class TestSaveSessionFailure:
     @pytest.mark.skipif(os.getuid() == 0, reason="root bypasses file permission checks")

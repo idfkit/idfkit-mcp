@@ -42,6 +42,31 @@ class TestResolveSimulationOutputDir:
         monkeypatch.delenv("IDFKIT_MCP_SIMULATION_DIR", raising=False)
         assert _resolve_simulation_output_dir(None, "sess-z") is None
 
+    def test_http_env_unset_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
+
+        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.delenv("IDFKIT_MCP_SIMULATION_DIR", raising=False)
+
+        with pytest.raises(ToolError, match="IDFKIT_MCP_SIMULATION_DIR"):
+            _resolve_simulation_output_dir(None, "sess-z")
+
+    def test_http_explicit_dir_must_stay_under_simulation_root(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
+
+        sim_root = tmp_path / "sim"
+        sim_root.mkdir()
+        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setenv("IDFKIT_MCP_SIMULATION_DIR", str(sim_root))
+
+        with pytest.raises(ToolError, match="allowed directory"):
+            _resolve_simulation_output_dir(str(tmp_path / "elsewhere"), "sess-z")
+
+        allowed = sim_root / "manual-run"
+        assert _resolve_simulation_output_dir(str(allowed), "sess-z") == str(allowed.resolve())
+
 
 class TestRunSimulation:
     async def test_no_model(self, client: object) -> None:

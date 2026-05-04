@@ -20,6 +20,7 @@ Behavior:
 - Returns runtime, output directory, and error counts.
 - Returns the resolved EnergyPlus executable, install directory, and version.
 - Stores result in server state for follow-up tools.
+- For HTTP/SSE transports, `IDFKIT_MCP_SIMULATION_DIR` is required and any explicit `output_directory` must resolve under it.
 
 ## `list_output_variables`
 

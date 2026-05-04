@@ -137,9 +137,29 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
+def _require_http_environment(args: argparse.Namespace) -> None:
+    """Fail fast when network transports are missing deployment path policy."""
+    from idfkit_mcp.tools._path_validation import set_active_transport
+
+    set_active_transport(args.transport)
+    if args.transport == "stdio":
+        return
+
+    required = ("IDFKIT_MCP_UPLOAD_DIR", "IDFKIT_MCP_OUTPUT_DIRS", "IDFKIT_MCP_SIMULATION_DIR")
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        joined = ", ".join(missing)
+        raise SystemExit(
+            f"{args.transport} transport requires explicit deployment path configuration. "
+            f"Set: {joined}. Direct load_model(file_path=...) remains disabled unless "
+            "IDFKIT_MCP_INPUT_DIRS is also set; uploaded files can still be loaded with upload_name."
+        )
+
+
 def main() -> None:
     """CLI entry point with configurable transport."""
     args = _parse_args()
+    _require_http_environment(args)
     kwargs: dict[str, object] = {"transport": args.transport}
     if args.transport != "stdio":
         kwargs["host"] = args.host

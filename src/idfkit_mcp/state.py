@@ -404,6 +404,20 @@ class ServerState:
         try:
             from idfkit import load_epjson, load_idf
 
+            from idfkit_mcp.tools._path_validation import validate_restored_path
+
+            extra_roots = [session_uploads_dir(self.session_id)]
+            import os
+
+            upload_root = os.environ.get("IDFKIT_MCP_UPLOAD_DIR")
+            if upload_root:
+                extra_roots.append(Path(upload_root) / self.session_id)
+            fp = validate_restored_path(
+                fp,
+                label="Restored model path",
+                env_var="IDFKIT_MCP_INPUT_DIRS",
+                extra_roots=extra_roots,
+            )
             doc = (
                 load_epjson(str(fp), strict=True)
                 if fp.suffix.lower() in (".epjson", ".json")
@@ -429,6 +443,13 @@ class ServerState:
         try:
             from idfkit.simulation.result import SimulationResult as SimResult
 
+            from idfkit_mcp.tools._path_validation import validate_restored_path
+
+            rd = validate_restored_path(
+                rd,
+                label="Restored simulation run directory",
+                env_var="IDFKIT_MCP_SIMULATION_DIR",
+            )
             self.simulation_result = SimResult.from_directory(rd)
             logging.getLogger(__name__).info("Restored simulation result from session: %s", rd)
         except Exception:
@@ -442,9 +463,22 @@ class ServerState:
         if weather_str is None or self.weather_file is not None:
             return
         wp = Path(weather_str)
-        if wp.exists():
-            self.weather_file = wp
-            logging.getLogger(__name__).info("Restored weather file from session: %s", wp)
+        if not wp.exists():
+            return
+        try:
+            from idfkit_mcp.tools._path_validation import validate_restored_path
+
+            wp = validate_restored_path(
+                wp,
+                label="Restored weather file",
+                env_var="IDFKIT_MCP_INPUT_DIRS",
+                extra_roots=[_cache_base_dir()],
+            )
+        except Exception:
+            logging.getLogger(__name__).warning("Failed to restore weather file from %s", wp, exc_info=True)
+            return
+        self.weather_file = wp
+        logging.getLogger(__name__).info("Restored weather file from session: %s", wp)
 
     def clear_session(self) -> None:
         """Delete the session file and reset model/simulation state.

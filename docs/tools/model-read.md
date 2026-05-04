@@ -18,6 +18,7 @@ Notes:
 - Loading resets previous simulation result state.
 - Persists session state to disk for automatic recovery across server restarts.
 - For uploads, bytes are pulled from the `FileUpload` store (in-memory or disk-backed via `IDFKIT_MCP_UPLOAD_DIR`) and materialized to a per-session cache before parsing. `clear_session` removes the materialized file and the upload scope.
+- For HTTP/SSE transports, direct `file_path` access is disabled unless the operator sets `IDFKIT_MCP_INPUT_DIRS`. Hosted deployments should prefer `upload_name`.
 
 ## `convert_osm_to_idf`
 
@@ -34,6 +35,7 @@ Parameters:
 Behavior:
 
 - Validates input/output extensions and file existence.
+- For HTTP/SSE transports, `osm_path` must resolve under `IDFKIT_MCP_INPUT_DIRS` and `output_path` must resolve under `IDFKIT_MCP_OUTPUT_DIRS`.
 - Fails safely if OpenStudio SDK is unavailable.
 - Writes IDF, then loads it with the same state semantics as `load_model`.
 - Returns conversion metadata plus standard model summary fields.

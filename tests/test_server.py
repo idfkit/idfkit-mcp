@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import argparse
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -69,6 +71,30 @@ class TestCreateServer:
         payload = await read_resource_json(client, "idfkit://model/objects/Zone/Office")
         assert payload["object_type"] == "Zone"
         assert payload["name"] == "Office"
+
+
+class TestHttpEnvironmentPolicy:
+    def test_http_requires_deployment_path_envs(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.server import _require_http_environment
+
+        for name in (
+            "IDFKIT_MCP_UPLOAD_DIR",
+            "IDFKIT_MCP_OUTPUT_DIRS",
+            "IDFKIT_MCP_SIMULATION_DIR",
+        ):
+            monkeypatch.delenv(name, raising=False)
+
+        with pytest.raises(SystemExit, match="IDFKIT_MCP_UPLOAD_DIR"):
+            _require_http_environment(argparse.Namespace(transport="http"))
+
+    def test_http_accepts_required_deployment_path_envs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.server import _require_http_environment
+
+        monkeypatch.setenv("IDFKIT_MCP_UPLOAD_DIR", str(tmp_path))
+        monkeypatch.setenv("IDFKIT_MCP_OUTPUT_DIRS", str(tmp_path))
+        monkeypatch.setenv("IDFKIT_MCP_SIMULATION_DIR", str(tmp_path))
+
+        _require_http_environment(argparse.Namespace(transport="http"))
 
 
 def _is_third_party_app_tool(tool: Any) -> bool:

@@ -72,7 +72,9 @@ def load_model(
         path = dest_dir / upload_name
         path.write_bytes(data)
     else:
-        path = Path(file_path)  # type: ignore[arg-type]
+        from idfkit_mcp.tools._path_validation import validate_input_path
+
+        path = validate_input_path(Path(file_path), label="Model file path")  # type: ignore[arg-type]
 
     if path.suffix.lower() in (".epjson", ".json"):
         doc = load_epjson(str(path), version=ver, strict=True)
@@ -110,8 +112,10 @@ def convert_osm_to_idf(
         ) from None
     openstudio = cast(Any, openstudio)
 
-    input_path = Path(osm_path)
-    out_path = Path(output_path)
+    from idfkit_mcp.tools._path_validation import validate_input_path, validate_output_path
+
+    input_path = validate_input_path(Path(osm_path), label="OSM input path")
+    out_path = validate_output_path(Path(output_path), label="OSM output path")
 
     if input_path.suffix.lower() != ".osm":
         raise ToolError(f"Input file must have .osm extension: '{input_path}'.")
