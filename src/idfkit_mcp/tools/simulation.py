@@ -278,11 +278,12 @@ async def run_simulation(
         config = find_energyplus(path=energyplus_dir, version=energyplus_version)
         resolved_output_dir = _resolve_simulation_output_dir(output_directory, state.session_id)
         logger.info(
-            "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
+            "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s, readvars=%s)",
             ".".join(str(p) for p in config.version),
             weather,
             design_day,
             annual,
+            readvars,
         )
 
         # TODO(timeouts): MCP clients time out on long simulations. Options to explore:
