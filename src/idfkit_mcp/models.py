@@ -281,6 +281,14 @@ class RemoveObjectResult(BaseModel):
     name: str
 
 
+class RemoveObjectsResult(BaseModel):
+    """Response from ``remove_objects``."""
+
+    status: str
+    object_type: str
+    removed: int
+
+
 class RenameObjectResult(BaseModel):
     """Response from ``rename_object``."""
 

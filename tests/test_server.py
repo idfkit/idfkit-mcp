@@ -31,6 +31,7 @@ class TestCreateServer:
             "batch_add_objects",
             "update_object",
             "remove_object",
+            "remove_objects",
             "rename_object",
             "duplicate_object",
             "save_model",
