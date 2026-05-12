@@ -5,7 +5,14 @@ from __future__ import annotations
 import pytest
 from fastmcp.exceptions import ToolError
 
-from idfkit_mcp.models import BatchAddResult, NewModelResult, RemoveObjectResult, RenameObjectResult, SaveModelResult
+from idfkit_mcp.models import (
+    BatchAddResult,
+    NewModelResult,
+    RemoveObjectResult,
+    RemoveObjectsResult,
+    RenameObjectResult,
+    SaveModelResult,
+)
 from idfkit_mcp.state import ServerState, get_state
 from tests.conftest import call_tool
 
@@ -249,6 +256,47 @@ class TestRemoveObject:
             client, "remove_object", {"object_type": "Zone", "name": "Office", "force": True}, RemoveObjectResult
         )
         assert result.status == "removed"
+
+
+class TestRemoveObjects:
+    async def test_remove_all_nameless(self, client: object, state_with_model: ServerState) -> None:
+        # has_name=False types (Output:Meter) parse with _name="" so they can't
+        # be removed via remove_object — bulk-remove is the supported escape.
+        await call_tool(
+            client,
+            "batch_add_objects",
+            {
+                "objects": [
+                    {
+                        "object_type": "Output:Meter",
+                        "fields": {"key_name": "Electricity:Facility", "reporting_frequency": "Hourly"},
+                    },
+                    {
+                        "object_type": "Output:Meter",
+                        "fields": {"key_name": "DistrictCooling:Plant", "reporting_frequency": "Timestep"},
+                    },
+                ]
+            },
+            BatchAddResult,
+        )
+        result = await call_tool(client, "remove_objects", {"object_type": "Output:Meter"}, RemoveObjectsResult)
+        assert result.status == "removed"
+        assert result.removed == 2
+        assert "Output:Meter" not in state_with_model.document  # type: ignore[operator]
+
+    async def test_remove_missing_type_is_noop(self, client: object, state_with_model: ServerState) -> None:
+        result = await call_tool(client, "remove_objects", {"object_type": "Output:Meter"}, RemoveObjectsResult)
+        assert result.status == "removed"
+        assert result.removed == 0
+
+    async def test_remove_referenced_blocked(self, client: object, state_with_zones: ServerState) -> None:
+        with pytest.raises(ToolError, match="referenced"):
+            await call_tool(client, "remove_objects", {"object_type": "Zone"})
+
+    async def test_remove_referenced_forced(self, client: object, state_with_zones: ServerState) -> None:
+        result = await call_tool(client, "remove_objects", {"object_type": "Zone", "force": True}, RemoveObjectsResult)
+        assert result.status == "removed"
+        assert result.removed >= 1
 
 
 class TestRenameObject:
