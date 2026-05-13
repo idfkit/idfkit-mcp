@@ -1,0 +1,60 @@
+name: Bump idfkit
+on:
+  workflow_dispatch:
+    inputs:
+      idfkit_version:
+        required: true
+        type: string
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Bump idfkit
+        run: |
+          uv add "idfkit==${{ inputs.idfkit_version }}"
+          uv lock
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: |
+          uv run pytest 2>&1 | tee test-output.txt
+      - name: Ask Claude to repair test failures
+        if: steps.tests.outcome == 'failure'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            idfkit was bumped to ${{ inputs.idfkit_version }}, and the test suite failed.
+            Task:
+            - Read test-output.txt.
+            - Diagnose the compatibility issue caused by the idfkit upgrade.
+            - Make the minimal code changes required.
+            - Do not refactor unrelated code.
+            - Preserve public APIs unless the idfkit upgrade requires a change.
+            - Rerun: uv run pytest
+            - Leave a concise summary of root cause, changed files, and final test result.
+      - name: Rerun tests after Claude repair
+        if: steps.tests.outcome == 'failure'
+        run: uv run pytest
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/bump-idfkit-${{ inputs.idfkit_version }}
+          title: "Bump idfkit to ${{ inputs.idfkit_version }}"
+          commit-message: "Bump idfkit to ${{ inputs.idfkit_version }}"
+          body: |
+            Automated idfkit dependency bump.
+            - Version: `${{ inputs.idfkit_version }}`
+            - Initial test result: `${{ steps.tests.outcome }}`
+            - Test command: `uv run pytest`
+
+            If tests initially failed, Claude attempted a minimal compatibility repair.

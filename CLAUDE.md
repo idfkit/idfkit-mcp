@@ -33,3 +33,18 @@ make check && make test
 ```
 
 This runs: lock file validation, pre-commit hooks (ruff format/lint), pyright, deptry, and pytest.
+
+## Automated idfkit bumps
+
+When invoked by `.github/workflows/bump-idfkit.yml` on test failure after an idfkit version bump:
+
+- Make the smallest possible compatibility change.
+- Do not perform unrelated refactors.
+- Do not change formatting broadly.
+- Run `uv run pytest` before finishing.
+- Preserve public APIs unless the idfkit upgrade requires otherwise.
+- Summarize:
+  - root cause
+  - files changed
+  - tests run
+  - remaining risks
