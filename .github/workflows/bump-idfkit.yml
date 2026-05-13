@@ -12,8 +12,6 @@ permissions:
 jobs:
   bump:
     runs-on: ubuntu-latest
-    env:
-      TEST_OUTPUT: ${{ runner.temp }}/bump-test-output.txt
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +35,7 @@ jobs:
         id: tests
         continue-on-error: true
         run: |
-          uv run pytest 2>&1 | tee "$TEST_OUTPUT"
+          uv run pytest 2>&1 | tee "$RUNNER_TEMP/bump-test-output.txt"
       - name: Ask Claude to repair test failures
         if: steps.tests.outcome == 'failure'
         uses: anthropics/claude-code-action@v1
