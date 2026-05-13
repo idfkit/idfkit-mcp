@@ -12,30 +12,41 @@ permissions:
 jobs:
   bump:
     runs-on: ubuntu-latest
+    env:
+      TEST_OUTPUT: ${{ runner.temp }}/bump-test-output.txt
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Normalize version
+        id: ver
+        env:
+          RAW_VERSION: ${{ inputs.idfkit_version }}
+        run: |
+          set -euo pipefail
+          version="${RAW_VERSION#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Normalized version: $version"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Bump idfkit
         run: |
-          uv add "idfkit==${{ inputs.idfkit_version }}"
+          uv add "idfkit==${{ steps.ver.outputs.version }}"
           uv lock
       - name: Run tests
         id: tests
         continue-on-error: true
         run: |
-          uv run pytest 2>&1 | tee test-output.txt
+          uv run pytest 2>&1 | tee "$TEST_OUTPUT"
       - name: Ask Claude to repair test failures
         if: steps.tests.outcome == 'failure'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            idfkit was bumped to ${{ inputs.idfkit_version }}, and the test suite failed.
+            idfkit was bumped to ${{ steps.ver.outputs.version }}, and the test suite failed.
             Task:
-            - Read test-output.txt.
+            - Read the failure output at ${{ runner.temp }}/bump-test-output.txt.
             - Diagnose the compatibility issue caused by the idfkit upgrade.
             - Make the minimal code changes required.
             - Do not refactor unrelated code.
@@ -48,12 +59,12 @@ jobs:
       - name: Open PR
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: bot/bump-idfkit-${{ inputs.idfkit_version }}
-          title: "Bump idfkit to ${{ inputs.idfkit_version }}"
-          commit-message: "Bump idfkit to ${{ inputs.idfkit_version }}"
+          branch: bot/bump-idfkit-${{ steps.ver.outputs.version }}
+          title: "Bump idfkit to ${{ steps.ver.outputs.version }}"
+          commit-message: "Bump idfkit to ${{ steps.ver.outputs.version }}"
           body: |
             Automated idfkit dependency bump.
-            - Version: `${{ inputs.idfkit_version }}`
+            - Version: `${{ steps.ver.outputs.version }}`
             - Initial test result: `${{ steps.tests.outcome }}`
             - Test command: `uv run pytest`
 
