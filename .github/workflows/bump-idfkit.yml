@@ -60,6 +60,7 @@ jobs:
           branch: bot/bump-idfkit-${{ steps.ver.outputs.version }}
           title: "Bump idfkit to ${{ steps.ver.outputs.version }}"
           commit-message: "Bump idfkit to ${{ steps.ver.outputs.version }}"
+          reviewers: samuelduchesne
           body: |
             Automated idfkit dependency bump.
             - Version: `${{ steps.ver.outputs.version }}`
