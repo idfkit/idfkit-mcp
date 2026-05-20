@@ -52,6 +52,9 @@ jobs:
           # Copy built docs into /docs subdirectory
           mkdir -p docs
           cp -r ../site/. docs/
+          # GitHub Pages publishes from /docs, so CNAME must live there too —
+          # otherwise the custom domain gets cleared on each deploy.
+          cp ../gh-pages-extra/CNAME docs/CNAME
           touch .nojekyll
 
           git config user.name "github-actions[bot]"
