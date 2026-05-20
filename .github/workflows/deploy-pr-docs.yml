@@ -73,7 +73,9 @@ jobs:
           rm -rf "$DEST"
           mkdir -p "$DEST"
           cp -r site/. "$DEST/"
+          # GitHub Pages publishes from /docs, so CNAME must live there as well as at the root.
           printf 'mcp.idfkit.com\n' > gh-pages-deploy/CNAME
+          printf 'mcp.idfkit.com\n' > gh-pages-deploy/docs/CNAME
 
           cd gh-pages-deploy
           git config user.name "github-actions[bot]"
