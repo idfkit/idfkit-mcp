@@ -162,3 +162,32 @@ def migration_report() -> ResourceResult:
     if state.migration_report is None:
         raise ValueError("No migration has run in this session. Call migrate_model first.")
     return _to_resource_json(serialize_report_for_resource(state.migration_report))
+
+
+@resource(
+    "idfkit://references/",
+    name="reference_index",
+    title="Agent Reference Index",
+    description="Topic-focused reference documents shipped with idfkit for AI coding assistants.",
+    mime_type="application/json",
+)
+def reference_index() -> ResourceResult:
+    """List every reference document shipped by the installed idfkit."""
+    from idfkit_mcp.tools.references import build_reference_index
+
+    return _to_resource_json(build_reference_index())
+
+
+@resource(
+    "idfkit://references/{topic}",
+    name="reference_document",
+    title="Agent Reference Document",
+    description="Raw markdown for a focused how-to (e.g. 'hvac-templates', 'simulation-execution').",
+    mime_type="text/markdown",
+)
+def reference_document(topic: str) -> ResourceResult:
+    """Markdown body of a single reference document."""
+    from idfkit_mcp.tools.references import get_reference_markdown
+
+    markdown = get_reference_markdown(topic)
+    return ResourceResult([ResourceContent(markdown, mime_type="text/markdown")])

@@ -58,6 +58,8 @@ RESOURCES (read-only state, read any time):
   idfkit://simulation/results                — post-run QA diagnostics (primary QA signal)
   idfkit://simulation/peak-loads             — peak heating/cooling load decomposition
   idfkit://migration/report                  — last migrate_model run (per-step logs + diff)
+  idfkit://references/                       — index of agent reference docs (topics + descriptions)
+  idfkit://references/{topic}                — focused how-to per idfkit feature (markdown)
 
 TIPS:
   - Prefer batch_add_objects over repeated add_object calls

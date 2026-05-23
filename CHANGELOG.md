@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `idfkit://references/` and `idfkit://references/{topic}` MCP resources that surface the agent reference documents shipped inside the `idfkit` wheel (introduced in idfkit alongside [idfkit#160](https://github.com/idfkit/idfkit/issues/160)). The index resource returns a list of available topics (slug, title, description) plus the `SKILL.md` dispatch document; the topic resource returns raw markdown. The server gracefully reports an empty index when the installed idfkit predates the references; a future idfkit pin bump will surface them automatically.
+
 ## [0.9.3] - 2026-05-11
 
 ### Added
