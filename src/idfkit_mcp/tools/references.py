@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 from functools import cache
 from importlib.resources import files
 from typing import Any
+
+_VALID_TOPIC = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +118,10 @@ def get_reference_markdown(topic: str) -> str:
     Raises ``ValueError`` if the topic is unknown or the references aren't
     shipped by the installed idfkit.
     """
+    if not _VALID_TOPIC.fullmatch(topic):
+        msg = f"Invalid reference topic '{topic}'."
+        raise ValueError(msg)
+
     root = _skill_root()
     if root is None:
         msg = (

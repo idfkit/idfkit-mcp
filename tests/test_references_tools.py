@@ -11,7 +11,6 @@ from mcp.shared.exceptions import McpError
 from idfkit_mcp.tools.references import (
     ReferenceEntry,
     _parse_metadata,
-    build_reference_index,
     get_reference_markdown,
     list_references,
 )
@@ -82,10 +81,20 @@ class TestGetReferenceMarkdown:
 
     def test_raises_when_skill_root_missing(self) -> None:
         list_references.cache_clear()
-        with patch("idfkit_mcp.tools.references._skill_root", return_value=None):
-            with pytest.raises(ValueError, match="does not bundle agent references"):
-                get_reference_markdown("hvac-templates")
+        with (
+            patch("idfkit_mcp.tools.references._skill_root", return_value=None),
+            pytest.raises(ValueError, match="does not bundle agent references"),
+        ):
+            get_reference_markdown("hvac-templates")
         list_references.cache_clear()
+
+    @pytest.mark.parametrize(
+        "topic",
+        ["../etc/passwd", "..", "foo/bar", "FOO", "topic.md", "-leading-dash", ""],
+    )
+    def test_rejects_invalid_topic(self, topic: str) -> None:
+        with pytest.raises(ValueError, match="Invalid reference topic"):
+            get_reference_markdown(topic)
 
 
 class TestReferenceIndexResource:
