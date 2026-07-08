@@ -83,6 +83,32 @@ class TestLoadModel:
         with pytest.raises(ToolError, match="No upload"):
             await call_tool(client, "load_model", {"upload_name": "does-not-exist.idf"})
 
+    async def test_http_file_path_requires_input_dirs(
+        self, client: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        doc = new_document()
+        idf_path = tmp_path / "model.idf"
+        write_idf(doc, idf_path)
+        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.delenv("IDFKIT_MCP_INPUT_DIRS", raising=False)
+
+        with pytest.raises(ToolError, match="upload_name"):
+            await call_tool(client, "load_model", {"file_path": str(idf_path)})
+
+    async def test_http_file_path_allowed_by_input_dirs(
+        self, client: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        doc = new_document()
+        doc.add("Zone", "AllowedZone")
+        idf_path = tmp_path / "model.idf"
+        write_idf(doc, idf_path)
+        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(tmp_path))
+
+        result = await call_tool(client, "load_model", {"file_path": str(idf_path)}, ModelSummary)
+
+        assert result.zone_count == 1
+
 
 class TestClearSessionPreservesUploads:
     async def test_clear_session_keeps_upload_dir(self, client: object) -> None:
@@ -254,6 +280,10 @@ class TestSearchObjects:
 
 
 class TestConvertOsmToIdf:
+    @pytest.fixture(autouse=True)
+    def _allow_tmp_outputs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("IDFKIT_MCP_OUTPUT_DIRS", str(tmp_path))
+
     async def test_missing_openstudio(self, client: object, tmp_path: Path) -> None:
         osm_path = tmp_path / "input.osm"
         osm_path.write_text("OSM")
@@ -346,6 +376,22 @@ class TestConvertOsmToIdf:
         assert state.document is doc
         assert state.file_path == output_path
         assert state.simulation_result is None
+
+    async def test_http_conversion_requires_input_dirs(
+        self, client: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_openstudio = _fake_openstudio_module()
+        osm_path = tmp_path / "input.osm"
+        osm_path.write_text("OSM")
+        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.delenv("IDFKIT_MCP_INPUT_DIRS", raising=False)
+
+        with patch.dict(sys.modules, {"openstudio": fake_openstudio}), pytest.raises(ToolError, match="disabled"):
+            await call_tool(
+                client,
+                "convert_osm_to_idf",
+                {"osm_path": str(osm_path), "output_path": str(tmp_path / "out.idf")},
+            )
 
 
 class _OptionalModel:

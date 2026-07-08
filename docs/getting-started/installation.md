@@ -113,15 +113,21 @@ IDFKIT_MCP_TRANSPORT=streamable-http IDFKIT_MCP_HOST=0.0.0.0 IDFKIT_MCP_PORT=800
 
 ## Storage Directories
 
-Hosted deployments (HTTP transport, multi-replica, shared volumes) can redirect
-file storage away from the ephemeral container filesystem via environment
-variables.
+Hosted deployments (HTTP transport, multi-replica, shared volumes) must set
+explicit storage and output directories. The CLI fails fast for non-stdio
+transports unless `IDFKIT_MCP_UPLOAD_DIR`, `IDFKIT_MCP_OUTPUT_DIRS`, and
+`IDFKIT_MCP_SIMULATION_DIR` are configured.
+
+Local `stdio` keeps permissive server-local file reads for desktop workflows.
+Network transports disable `load_model(file_path=...)` unless
+`IDFKIT_MCP_INPUT_DIRS` is set; hosted ChatGPT App deployments should normally
+use uploads plus `load_model(upload_name=...)`.
 
 ### `IDFKIT_MCP_UPLOAD_DIR`
 
 Where files dropped into the `file_manager` UI are stored. When unset, uploads
 live in-memory on the Python process and are lost when the container restarts —
-fine for `stdio` and single-container deployments. When set, uploads are written
+fine for `stdio` only. Required for HTTP/SSE transports. When set, uploads are written
 to `<IDFKIT_MCP_UPLOAD_DIR>/<session_id>/<filename>` with a sidecar
 `<filename>.meta.json`. Point this at a shared volume (e.g. EFS) so concurrent
 replicas can all resolve `load_model(upload_name=...)` calls.
@@ -130,16 +136,19 @@ replicas can all resolve `load_model(upload_name=...)` calls.
 IDFKIT_MCP_UPLOAD_DIR=/mnt/idfkit-uploads idfkit-mcp --transport http
 ```
 
-Cleanup: `clear_session()` removes the caller's scope directory. Abandoned
-sessions are not swept automatically — run a periodic cleanup (e.g. delete
-scopes older than 24 h) in production.
+Cleanup: `clear_session()` resets model and simulation state but preserves
+uploaded files so callers can reload them. Abandoned upload scopes are not swept
+automatically — run a periodic cleanup (e.g. delete scopes older than 24 h) in
+production.
 
 ### `IDFKIT_MCP_SIMULATION_DIR`
 
-Default parent directory for EnergyPlus run output. When unset, each
-`run_simulation` call creates a fresh temp directory. When set, each run writes
-to `<IDFKIT_MCP_SIMULATION_DIR>/<session_id>-<utc-timestamp>/`. An explicit
-`output_directory` argument on the tool call always wins.
+Default parent directory for EnergyPlus run output. When unset in `stdio`, each
+`run_simulation` call creates a fresh temp directory. Required for HTTP/SSE
+transports. When set, each run writes to
+`<IDFKIT_MCP_SIMULATION_DIR>/<session_id>-<utc-timestamp>/`. An explicit
+`output_directory` argument on the tool call must also resolve under this root
+for HTTP/SSE transports.
 
 ```bash
 IDFKIT_MCP_SIMULATION_DIR=/mnt/idfkit-simulations idfkit-mcp --transport http
@@ -152,7 +161,8 @@ user-named output paths) may resolve into. Prevents a misbehaving agent from
 writing outside a sanctioned area.
 
 - Colon-separated on POSIX, semicolon-separated on Windows.
-- Defaults to the current working directory when unset.
+- Defaults to the current working directory when unset for `stdio`.
+- Required for HTTP/SSE transports.
 
 ```bash
 IDFKIT_MCP_OUTPUT_DIRS=/workspace:/mnt/outputs idfkit-mcp
@@ -160,6 +170,20 @@ IDFKIT_MCP_OUTPUT_DIRS=/workspace:/mnt/outputs idfkit-mcp
 
 Paths that resolve outside every listed root are rejected with a `ToolError`,
 including attempts via `..` traversal or symlinks.
+
+### `IDFKIT_MCP_INPUT_DIRS`
+
+Optional whitelist for direct server-local input paths such as
+`load_model(file_path=...)` and `convert_osm_to_idf(osm_path=...)`.
+
+- `stdio`: unset means direct local file paths are allowed.
+- HTTP/SSE: unset disables direct server-local file paths; use uploaded files
+  and `load_model(upload_name=...)` instead.
+- Colon-separated on POSIX, semicolon-separated on Windows.
+
+```bash
+IDFKIT_MCP_INPUT_DIRS=/mnt/idfkit-inputs idfkit-mcp --transport http
+```
 
 ## Log Verbosity
 

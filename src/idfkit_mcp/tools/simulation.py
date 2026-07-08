@@ -202,12 +202,22 @@ def _resolve_simulation_output_dir(explicit: str | None, session_id: str) -> str
       3. ``None`` — idfkit picks its default (a tempdir).
     """
     if explicit is not None:
-        return explicit
+        from pathlib import Path
+
+        from idfkit_mcp.tools._path_validation import validate_simulation_output_dir
+
+        return str(validate_simulation_output_dir(Path(explicit)))
     import os
     from datetime import datetime, timezone
 
+    from fastmcp.exceptions import ToolError
+
+    from idfkit_mcp.tools._path_validation import restricted_transport_enabled
+
     env = os.environ.get("IDFKIT_MCP_SIMULATION_DIR")
     if not env:
+        if restricted_transport_enabled():
+            raise ToolError("IDFKIT_MCP_SIMULATION_DIR is required for non-stdio transports.")
         return None
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     from pathlib import Path

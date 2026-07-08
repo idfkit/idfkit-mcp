@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -23,6 +24,7 @@ T = TypeVar("T", bound=BaseModel)
 @pytest.fixture(autouse=True)
 def _reset_state() -> None:
     """Reset the session registry before each test."""
+    os.environ.pop("IDFKIT_MCP_ACTIVE_TRANSPORT", None)
     reset_sessions()
     state = get_state()
     state.persistence_enabled = False
