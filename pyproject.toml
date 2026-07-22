@@ -56,6 +56,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/idfkit_mcp"]
 
+# The EnergyPlus WASM bundle is a build artifact (gitignored), populated by
+# `make sync-wasm-assets` or the Dockerfile. force-include guarantees it is
+# still packaged into the wheel alongside the source.
+[tool.hatch.build.targets.wheel.force-include]
+"src/idfkit_mcp/assets/energyplus" = "idfkit_mcp/assets/energyplus"
+
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "strict"

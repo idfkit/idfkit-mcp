@@ -111,6 +111,45 @@ async def health_check(_request: Request) -> Response:
     return JSONResponse({"status": "ok"})
 
 
+@mcp.custom_route("/assets/energyplus/{file_path:path}", methods=["GET"])
+async def energyplus_asset(request: Request) -> Response:
+    """Serve EnergyPlus WASM + IDD + datasets from the installed package.
+
+    Assets live at ``src/idfkit_mcp/assets/energyplus/`` in the wheel; the
+    directory is a build artifact populated by ``make sync-wasm-assets``.
+    Deployments can point at a pre-populated mirror via the
+    ``IDFKIT_MCP_ENERGYPLUS_DIR`` environment variable.
+    """
+    from importlib.resources import files
+
+    from starlette.responses import FileResponse, PlainTextResponse
+
+    override = os.environ.get("IDFKIT_MCP_ENERGYPLUS_DIR")
+    base = Path(override).resolve() if override else Path(str(files("idfkit_mcp") / "assets" / "energyplus")).resolve()
+
+    # The iframe renders in an opaque sandbox origin when served via MCP
+    # Apps, so every fetch() it makes is cross-origin and requires CORS.
+    # Static bytes with no secrets: a permissive allow-any suffices.
+    cors = {"Access-Control-Allow-Origin": "*"}
+
+    # The directory itself is always present in the wheel (a .gitkeep keeps it
+    # in git); absence of the Emscripten glue is the real signal that the
+    # WASM bundle was never synced into the package.
+    if not base.is_dir() or not (base / "energyplus.js").is_file():
+        return PlainTextResponse(
+            "EnergyPlus WASM assets not found. Run `make sync-wasm-assets` "
+            "or set IDFKIT_MCP_ENERGYPLUS_DIR to a directory containing "
+            "energyplus.js + .wasm + Energy+.idd.",
+            status_code=503,
+            headers=cors,
+        )
+
+    requested = (base / request.path_params["file_path"]).resolve()
+    if not requested.is_relative_to(base) or not requested.is_file():
+        return PlainTextResponse("not found", status_code=404, headers=cors)
+    return FileResponse(requested, headers=cors)
+
+
 def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for the idfkit MCP server."""
     parser = argparse.ArgumentParser(description="Run the idfkit MCP server.")

@@ -4,8 +4,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1
 WORKDIR /app
 
-COPY pyproject.toml uv.lock README.md /app/
-COPY src /app/src
+# Build context is the monorepo root (see `make docker-build`), so paths are
+# prefixed with `idfkit-mcp/` / `envelop/`.
+COPY idfkit-mcp/pyproject.toml idfkit-mcp/uv.lock idfkit-mcp/README.md /app/
+COPY idfkit-mcp/src /app/src
+# Bundle the EnergyPlus WASM build into the installed package so the wheel and
+# container ship with it (the pyproject.toml force-include picks it up).
+COPY envelop/public/energyplus /app/src/idfkit_mcp/assets/energyplus
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable

@@ -209,3 +209,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# EnergyPlus WASM bundle — build artifact populated by `make sync-wasm-assets`
+# (copied from ../envelop/public/energyplus/). Shipped inside the wheel via
+# hatchling force-include; never committed. The directory itself is kept in
+# git (via .gitkeep) so the hatchling force-include target always resolves.
+src/idfkit_mcp/assets/energyplus/*
+!src/idfkit_mcp/assets/energyplus/.gitkeep
