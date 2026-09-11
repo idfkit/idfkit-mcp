@@ -144,8 +144,41 @@ jobs:
             exit 2
           fi
           if [ "$code" -eq 1 ]; then echo "surfaced=true" >> "$GITHUB_OUTPUT"; else echo "surfaced=false" >> "$GITHUB_OUTPUT"; fi
+      # T119, FR-023: an adoption closes the register's lag only when it reaches the library's current
+      # level, the newest release of any kind. A bump to anything older, a manual dispatch of an earlier
+      # release say, moves the consumer forward and leaves it behind all the same, so the lag stays open.
+      # This step is identical in every consumer's bump workflow; change it everywhere or nowhere.
+      - name: Read whether the adopted level is the library's current level
+        id: current
+        env:
+          ADOPTED: ${{ steps.ver.outputs.version }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, re, urllib.request
+
+          def norm(v):
+              v = v.strip().lower().removeprefix("v")
+              return re.sub(r"[.-]?(alpha|beta|a|b|rc|dev|post)[.-]?(\d*)", lambda m: {"alpha": "a", "beta": "b"}.get(m[1], m[1]) + m[2], v)
+
+          def key(v):
+              base, _, pre = norm(v).partition("rc")
+              nums = [int(x) for x in re.findall(r"\d+", re.split(r"[a-z]", base, maxsplit=1)[0])]
+              return (*nums, 0 if pre else 1, int(pre) if pre.isdigit() else 0)
+
+          if os.environ["LIBRARY"] == "python":
+              data = json.load(urllib.request.urlopen("https://pypi.org/pypi/idfkit/json", timeout=30))
+              versions = [v for v, files in data["releases"].items() if files]
+          else:
+              data = json.load(urllib.request.urlopen("https://registry.npmjs.org/@idfkit%2Fcore", timeout=30))
+              versions = list(data["versions"])
+          current = max(versions, key=key)
+          print(f"current={current}")
+          print(f"is_current={'true' if norm(current) == norm(os.environ['ADOPTED']) else 'false'}")
+          PY
       - name: Read whether the register holds a lag this adoption closes
         id: lag
+        env:
+          IS_CURRENT: ${{ steps.current.outputs.is_current }}
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import os, pathlib, tomllib
@@ -153,7 +186,9 @@ jobs:
           register = tomllib.loads(path.read_text())
           consumer = next(c for c in register["consumer"] if c["id"] == os.environ["CONSUMER"])
           lag = next((r.get("lag") for r in consumer.get("libraries", []) if r["library"] == os.environ["LIBRARY"]), None)
-          print(f"closes={'true' if lag else 'false'}")
+          current = os.environ["IS_CURRENT"] == "true"
+          print(f"closes={'true' if lag and current else 'false'}")
+          print(f"held={'true' if lag and not current else 'false'}")
           print(f"tracked={(lag or {}).get('issue') or (lag or {}).get('reason') or ''}")
           PY
       - name: Run tests
@@ -187,6 +222,8 @@ jobs:
           SURFACED: ${{ steps.statements.outputs.surfaced }}
           CLOSES: ${{ steps.lag.outputs.closes }}
           TRACKED: ${{ steps.lag.outputs.tracked }}
+          HELD: ${{ steps.lag.outputs.held }}
+          CURRENT: ${{ steps.current.outputs.current }}
           HAS_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN != '' }}
         run: |
           {
@@ -220,6 +257,8 @@ jobs:
                 echo "gh workflow run record-adoption.yml --repo idfkit/idfkit-conformance -f consumer=$CONSUMER -f library=$LIBRARY -f outcome=close-lag -f adoption=<this pull request's URL>"
                 echo '```'
               fi
+            elif [ "$HELD" = true ]; then
+              echo "The register holds a lag for \`$CONSUMER\` ($LIBRARY), tracked at $TRACKED, and this adoption does not close it: \`$VERSION\` is not the library's current level, \`$CURRENT\`. The consumer moves forward and is still behind, so the lag stays open (FR-023)."
             else
               echo "Nothing to record: the register points at pyproject.toml and holds no level, and no lag for this repository."
             fi

@@ -57,6 +57,16 @@ jobs:
         run: uv publish
 
 
+  # T111, FR-020: offer the idfkit level this release pins to every consumer that resolves idfkit through
+  # idfkit-mcp. Until now those consumers were rejected on every idfkit release and never offered the level
+  # again once this server published on it.
+  notify-dependents:
+    needs: publish
+    uses: ./.github/workflows/notify-dependents.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
   deploy-docs:
     needs: publish
     runs-on: ubuntu-latest
