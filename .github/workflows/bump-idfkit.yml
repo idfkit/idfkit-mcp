@@ -1,16 +1,84 @@
 name: Bump idfkit
+
+# Adopt a newly published idfkit, as a pull request.
+#
+# idfkit's notify-downstream.yml dispatches this on every release, in the wave order the consumer
+# register (governance/consumers.toml in idfkit-conformance) gives it; a maintainer may also run it by
+# hand. It pins the version, relocks, runs the tests, lets Claude attempt a minimal repair when they
+# fail, and opens a pull request. That part is unchanged: it works.
+#
+# Feature 004 of the unification added three things, each because an adoption could otherwise report
+# complete while something it made false stood unexamined:
+#
+#   Statements. Every `idfkit:unavailable` marker in this repository rests on a parity ledger entry.
+#     When the new level closes that entry, the statement beside the marker has become false. The
+#     markers resting on an entry that moved to complete between the old level's governance tag and
+#     the new one are listed in the pull request, which opens as a draft, and this run fails while any
+#     is listed (FR-025). Reviewing one is removing the statement, or setting its `own_reason`.
+#   The register. When the register holds a lag for this repository, the adoption closes it, and the
+#     register change lands with the adoption rather than afterwards (FR-023) as a paired pull request
+#     in idfkit-conformance. A level moving needs no register change at all otherwise, because the
+#     register points at pyproject.toml rather than holding the level.
+#   Declining. A maintainer who will not take a level runs this with `decline_reason`. Nothing is
+#     bumped; the register records a deliberate lag with that reason, which is a resting state rather
+#     than a bot pull request left open for a month (FR-024).
+#
+# The register and the ledger are read at the governance tag this repository pins in main.yml, never
+# at a branch. Dispatching to idfkit-conformance needs CONFORMANCE_DISPATCH_TOKEN (actions: write on
+# that repository); without it the exact command is written where a maintainer will see it.
+
 on:
   workflow_dispatch:
     inputs:
       idfkit_version:
+        description: The published idfkit version to adopt, with or without a leading v.
         required: true
         type: string
+      decline_reason:
+        description: >
+          Leave empty to adopt. To decline this level instead, state why as a policy, never a
+          version. Nothing is bumped, and the register records a deliberate lag.
+        required: false
+        type: string
+        default: ""
+
 permissions:
   contents: write
   pull-requests: write
   id-token: write
+
+env:
+  CONSUMER: idfkit-mcp
+  LIBRARY: python
+  GOVERNANCE_LEVEL: governance-2026.18
+
 jobs:
+  decline:
+    if: inputs.decline_reason != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record the decline in the consumer register
+        env:
+          GH_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN }}
+          REASON: ${{ inputs.decline_reason }}
+          RAW_VERSION: ${{ inputs.idfkit_version }}
+        run: |
+          set -euo pipefail
+          version="${RAW_VERSION#v}"
+          command=(gh workflow run record-adoption.yml --repo idfkit/idfkit-conformance
+                   -f consumer="$CONSUMER" -f library="$LIBRARY" -f outcome=decline -f reason="$REASON")
+          printf '## %s declines idfkit %s\n\nReason: %s\n' "$CONSUMER" "$version" "$REASON" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${GH_TOKEN:-}" ]; then
+            "${command[@]}"
+            echo "Dispatched record-adoption.yml in idfkit-conformance; its pull request records the deliberate lag." >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '\nNot recorded: CONFORMANCE_DISPATCH_TOKEN is not set. Run:\n\n```\n%s\n```\n' "$(printf '%q ' "${command[@]}")" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Decline not recorded::A decline the register does not hold is not a decline. Run the command in the step summary."
+            exit 1
+          fi
+
   bump:
+    if: inputs.decline_reason == ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +95,67 @@ jobs:
           echo "Normalized version: $version"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+      - name: Read the level this adoption moves from
+        id: prev
+        run: |
+          set -euo pipefail
+          previous=$(python3 - <<'PY'
+          import pathlib, re, tomllib
+          dependencies = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["dependencies"]
+          pins = [d.split("==", 1)[1].strip() for d in dependencies if re.match(r"idfkit\s*==", d)]
+          if len(pins) != 1:
+              raise SystemExit(f"expected one exact idfkit pin in pyproject.toml, found {pins}")
+          print(pins[0])
+          PY
+          )
+          echo "level=$previous" >> "$GITHUB_OUTPUT"
       - name: Bump idfkit
         run: |
           uv add "idfkit==${{ steps.ver.outputs.version }}"
           uv lock
+      - name: Read the register and the ledger at the pinned governance tag
+        uses: actions/checkout@v4
+        with:
+          repository: idfkit/idfkit-conformance
+          ref: refs/tags/${{ env.GOVERNANCE_LEVEL }}
+          fetch-depth: 0
+          path: .governance
+          persist-credentials: false
+      # Out of this repository's tree: the pull request below commits every change in it, and pytest
+      # would collect the governance repository's own tests.
+      - name: Move the governance checkout aside
+        run: mv .governance "$RUNNER_TEMP/governance"
+      - name: List the statements this adoption surfaces
+        id: statements
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS: ${{ steps.prev.outputs.level }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set +e
+          python3 "$RUNNER_TEMP/governance/tools/adoption_statements.py" --library "$LIBRARY" \
+            --from "$PREVIOUS" --to "$VERSION" --root . --conformance "$RUNNER_TEMP/governance" \
+            > "$RUNNER_TEMP/statements.txt" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/statements.txt"
+          if [ "$code" -ge 2 ]; then
+            echo "::error title=Statements unknown::The governance levels of idfkit $PREVIOUS and $VERSION could not be read, so the statements this adoption surfaces are unknown. That is not the same as none."
+            exit 2
+          fi
+          if [ "$code" -eq 1 ]; then echo "surfaced=true" >> "$GITHUB_OUTPUT"; else echo "surfaced=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Read whether the register holds a lag this adoption closes
+        id: lag
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, pathlib, tomllib
+          path = pathlib.Path(os.environ["RUNNER_TEMP"], "governance", "governance", "consumers.toml")
+          register = tomllib.loads(path.read_text())
+          consumer = next(c for c in register["consumer"] if c["id"] == os.environ["CONSUMER"])
+          lag = next((r.get("lag") for r in consumer.get("libraries", []) if r["library"] == os.environ["LIBRARY"]), None)
+          print(f"closes={'true' if lag else 'false'}")
+          print(f"tracked={(lag or {}).get('issue') or (lag or {}).get('reason') or ''}")
+          PY
       - name: Run tests
         id: tests
         continue-on-error: true
@@ -54,17 +179,75 @@ jobs:
       - name: Rerun tests after Claude repair
         if: steps.tests.outcome == 'failure'
         run: uv run pytest
+      - name: Write the pull request body
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          PREVIOUS: ${{ steps.prev.outputs.level }}
+          TESTS: ${{ steps.tests.outcome }}
+          SURFACED: ${{ steps.statements.outputs.surfaced }}
+          CLOSES: ${{ steps.lag.outputs.closes }}
+          TRACKED: ${{ steps.lag.outputs.tracked }}
+          HAS_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN != '' }}
+        run: |
+          {
+            echo "Automated idfkit dependency bump."
+            echo "- Version: \`$VERSION\`, from \`$PREVIOUS\`"
+            echo "- Initial test result: \`$TESTS\`"
+            echo "- Test command: \`uv run pytest\`"
+            echo
+            echo "If tests initially failed, Claude attempted a minimal compatibility repair."
+            echo
+            echo "### Statements of unavailability"
+            if [ "$SURFACED" = true ]; then
+              echo "**This adoption is not complete.** The new level closes a capability that a statement in this repository says is unavailable. Remove each statement, or set its \`own_reason\` so it stops citing the library, then mark this pull request ready (FR-025):"
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/statements.txt"
+              echo '```'
+            else
+              echo "None of this repository's statements rests on a capability this level closed."
+            fi
+            echo
+            echo "### Consumer register"
+            if [ "$CLOSES" = true ]; then
+              echo "The register holds a lag for \`$CONSUMER\` ($LIBRARY), tracked at $TRACKED. This adoption closes it."
+              if [ "$HAS_TOKEN" = true ]; then
+                echo "A paired pull request in idfkit-conformance removes it; merge the two together (FR-023)."
+              else
+                echo "Record that in a paired pull request, which needs this run in idfkit-conformance:"
+                echo
+                echo '```'
+                echo "gh workflow run record-adoption.yml --repo idfkit/idfkit-conformance -f consumer=$CONSUMER -f library=$LIBRARY -f outcome=close-lag -f adoption=<this pull request's URL>"
+                echo '```'
+              fi
+            else
+              echo "Nothing to record: the register points at pyproject.toml and holds no level, and no lag for this repository."
+            fi
+          } > "$RUNNER_TEMP/pr-body.md"
       - name: Open PR
+        id: pr
         uses: peter-evans/create-pull-request@v6
         with:
           branch: bot/bump-idfkit-${{ steps.ver.outputs.version }}
           title: "Bump idfkit to ${{ steps.ver.outputs.version }}"
           commit-message: "Bump idfkit to ${{ steps.ver.outputs.version }}"
           reviewers: samuelduchesne
-          body: |
-            Automated idfkit dependency bump.
-            - Version: `${{ steps.ver.outputs.version }}`
-            - Initial test result: `${{ steps.tests.outcome }}`
-            - Test command: `uv run pytest`
-
-            If tests initially failed, Claude attempted a minimal compatibility repair.
+          draft: ${{ steps.statements.outputs.surfaced == 'true' }}
+          body-path: ${{ runner.temp }}/pr-body.md
+      - name: Record the closed lag in the register
+        if: steps.lag.outputs.closes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN }}
+          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning title=Register not updated::CONFORMANCE_DISPATCH_TOKEN is not set. The pull request body carries the command that records the closed lag."
+            exit 0
+          fi
+          gh workflow run record-adoption.yml --repo idfkit/idfkit-conformance \
+            -f consumer="$CONSUMER" -f library="$LIBRARY" -f outcome=close-lag -f adoption="$PR_URL"
+      - name: Refuse to call the adoption complete while a statement is unreviewed
+        if: steps.statements.outputs.surfaced == 'true'
+        run: |
+          echo "::error title=Statements unreviewed::This adoption surfaced statements of unavailability that the new level made false. The pull request is a draft until each is reviewed."
+          exit 1

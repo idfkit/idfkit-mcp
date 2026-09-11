@@ -11,6 +11,16 @@ permissions:
   contents: read
 
 jobs:
+  # This repository's entry in the consumer register (governance/consumers.toml in
+  # idfkit-conformance, id `idfkit-mcp`) must still describe it: the level declared where the
+  # register says, and no dependency on either library that the register does not point at. The tag
+  # is stated on `uses:` and again as the input, and the called workflow refuses the run unless the
+  # two match, so moving it is one reviewed edit. It says nothing about whether the level is current.
+  consumer-register:
+    uses: idfkit/idfkit-conformance/.github/workflows/check-consumer.yml@governance-2026.18
+    with:
+      governance_level: governance-2026.18
+
   quality:
     runs-on: ubuntu-latest
     steps:
