@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
+from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -111,9 +112,34 @@ async def health_check(_request: Request) -> Response:
     return JSONResponse({"status": "ok"})
 
 
-def _parse_args() -> argparse.Namespace:
+def _distribution_version(distribution: str) -> str:
+    try:
+        return metadata.version(distribution)
+    except metadata.PackageNotFoundError:
+        return "not installed"
+
+
+def version_report() -> str:
+    """This server's version and the idfkit version it is running against, read from the install.
+
+    Every path that delivers this server to a person has to be able to say which level it runs
+    (feature 004, FR-017): the editor plugin fetches it by name at a pinned version, and the hosted
+    deployment builds it from a pinned release tag. Both numbers come from the installed
+    distributions rather than from a literal, so the answer is what is running and not what somebody
+    last typed.
+    """
+    return f"idfkit-mcp {_distribution_version('idfkit-mcp')} (idfkit {_distribution_version('idfkit')})"
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments for the idfkit MCP server."""
     parser = argparse.ArgumentParser(description="Run the idfkit MCP server.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=version_report(),
+        help="Print this server's version and the idfkit version it runs against, then exit.",
+    )
     parser.add_argument(
         "--transport",
         choices=("stdio", "sse", "http", "streamable-http"),
@@ -131,7 +157,7 @@ def _parse_args() -> argparse.Namespace:
         default=int(os.getenv("IDFKIT_MCP_PORT", "8000")),
         help="Port for HTTP/SSE transports (env: IDFKIT_MCP_PORT).",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.transport == "streamable-http":
         args.transport = "http"
     return args
