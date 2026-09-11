@@ -1,0 +1,44 @@
+# Rehearse this repository against an unpublished idfkit, before it is released (feature 004, US2).
+#
+# A maintainer names a commit, branch or tag in idfkit/idfkit. The reusable workflow builds a wheel
+# from it, installs it over this repository's synced environment without touching pyproject.toml or
+# uv.lock, runs pyright and then pytest at the declared level and again at the candidate, and says
+# which failures the candidate caused. It also scans for names that survived a rename with a
+# different meaning, which is how `write_idf(doc, path)` in src/idfkit_mcp/tools/write.py is found.
+#
+# The commands it runs are not written here. They are this repository's rehearsal entry in
+# governance/consumers.toml in idfkit-conformance, read at the pinned tag below.
+#
+# Dispatch only. A failure the candidate causes is a finding against idfkit, and it never blocks a
+# pull request here.
+
+name: rehearse-candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      # One option, and declared anyway: both libraries' rehearse-all.yml dispatch every consumer
+      # with `-f library=...`, and GitHub rejects a dispatch carrying an input the workflow does not
+      # declare. This repository resolves only the first language.
+      library:
+        description: The library to rehearse. This repository resolves only python.
+        required: true
+        type: choice
+        options: [python]
+        default: python
+      candidate_ref:
+        description: A commit, branch or tag in idfkit/idfkit to rehearse against. Required.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  rehearse:
+    uses: idfkit/idfkit-conformance/.github/workflows/rehearse.yml@governance-2026.18
+    with:
+      governance_level: governance-2026.18
+      consumer: idfkit-mcp
+      library: ${{ inputs.library }}
+      candidate_ref: ${{ inputs.candidate_ref }}
