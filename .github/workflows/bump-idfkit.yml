@@ -24,8 +24,9 @@ name: Bump idfkit
 #     than a bot pull request left open for a month (FR-024).
 #
 # The register and the ledger are read at the governance tag this repository pins in main.yml, never
-# at a branch. Dispatching to idfkit-conformance needs CONFORMANCE_DISPATCH_TOKEN (actions: write on
-# that repository); without it the exact command is written where a maintainer will see it.
+# at a branch. Dispatching to idfkit-conformance uses a token the organisation's GitHub App mints for
+# that one repository (APP_ID, APP_PRIVATE_KEY); without them the exact command is written where a
+# maintainer will see it.
 
 on:
   workflow_dispatch:
@@ -56,10 +57,25 @@ jobs:
   decline:
     if: inputs.decline_reason != ''
     runs-on: ubuntu-latest
+    env:
+      HAS_APP: ${{ secrets.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}
     steps:
+      # The consumer register lives in idfkit-conformance, so recording an adoption there is a dispatch
+      # into another repository. The organisation's GitHub App (idfkit-bot) mints a token for that one
+      # repository, valid for an hour, rather than a personal token stored for months. Without APP_ID
+      # and APP_PRIVATE_KEY this step is skipped and the steps below say what to run instead.
+      - name: Mint a token that can dispatch in idfkit-conformance
+        id: app-token
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: idfkit-conformance
       - name: Record the decline in the consumer register
         env:
-          GH_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REASON: ${{ inputs.decline_reason }}
           RAW_VERSION: ${{ inputs.idfkit_version }}
         run: |
@@ -72,7 +88,7 @@ jobs:
             "${command[@]}"
             echo "Dispatched record-adoption.yml in idfkit-conformance; its pull request records the deliberate lag." >> "$GITHUB_STEP_SUMMARY"
           else
-            printf '\nNot recorded: CONFORMANCE_DISPATCH_TOKEN is not set. Run:\n\n```\n%s\n```\n' "$(printf '%q ' "${command[@]}")" >> "$GITHUB_STEP_SUMMARY"
+            printf '\nNot recorded: APP_ID and APP_PRIVATE_KEY are not set. Run:\n\n```\n%s\n```\n' "$(printf '%q ' "${command[@]}")" >> "$GITHUB_STEP_SUMMARY"
             echo "::error title=Decline not recorded::A decline the register does not hold is not a decline. Run the command in the step summary."
             exit 1
           fi
@@ -80,6 +96,8 @@ jobs:
   bump:
     if: inputs.decline_reason == ''
     runs-on: ubuntu-latest
+    env:
+      HAS_APP: ${{ secrets.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -224,7 +242,6 @@ jobs:
           TRACKED: ${{ steps.lag.outputs.tracked }}
           HELD: ${{ steps.lag.outputs.held }}
           CURRENT: ${{ steps.current.outputs.current }}
-          HAS_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN != '' }}
         run: |
           {
             echo "Automated idfkit dependency bump."
@@ -248,7 +265,7 @@ jobs:
             echo "### Consumer register"
             if [ "$CLOSES" = true ]; then
               echo "The register holds a lag for \`$CONSUMER\` ($LIBRARY), tracked at $TRACKED. This adoption closes it."
-              if [ "$HAS_TOKEN" = true ]; then
+              if [ "$HAS_APP" = true ]; then
                 echo "A paired pull request in idfkit-conformance removes it; merge the two together (FR-023)."
               else
                 echo "Record that in a paired pull request, which needs this run in idfkit-conformance:"
@@ -273,14 +290,27 @@ jobs:
           reviewers: samuelduchesne
           draft: ${{ steps.statements.outputs.surfaced == 'true' }}
           body-path: ${{ runner.temp }}/pr-body.md
+      # The consumer register lives in idfkit-conformance, so recording an adoption there is a dispatch
+      # into another repository. The organisation's GitHub App (idfkit-bot) mints a token for that one
+      # repository, valid for an hour, rather than a personal token stored for months. Without APP_ID
+      # and APP_PRIVATE_KEY this step is skipped and the steps below say what to run instead.
+      - name: Mint a token that can dispatch in idfkit-conformance
+        id: app-token
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: idfkit-conformance
       - name: Record the closed lag in the register
         if: steps.lag.outputs.closes == 'true'
         env:
-          GH_TOKEN: ${{ secrets.CONFORMANCE_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_URL: ${{ steps.pr.outputs.pull-request-url }}
         run: |
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::warning title=Register not updated::CONFORMANCE_DISPATCH_TOKEN is not set. The pull request body carries the command that records the closed lag."
+            echo "::warning title=Register not updated::APP_ID and APP_PRIVATE_KEY are not set. The pull request body carries the command that records the closed lag."
             exit 0
           fi
           gh workflow run record-adoption.yml --repo idfkit/idfkit-conformance \
