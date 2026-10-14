@@ -137,16 +137,22 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
+_REQUIRED_HTTP_ENV_VARS = ("IDFKIT_MCP_UPLOAD_DIR", "IDFKIT_MCP_OUTPUT_DIRS", "IDFKIT_MCP_SIMULATION_DIR")
+
+
+def _missing_http_env_vars(transport: str) -> list[str]:
+    """Return the deployment-path env vars that must be set for *transport*."""
+    if transport == "stdio":
+        return []
+    return [name for name in _REQUIRED_HTTP_ENV_VARS if not os.environ.get(name)]
+
+
 def _require_http_environment(args: argparse.Namespace) -> None:
     """Fail fast when network transports are missing deployment path policy."""
     from idfkit_mcp.tools._path_validation import set_active_transport
 
     set_active_transport(args.transport)
-    if args.transport == "stdio":
-        return
-
-    required = ("IDFKIT_MCP_UPLOAD_DIR", "IDFKIT_MCP_OUTPUT_DIRS", "IDFKIT_MCP_SIMULATION_DIR")
-    missing = [name for name in required if not os.environ.get(name)]
+    missing = _missing_http_env_vars(args.transport)
     if missing:
         joined = ", ".join(missing)
         raise SystemExit(

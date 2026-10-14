@@ -1,4 +1,11 @@
-"""Transport-aware path validation for MCP tools."""
+"""Transport-aware path validation for MCP tools.
+
+The active transport is stored as module-level state set by ``server.main()``
+via :func:`set_active_transport`. Tool code reads it through
+:func:`active_transport` / :func:`restricted_transport_enabled`. When the
+server is embedded (no ``main()`` call), the policy falls back to the public
+``IDFKIT_MCP_TRANSPORT`` env var, and finally to ``stdio``.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +14,9 @@ from pathlib import Path
 
 from fastmcp.exceptions import ToolError
 
-_ACTIVE_TRANSPORT_ENV = "IDFKIT_MCP_ACTIVE_TRANSPORT"
+# Module-level state set by server.main() once the CLI transport is known.
+# None means "not configured yet"; readers fall back to IDFKIT_MCP_TRANSPORT.
+_active_transport: str | None = None
 
 
 def normalize_transport(transport: str | None) -> str:
@@ -17,19 +26,25 @@ def normalize_transport(transport: str | None) -> str:
     return transport or "stdio"
 
 
+def set_active_transport(transport: str | None) -> None:
+    """Record the CLI-selected transport for validators that run during tool calls.
+
+    Pass ``None`` to reset (useful between tests).
+    """
+    global _active_transport
+    _active_transport = normalize_transport(transport) if transport else None
+
+
 def active_transport() -> str:
     """Return the currently configured transport, defaulting to local stdio."""
-    return normalize_transport(os.environ.get(_ACTIVE_TRANSPORT_ENV) or os.environ.get("IDFKIT_MCP_TRANSPORT"))
+    if _active_transport is not None:
+        return _active_transport
+    return normalize_transport(os.environ.get("IDFKIT_MCP_TRANSPORT"))
 
 
 def restricted_transport_enabled() -> bool:
     """Return True when the server is running in a network transport mode."""
     return active_transport() != "stdio"
-
-
-def set_active_transport(transport: str) -> None:
-    """Expose CLI-selected transport to validators that run during tool calls."""
-    os.environ[_ACTIVE_TRANSPORT_ENV] = normalize_transport(transport)
 
 
 def _env_roots(env_var: str) -> list[Path]:

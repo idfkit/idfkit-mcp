@@ -394,7 +394,14 @@ class ServerState:
     def _restore_model(self, data: dict[str, Any]) -> None:
         """Restore model from a session data dict."""
         import logging
+        import os
 
+        from fastmcp.exceptions import ToolError
+        from idfkit import load_epjson, load_idf
+
+        from idfkit_mcp.tools._path_validation import validate_restored_path
+
+        log = logging.getLogger(__name__)
         file_path_str = data.get("file_path")
         if file_path_str is None or self.document is not None:
             return
@@ -402,13 +409,7 @@ class ServerState:
         if not fp.exists():
             return
         try:
-            from idfkit import load_epjson, load_idf
-
-            from idfkit_mcp.tools._path_validation import validate_restored_path
-
             extra_roots = [session_uploads_dir(self.session_id)]
-            import os
-
             upload_root = os.environ.get("IDFKIT_MCP_UPLOAD_DIR")
             if upload_root:
                 extra_roots.append(Path(upload_root) / self.session_id)
@@ -418,6 +419,10 @@ class ServerState:
                 env_var="IDFKIT_MCP_INPUT_DIRS",
                 extra_roots=extra_roots,
             )
+        except ToolError as exc:
+            log.warning("Skipping session model restore (path policy rejected '%s'): %s", fp, exc)
+            return
+        try:
             doc = (
                 load_epjson(str(fp), strict=True)
                 if fp.suffix.lower() in (".epjson", ".json")
@@ -426,14 +431,20 @@ class ServerState:
             self.document = doc
             self.schema = doc.schema
             self.file_path = fp
-            logging.getLogger(__name__).info("Restored model from session: %s", fp)
+            log.info("Restored model from session: %s", fp)
         except Exception:
-            logging.getLogger(__name__).warning("Failed to restore model from %s", fp, exc_info=True)
+            log.warning("Failed to parse session model at %s", fp, exc_info=True)
 
     def _restore_simulation(self, data: dict[str, Any]) -> None:
         """Restore simulation result from a session data dict."""
         import logging
 
+        from fastmcp.exceptions import ToolError
+        from idfkit.simulation.result import SimulationResult as SimResult
+
+        from idfkit_mcp.tools._path_validation import validate_restored_path
+
+        log = logging.getLogger(__name__)
         run_dir_str = data.get("simulation_run_dir")
         if run_dir_str is None or self.simulation_result is not None:
             return
@@ -441,24 +452,29 @@ class ServerState:
         if not rd.is_dir():
             return
         try:
-            from idfkit.simulation.result import SimulationResult as SimResult
-
-            from idfkit_mcp.tools._path_validation import validate_restored_path
-
             rd = validate_restored_path(
                 rd,
                 label="Restored simulation run directory",
                 env_var="IDFKIT_MCP_SIMULATION_DIR",
             )
+        except ToolError as exc:
+            log.warning("Skipping simulation restore (path policy rejected '%s'): %s", rd, exc)
+            return
+        try:
             self.simulation_result = SimResult.from_directory(rd)
-            logging.getLogger(__name__).info("Restored simulation result from session: %s", rd)
+            log.info("Restored simulation result from session: %s", rd)
         except Exception:
-            logging.getLogger(__name__).warning("Failed to restore simulation result from %s", rd, exc_info=True)
+            log.warning("Failed to parse simulation result at %s", rd, exc_info=True)
 
     def _restore_weather(self, data: dict[str, Any]) -> None:
         """Restore weather file path from a session data dict."""
         import logging
 
+        from fastmcp.exceptions import ToolError
+
+        from idfkit_mcp.tools._path_validation import validate_restored_path
+
+        log = logging.getLogger(__name__)
         weather_str = data.get("weather_file")
         if weather_str is None or self.weather_file is not None:
             return
@@ -466,19 +482,17 @@ class ServerState:
         if not wp.exists():
             return
         try:
-            from idfkit_mcp.tools._path_validation import validate_restored_path
-
             wp = validate_restored_path(
                 wp,
                 label="Restored weather file",
                 env_var="IDFKIT_MCP_INPUT_DIRS",
                 extra_roots=[_cache_base_dir()],
             )
-        except Exception:
-            logging.getLogger(__name__).warning("Failed to restore weather file from %s", wp, exc_info=True)
+        except ToolError as exc:
+            log.warning("Skipping weather restore (path policy rejected '%s'): %s", wp, exc)
             return
         self.weather_file = wp
-        logging.getLogger(__name__).info("Restored weather file from session: %s", wp)
+        log.info("Restored weather file from session: %s", wp)
 
     def clear_session(self) -> None:
         """Delete the session file and reset model/simulation state.

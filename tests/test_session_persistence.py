@@ -178,7 +178,7 @@ class TestRestoreEdgeCases:
                 "updated_at": "2026-01-01T00:00:00+00:00",
             })
         )
-        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(allowed_root))
 
         state = get_state()

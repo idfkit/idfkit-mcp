@@ -21,6 +21,7 @@ Behavior:
 - Returns the resolved EnergyPlus executable, install directory, and version.
 - Stores result in server state for follow-up tools.
 - For HTTP/SSE transports, `IDFKIT_MCP_SIMULATION_DIR` is required and any explicit `output_directory` must resolve under it.
+- For HTTP/SSE transports, an explicit `weather_file` must resolve under `IDFKIT_MCP_INPUT_DIRS`; otherwise use `download_weather_file` first and let `run_simulation` pick up the cached path.
 
 ## `list_output_variables`
 

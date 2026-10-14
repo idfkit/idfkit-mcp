@@ -89,10 +89,10 @@ class TestLoadModel:
         doc = new_document()
         idf_path = tmp_path / "model.idf"
         write_idf(doc, idf_path)
-        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.delenv("IDFKIT_MCP_INPUT_DIRS", raising=False)
 
-        with pytest.raises(ToolError, match="upload_name"):
+        with pytest.raises(ToolError, match="IDFKIT_MCP_INPUT_DIRS"):
             await call_tool(client, "load_model", {"file_path": str(idf_path)})
 
     async def test_http_file_path_allowed_by_input_dirs(
@@ -102,12 +102,32 @@ class TestLoadModel:
         doc.add("Zone", "AllowedZone")
         idf_path = tmp_path / "model.idf"
         write_idf(doc, idf_path)
-        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(tmp_path))
 
         result = await call_tool(client, "load_model", {"file_path": str(idf_path)}, ModelSummary)
 
         assert result.zone_count == 1
+
+    async def test_http_file_path_rejects_symlink_escape(
+        self, client: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A symlink under INPUT_DIRS pointing outside must still be rejected."""
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        doc = new_document()
+        target_idf = outside / "secret.idf"
+        write_idf(doc, target_idf)
+        symlink = allowed / "trojan.idf"
+        symlink.symlink_to(target_idf)
+
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
+        monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(allowed))
+
+        with pytest.raises(ToolError, match="IDFKIT_MCP_INPUT_DIRS"):
+            await call_tool(client, "load_model", {"file_path": str(symlink)})
 
 
 class TestClearSessionPreservesUploads:
@@ -383,10 +403,13 @@ class TestConvertOsmToIdf:
         fake_openstudio = _fake_openstudio_module()
         osm_path = tmp_path / "input.osm"
         osm_path.write_text("OSM")
-        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.delenv("IDFKIT_MCP_INPUT_DIRS", raising=False)
 
-        with patch.dict(sys.modules, {"openstudio": fake_openstudio}), pytest.raises(ToolError, match="disabled"):
+        with (
+            patch.dict(sys.modules, {"openstudio": fake_openstudio}),
+            pytest.raises(ToolError, match="IDFKIT_MCP_INPUT_DIRS"),
+        ):
             await call_tool(
                 client,
                 "convert_osm_to_idf",

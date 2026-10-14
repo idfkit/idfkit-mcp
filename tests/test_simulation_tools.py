@@ -45,7 +45,7 @@ class TestResolveSimulationOutputDir:
     def test_http_env_unset_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
 
-        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.delenv("IDFKIT_MCP_SIMULATION_DIR", raising=False)
 
         with pytest.raises(ToolError, match="IDFKIT_MCP_SIMULATION_DIR"):
@@ -58,14 +58,66 @@ class TestResolveSimulationOutputDir:
 
         sim_root = tmp_path / "sim"
         sim_root.mkdir()
-        monkeypatch.setenv("IDFKIT_MCP_ACTIVE_TRANSPORT", "http")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.setenv("IDFKIT_MCP_SIMULATION_DIR", str(sim_root))
 
-        with pytest.raises(ToolError, match="allowed directory"):
+        with pytest.raises(ToolError, match="IDFKIT_MCP_SIMULATION_DIR"):
             _resolve_simulation_output_dir(str(tmp_path / "elsewhere"), "sess-z")
 
         allowed = sim_root / "manual-run"
         assert _resolve_simulation_output_dir(str(allowed), "sess-z") == str(allowed.resolve())
+
+    def test_stdio_explicit_dir_passes_through_unchanged(self, tmp_path: Path) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_simulation_output_dir
+
+        explicit = tmp_path / "anywhere"
+        assert _resolve_simulation_output_dir(str(explicit), "sess-stdio") == str(explicit)
+
+
+class TestResolveWeatherPath:
+    """Verify weather_file paths are subject to the input-path policy on HTTP."""
+
+    def test_stdio_passes_through_any_path(self, tmp_path: Path) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_weather_path
+
+        epw = tmp_path / "wx.epw"
+        epw.write_text("EPW")
+        assert _resolve_weather_path(str(epw), design_day=False) == str(epw)
+
+    def test_http_rejects_weather_without_input_dirs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_weather_path
+
+        epw = tmp_path / "wx.epw"
+        epw.write_text("EPW")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
+        monkeypatch.delenv("IDFKIT_MCP_INPUT_DIRS", raising=False)
+
+        with pytest.raises(ToolError, match="IDFKIT_MCP_INPUT_DIRS"):
+            _resolve_weather_path(str(epw), design_day=False)
+
+    def test_http_accepts_weather_under_input_dirs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_weather_path
+
+        epw = tmp_path / "wx.epw"
+        epw.write_text("EPW")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
+        monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(tmp_path))
+
+        resolved = _resolve_weather_path(str(epw), design_day=False)
+        assert resolved == str(epw.resolve())
+
+    def test_http_rejects_weather_outside_input_dirs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from idfkit_mcp.tools.simulation import _resolve_weather_path
+
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "wx.epw"
+        outside.write_text("EPW")
+        monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
+        monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(allowed))
+
+        with pytest.raises(ToolError, match="IDFKIT_MCP_INPUT_DIRS"):
+            _resolve_weather_path(str(outside), design_day=False)
 
 
 class TestRunSimulation:

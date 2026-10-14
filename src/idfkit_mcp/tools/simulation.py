@@ -79,9 +79,11 @@ def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | N
     """Resolve the weather file path from arguments or saved session state."""
     from pathlib import Path
 
+    from idfkit_mcp.tools._path_validation import validate_input_path
+
     state = get_state()
     if weather_file is not None:
-        return str(Path(weather_file))
+        return str(validate_input_path(Path(weather_file), label="Weather file path"))
     if state.weather_file is not None:
         return str(state.weather_file)
     if design_day:
@@ -201,27 +203,20 @@ def _resolve_simulation_output_dir(explicit: str | None, session_id: str) -> str
          ``<env>/<session_id>-<utc-stamp>/`` so concurrent sessions don't clobber.
       3. ``None`` — idfkit picks its default (a tempdir).
     """
-    if explicit is not None:
-        from pathlib import Path
-
-        from idfkit_mcp.tools._path_validation import validate_simulation_output_dir
-
-        return str(validate_simulation_output_dir(Path(explicit)))
     import os
     from datetime import datetime, timezone
+    from pathlib import Path
 
-    from fastmcp.exceptions import ToolError
+    from idfkit_mcp.tools._path_validation import restricted_transport_enabled, validate_simulation_output_dir
 
-    from idfkit_mcp.tools._path_validation import restricted_transport_enabled
-
+    if explicit is not None:
+        return str(validate_simulation_output_dir(Path(explicit)))
     env = os.environ.get("IDFKIT_MCP_SIMULATION_DIR")
     if not env:
         if restricted_transport_enabled():
             raise ToolError("IDFKIT_MCP_SIMULATION_DIR is required for non-stdio transports.")
         return None
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    from pathlib import Path
-
     run_dir = Path(env) / f"{session_id}-{stamp}"
     run_dir.mkdir(parents=True, exist_ok=True)
     return str(run_dir)

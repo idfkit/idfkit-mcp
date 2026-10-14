@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -17,14 +16,15 @@ from idfkit.simulation.result import SimulationResult
 from pydantic import BaseModel
 
 from idfkit_mcp.state import ServerState, get_state, reset_sessions
+from idfkit_mcp.tools._path_validation import set_active_transport
 
 T = TypeVar("T", bound=BaseModel)
 
 
 @pytest.fixture(autouse=True)
 def _reset_state() -> None:
-    """Reset the session registry before each test."""
-    os.environ.pop("IDFKIT_MCP_ACTIVE_TRANSPORT", None)
+    """Reset the session registry and transport policy before each test."""
+    set_active_transport(None)
     reset_sessions()
     state = get_state()
     state.persistence_enabled = False

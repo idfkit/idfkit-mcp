@@ -173,8 +173,15 @@ including attempts via `..` traversal or symlinks.
 
 ### `IDFKIT_MCP_INPUT_DIRS`
 
-Optional whitelist for direct server-local input paths such as
-`load_model(file_path=...)` and `convert_osm_to_idf(osm_path=...)`.
+Optional whitelist for direct server-local input paths. Applies to every tool
+that accepts a server-local path:
+
+- `load_model(file_path=...)`
+- `convert_osm_to_idf(osm_path=...)`
+- `run_simulation(weather_file=...)`
+- session restore of any of the above
+
+Behavior:
 
 - `stdio`: unset means direct local file paths are allowed.
 - HTTP/SSE: unset disables direct server-local file paths; use uploaded files
