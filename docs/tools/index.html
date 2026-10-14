@@ -1959,17 +1959,18 @@
 
 
 <h1 id="tool-reference-overview">Tool Reference Overview<a class="headerlink" href="#tool-reference-overview" title="Permanent link">&para;</a></h1>
-<p><code>idfkit-mcp</code> exposes <strong>35 tools</strong> in nine categories, plus <strong>12 MCP resources</strong> for read-only data access.</p>
+<p><code>idfkit-mcp</code> exposes <strong>37 tools</strong> in ten categories, plus <strong>13 MCP resources</strong> for read-only data access.</p>
 <h2 id="categories">Categories<a class="headerlink" href="#categories" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Schema exploration: 4 tools</li>
 <li>Model read: 6 tools</li>
-<li>Model write: 9 tools</li>
+<li>Model write: 10 tools</li>
 <li>Validation: 2 tools</li>
 <li>Simulation: 8 tools</li>
 <li>Geometry: 1 tool</li>
 <li>Schedules: 1 tool</li>
 <li>Weather: 2 tools</li>
+<li>Migration: 1 tool</li>
 <li>Documentation: 2 tools</li>
 </ul>
 <h2 id="tool-catalog">Tool Catalog<a class="headerlink" href="#tool-catalog" title="Permanent link">&para;</a></h2>
@@ -2056,6 +2057,11 @@
 <td>Write</td>
 <td><code>remove_object</code></td>
 <td>Remove object, optionally forced</td>
+</tr>
+<tr>
+<td>Write</td>
+<td><code>remove_objects</code></td>
+<td>Remove many objects in one call</td>
 </tr>
 <tr>
 <td>Write</td>
@@ -2148,6 +2154,11 @@
 <td>Interactive schedule heatmap viewer (MCP Apps)</td>
 </tr>
 <tr>
+<td>Migration</td>
+<td><code>migrate_model</code></td>
+<td>Migrate IDF models forward across EnergyPlus versions</td>
+</tr>
+<tr>
 <td>Documentation</td>
 <td><code>search_docs</code></td>
 <td>Full-text search across EnergyPlus documentation</td>
@@ -2200,6 +2211,10 @@
 <tr>
 <td><code>idfkit://simulation/report</code></td>
 <td>Full tabular simulation report as JSON</td>
+</tr>
+<tr>
+<td><code>idfkit://migration/report</code></td>
+<td>Per-step stdout/stderr, structural diff, and versions for the last <code>migrate_model</code> run</td>
 </tr>
 <tr>
 <td><code>ui://idfkit/geometry-viewer.html</code></td>
