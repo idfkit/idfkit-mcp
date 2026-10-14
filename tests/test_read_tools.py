@@ -88,7 +88,7 @@ class TestLoadModel:
     ) -> None:
         doc = new_document()
         idf_path = tmp_path / "model.idf"
-        write_idf(doc, idf_path)
+        save_idf(doc, idf_path)
         monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.delenv("IDFKIT_MCP_INPUT_DIRS", raising=False)
 
@@ -101,7 +101,7 @@ class TestLoadModel:
         doc = new_document()
         doc.add("Zone", "AllowedZone")
         idf_path = tmp_path / "model.idf"
-        write_idf(doc, idf_path)
+        save_idf(doc, idf_path)
         monkeypatch.setattr("idfkit_mcp.tools._path_validation._active_transport", "http")
         monkeypatch.setenv("IDFKIT_MCP_INPUT_DIRS", str(tmp_path))
 
@@ -119,7 +119,7 @@ class TestLoadModel:
         outside.mkdir()
         doc = new_document()
         target_idf = outside / "secret.idf"
-        write_idf(doc, target_idf)
+        save_idf(doc, target_idf)
         symlink = allowed / "trojan.idf"
         symlink.symlink_to(target_idf)
 

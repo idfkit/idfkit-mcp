@@ -169,7 +169,7 @@ class TestRestoreEdgeCases:
         allowed_root = tmp_path / "allowed"
         allowed_root.mkdir()
         model_path = tmp_path / "outside.idf"
-        write_idf(new_document(), model_path)
+        save_idf(new_document(), model_path)
         session_file.write_text(
             json.dumps({
                 "version": 1,
