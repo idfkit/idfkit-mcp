@@ -290,7 +290,7 @@ def save_model(
     """
     from pathlib import Path
 
-    from idfkit import write_epjson, write_idf
+    from idfkit import save_epjson, save_idf
 
     from idfkit_mcp.tools._path_validation import validate_output_path
 
@@ -311,9 +311,9 @@ def save_model(
         raise ToolError(f"File already exists: '{path}'. Set overwrite=True to replace it.")
 
     if output_format == "epjson":
-        write_epjson(doc, path)
+        save_epjson(doc, path)
     else:
-        write_idf(doc, path)
+        save_idf(doc, path)
 
     state.file_path = path
     state.save_session()
