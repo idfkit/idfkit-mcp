@@ -19,17 +19,20 @@ Built on [idfkit](https://github.com/idfkit/idfkit), it supports **EnergyPlus 8.
 
 ## Tools
 
-The server exposes **32 tools** across seven categories:
+The server exposes **37 tools** across ten categories, plus **13 MCP resources** for read-only data access:
 
 | Category | Tools | What they do |
 | --- | --- | --- |
 | **Schema** | 4 | Explore object types, fields, constraints, and valid references |
-| **Model Read** | 7 | Load IDF/epJSON/OSM files, inspect objects, search, and trace references |
-| **Model Write** | 9 | Create models, add/update/remove/rename/duplicate objects, save, and manage sessions |
-| **Validation** | 2 | Schema validation and dangling-reference detection |
-| **Simulation** | 5 | Run EnergyPlus, summarize results, query output variables, and export time series |
+| **Model Read** | 6 | Load IDF/epJSON/OSM files, inspect objects, search, and read change history |
+| **Model Write** | 10 | Create models, add/update/remove/rename/duplicate objects, save, and manage sessions |
+| **Validation** | 2 | Schema validation and pre-simulation integrity checks |
+| **Simulation** | 8 | Run EnergyPlus, query variables and tabular reports, export time series, analyze peak loads, and view reports |
 | **Weather** | 2 | Search weather stations worldwide and download EPW/DDY files |
-| **Documentation** | 3 | Look up, search, and read EnergyPlus documentation from [docs.idfkit.com](https://docs.idfkit.com) |
+| **Geometry** | 1 | Interactive 3D building geometry viewer (MCP Apps) |
+| **Schedules** | 1 | Interactive schedule heatmap viewer (MCP Apps) |
+| **Migration** | 1 | Migrate IDF models forward across EnergyPlus versions |
+| **Documentation** | 2 | Search and read EnergyPlus documentation from [docs.idfkit.com](https://docs.idfkit.com) |
 
 All tools return structured Pydantic models. Schema, validation, and search results include direct `doc_url` links to the relevant EnergyPlus documentation.
 

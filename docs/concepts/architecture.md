@@ -28,10 +28,10 @@ graph TB
 
     subgraph Core["idfkit (core library)"]
         Parser["IDF / epJSON Parser"]
-        Schema["Bundled Schemas<br/><small>EnergyPlus 8.9 &ndash; 25.2</small>"]
+        Schema["Bundled Schemas<br/><small>EnergyPlus 8.9 &ndash; 26.1</small>"]
         Validator["Validator"]
         SimRunner["Simulation Runner"]
-        WeatherIdx["Weather Station Index<br/><small>16,000+ stations</small>"]
+        WeatherIdx["Weather Station Index<br/><small>~17,300 unique stations</small>"]
         Docs["Doc URL Builder"]
     end
 

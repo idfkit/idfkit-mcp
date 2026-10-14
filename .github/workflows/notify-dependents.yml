@@ -1,0 +1,156 @@
+# Offer the idfkit level this release pins to every consumer that resolves idfkit through this server
+# (feature 004, T111, FR-020).
+#
+# WHY THIS EXISTS. idfkit's notify-downstream.yml dispatches in waves, and wave 2, the consumers that
+# deliver this server to a person (idfkit-mcp-deployment, idfkit-plugin), is rejected on every idfkit
+# release, correctly, because no release of this server pins the new level yet. Nothing offered them the
+# level again once this server did publish on it, so they were never adopted. This is that offer: when
+# idfkit-mcp publishes, every consumer whose register entry `depends_on` idfkit-mcp gets its
+# bump-idfkit.yml dispatched with the idfkit level this release pins, and that bump's own order check now
+# finds the release it needs.
+#
+# WHERE THE ROSTER COMES FROM. The consumer register in idfkit-conformance, at the governance tag this
+# repository already pins on its check-consumer.yml `uses:` line. The tag is read from that line rather
+# than restated here, so the self-check and this offer can never read two different registers.
+#
+# FAILURE IS LOUD. A dispatch that does not land fails the job, after its siblings have been dispatched.
+# Without APP_ID and APP_PRIVATE_KEY (a GitHub App that can dispatch workflows in the consumers) nothing
+# can be offered, and the job fails naming the missing secret rather than succeeding by doing nothing.
+
+name: notify-dependents
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+    secrets:
+      APP_ID:
+        required: false
+      APP_PRIVATE_KEY:
+        required: false
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The released version of this server, with or without a leading v.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  offer:
+    runs-on: ubuntu-latest
+    env:
+      RAW_VERSION: ${{ inputs.version }}
+      PACKAGE: idfkit-mcp
+      PYPROJECT: pyproject.toml
+      CHECK_WORKFLOW: .github/workflows/main.yml
+    steps:
+      - name: Refuse to offer without a token that can
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+        run: |
+          missing=""
+          [ -z "$APP_ID" ] && missing="$missing APP_ID"
+          [ -z "$APP_PRIVATE_KEY" ] && missing="$missing APP_PRIVATE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error title=Dependents not offered::Missing secret(s):$missing. Without them no consumer that depends on $PACKAGE can be offered this release's idfkit level. Add the same GitHub App secrets idfkit uses."
+            exit 1
+          fi
+
+      - name: Normalize the version
+        id: ver
+        run: |
+          version="${RAW_VERSION#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the release
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ steps.ver.outputs.version }}
+          persist-credentials: false
+
+      - name: Read the idfkit level this release pins, and the governance tag this repository reads
+        id: pins
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, pathlib, re, sys, tomllib
+          deps = tomllib.loads(pathlib.Path(os.environ["PYPROJECT"]).read_text())["project"]["dependencies"]
+          pinned = [d for d in deps if re.match(r"idfkit\s*==", d)]
+          if len(pinned) != 1:
+              sys.exit(f"{os.environ['PYPROJECT']} does not pin idfkit exactly once: {deps}")
+          print("idfkit=" + pinned[0].split("==", 1)[1].strip())
+          uses = re.findall(r"check-consumer\.yml@(governance-\d{4}\.\d+)", pathlib.Path(os.environ["CHECK_WORKFLOW"]).read_text())
+          if len(set(uses)) != 1:
+              sys.exit(f"{os.environ['CHECK_WORKFLOW']} does not call check-consumer.yml at exactly one governance tag: {uses}")
+          print("governance=" + uses[0])
+          PY
+
+      - name: Read the register at that tag
+        uses: actions/checkout@v4
+        with:
+          repository: idfkit/idfkit-conformance
+          ref: refs/tags/${{ steps.pins.outputs.governance }}
+          path: conformance
+          persist-credentials: false
+
+      # The dependents' order check looks this release up on PyPI. Offering before the index serves it
+      # would have every one of them reject the level it is being offered.
+      - name: Wait until the index serves this release
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS "https://pypi.org/pypi/$PACKAGE/$VERSION/json" >/dev/null; then
+              echo "PyPI serves $PACKAGE==$VERSION (attempt $attempt)."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::PyPI does not serve $PACKAGE==$VERSION after five minutes, so no dependent can find it. Stopping rather than offering."
+          exit 1
+
+      - name: Mint app token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Offer the level to every dependent
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IDFKIT_LEVEL: ${{ steps.pins.outputs.idfkit }}
+          GOVERNANCE: ${{ steps.pins.outputs.governance }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          dependents=$(python3 - <<'PY'
+          import os, tomllib
+          register = tomllib.load(open("conformance/governance/consumers.toml", "rb"))
+          for consumer in register["consumer"]:
+              if os.environ["PACKAGE"] in consumer.get("depends_on", []):
+                  print(consumer["repository"])
+          PY
+          )
+          {
+            echo "## $PACKAGE $VERSION pins idfkit $IDFKIT_LEVEL"
+            echo
+            echo "Dependents in the consumer register at \`$GOVERNANCE\`:"
+          } >> "$GITHUB_STEP_SUMMARY"
+          failed=0
+          for repo in $dependents; do
+            if gh workflow run bump-idfkit.yml --repo "$repo" -f idfkit_version="$IDFKIT_LEVEL"; then
+              echo "- \`$repo\`: offered idfkit $IDFKIT_LEVEL" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- \`$repo\`: **the dispatch did not land**" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::The dispatch to $repo did not land."
+              failed=1
+            fi
+          done
+          [ -n "$dependents" ] || echo "No consumer depends on $PACKAGE." >> "$GITHUB_STEP_SUMMARY"
+          exit $failed

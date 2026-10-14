@@ -19,6 +19,7 @@ from idfkit_mcp.models import (
     ClearSessionResult,
     NewModelResult,
     RemoveObjectResult,
+    RemoveObjectsResult,
     RenameObjectResult,
     SaveModelResult,
 )
@@ -181,6 +182,56 @@ def remove_object(
     return RemoveObjectResult(status="removed", object_type=object_type, name=obj.name)
 
 
+@tool(annotations=_DESTRUCTIVE)
+def remove_objects(
+    object_type: Annotated[str, Field(description="EnergyPlus object type.")],
+    force: Annotated[
+        bool,
+        Field(description="Remove even if some entries are referenced by other objects."),
+    ] = False,
+) -> RemoveObjectsResult:
+    """Delete every object of the given type. No-op when none exist.
+
+    Intended for types where individual entries have no canonical addressable
+    identity (``Output:Variable``, ``Output:Meter``, …): those parse with
+    ``_name=""`` to support duplicates, so ``remove_object`` cannot reach them
+    individually. Use this when the calling tool owns the entire collection
+    and wants replace-all semantics (e.g. an output-picker UI).
+
+    Blocked when any entry is referenced by other objects unless ``force=True``.
+    """
+    state = get_state()
+    doc = state.require_model()
+
+    if object_type not in doc:
+        return RemoveObjectsResult(status="removed", object_type=object_type, removed=0)
+
+    collection = doc.get_collection(object_type)
+    items = list(collection)
+    if not items:
+        return RemoveObjectsResult(status="removed", object_type=object_type, removed=0)
+
+    if not force:
+        blockers: list[dict[str, str]] = []
+        for obj in items:
+            if not obj.name:
+                continue
+            referencing = doc.get_referencing(obj.name)
+            for r in referencing:
+                blockers.append({"object_type": r.obj_type, "name": r.name})
+        if blockers:
+            raise ToolError(
+                "Some objects are referenced by other objects. "
+                f"Use force=True to remove anyway.\n{json.dumps(blockers)}"
+            )
+
+    for obj in items:
+        doc.removeidfobject(obj)
+
+    logger.info("Removed all %s (%d objects)", object_type, len(items))
+    return RemoveObjectsResult(status="removed", object_type=object_type, removed=len(items))
+
+
 @tool(annotations=_MUTATE)
 def rename_object(
     object_type: Annotated[str, Field(description="EnergyPlus object type.")],
@@ -239,7 +290,7 @@ def save_model(
     """
     from pathlib import Path
 
-    from idfkit import write_epjson, write_idf
+    from idfkit import save_epjson, save_idf
 
     from idfkit_mcp.tools._path_validation import validate_output_path
 
@@ -260,9 +311,9 @@ def save_model(
         raise ToolError(f"File already exists: '{path}'. Set overwrite=True to replace it.")
 
     if output_format == "epjson":
-        write_epjson(doc, path)
+        save_epjson(doc, path)
     else:
-        write_idf(doc, path)
+        save_idf(doc, path)
 
     state.file_path = path
     state.save_session()

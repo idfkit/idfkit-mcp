@@ -243,6 +243,12 @@ async def run_simulation(
     energyplus_dir: Annotated[str | None, Field(description="EnergyPlus install dir.")] = None,
     energyplus_version: Annotated[str | None, Field(description='Version filter "X.Y.Z".')] = None,
     output_directory: Annotated[str | None, Field(description="Output dir.")] = None,
+    readvars: Annotated[
+        bool,
+        Field(
+            description="Run ReadVarsESO after the simulation to produce eplusout.csv (and eplusmtr.csv when meters are requested) alongside the .eso/.mtr files."
+        ),
+    ] = False,
     ctx: Context | None = None,
 ) -> RunSimulationResult:
     """Execute EnergyPlus on the loaded model — the authoritative runtime validation gate.
@@ -277,11 +283,12 @@ async def run_simulation(
         config = find_energyplus(path=energyplus_dir, version=energyplus_version)
         resolved_output_dir = _resolve_simulation_output_dir(output_directory, state.session_id)
         logger.info(
-            "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s)",
+            "Starting simulation (EnergyPlus %s, weather=%s, design_day=%s, annual=%s, readvars=%s)",
             ".".join(str(p) for p in config.version),
             weather,
             design_day,
             annual,
+            readvars,
         )
 
         # TODO(timeouts): MCP clients time out on long simulations. Options to explore:
@@ -298,6 +305,7 @@ async def run_simulation(
                 annual=annual,
                 energyplus=config,
                 output_dir=resolved_output_dir,
+                readvars=readvars,
                 on_progress=_build_progress_handler(ctx),
             )
 

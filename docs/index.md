@@ -9,9 +9,14 @@ hide:
 # idfkit-mcp
 
 <p class="hero-tagline">
-A production-ready MCP server for EnergyPlus workflows: schema discovery,
+An MCP server for EnergyPlus workflows: schema discovery,
 model editing, integrity checks, QA diagnostics, peak-load analysis, and simulation via idfkit.
 </p>
+
+!!! warning "Beta"
+    idfkit-mcp is in active beta. APIs and tool shapes may change between
+    minor versions. We're looking for early adopters and testers —
+    [share feedback on GitHub](https://github.com/idfkit/idfkit-mcp/issues).
 
 <div class="badges" markdown>
 
@@ -32,7 +37,7 @@ model editing, integrity checks, QA diagnostics, peak-load analysis, and simulat
 
 <div class="feature-chips" markdown>
 
-<span class="chip">:material-tools: 35 MCP tools</span>
+<span class="chip">:material-tools: 37 MCP tools</span>
 <span class="chip">:material-shape-outline: Schema-aware edits</span>
 <span class="chip">:material-shield-check-outline: Validation + integrity checks</span>
 <span class="chip">:material-weather-cloudy: Weather search + download</span>

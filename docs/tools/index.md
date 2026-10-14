@@ -1,17 +1,18 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **35 tools** in nine categories, plus **12 MCP resources** for read-only data access.
+`idfkit-mcp` exposes **37 tools** in ten categories, plus **13 MCP resources** for read-only data access.
 
 ## Categories
 
 - Schema exploration: 4 tools
 - Model read: 6 tools
-- Model write: 9 tools
+- Model write: 10 tools
 - Validation: 2 tools
 - Simulation: 8 tools
 - Geometry: 1 tool
 - Schedules: 1 tool
 - Weather: 2 tools
+- Migration: 1 tool
 - Documentation: 2 tools
 
 ## Tool Catalog
@@ -33,6 +34,7 @@
 | Write | `batch_add_objects` | Add many objects in one call |
 | Write | `update_object` | Update fields on one object |
 | Write | `remove_object` | Remove object, optionally forced |
+| Write | `remove_objects` | Remove many objects in one call |
 | Write | `rename_object` | Rename object and cascade references |
 | Write | `duplicate_object` | Clone object to a new name |
 | Write | `save_model` | Save IDF/epJSON |
@@ -51,6 +53,7 @@
 | Weather | `download_weather_file` | Download EPW/DDY and cache path |
 | Geometry | `view_geometry` | Interactive 3D building geometry viewer (MCP Apps) |
 | Schedules | `view_schedules` | Interactive schedule heatmap viewer (MCP Apps) |
+| Migration | `migrate_model` | Migrate IDF models forward across EnergyPlus versions |
 | Documentation | `search_docs` | Full-text search across EnergyPlus documentation |
 | Documentation | `get_doc_section` | Retrieve full content of a documentation section |
 
@@ -68,6 +71,7 @@ Read-only data is available via MCP resources without making tool calls:
 | `idfkit://simulation/results` | Structured QA diagnostics from the most recent simulation |
 | `idfkit://simulation/peak-loads` | Peak heating/cooling load decomposition and QA analysis |
 | `idfkit://simulation/report` | Full tabular simulation report as JSON |
+| `idfkit://migration/report` | Per-step stdout/stderr, structural diff, and versions for the last `migrate_model` run |
 | `ui://idfkit/geometry-viewer.html` | Interactive Three.js geometry viewer (MCP Apps) |
 | `ui://idfkit/schedule-viewer.html` | Interactive schedule heatmap viewer (MCP Apps) |
 | `ui://idfkit/peak-loads-viewer.html` | Interactive peak load QA/QC viewer (MCP Apps) |

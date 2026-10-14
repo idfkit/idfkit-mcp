@@ -1,0 +1,46 @@
+name: adopt-energyplus
+
+# Adopt one EnergyPlus release in this project, as a pull request on `energyplus/X.Y.Z`. The pull
+# request is a draft only when the roster declares a step that a person accepts. Every step of this
+# project is automated, so it opens ready for review.
+#
+# This file holds no logic. The steps, their order, the command each one runs and the gate are
+# declared for the project `idfkit-mcp` in `governance/energyplus.toml` of idfkit-conformance, and
+# the reusable workflow called below executes exactly those commands and no others. Neither it nor
+# those commands merge, publish or release. The permissions below, `contents: write` and
+# `pull-requests: write` only, bound the default token. The branch and the pull request are written
+# with the application's token, which they do not bound.
+#
+# THE TAG IS STATED TWICE, on `uses:` and as `governance_level`, because a called workflow cannot
+# see its own ref. The reusable workflow refuses the run unless the two are the same string, so
+# both are changed together or not at all.
+#
+# The idfkit level is not moved here. bump-idfkit.yml moves it when idfkit publishes a version that
+# carries the release, and until then a run reports that it is waiting and opens nothing.
+#
+# It is dispatched by the watch in idfkit-conformance, and may be dispatched by hand. A second run
+# for a release that is already carried changes nothing.
+run-name: Adopt EnergyPlus ${{ inputs.release }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: The EnergyPlus release to adopt, as X.Y.Z.
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  adopt:
+    uses: idfkit/idfkit-conformance/.github/workflows/adopt-energyplus.yml@governance-2026.27
+    with:
+      project: idfkit-mcp
+      governance_level: governance-2026.27
+      release: ${{ inputs.release }}
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
