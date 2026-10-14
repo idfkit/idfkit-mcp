@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-14
+
+### Added
+
+- `idfkit-mcp --version` prints the server's version and the version of idfkit it runs, both read from the installed distributions.
+
 ### Changed
 
-- Requires idfkit 1.0.0, which adds EnergyPlus 26.2.0. `new_model` without a version now creates a 26.2.0 model, which EnergyPlus 26.1.0 and earlier reject; pass the version explicitly to target an older release.
+- **Breaking:** requires idfkit 1.0.0, up from 0.12.1 in 0.9.3. The pin is exact, so an environment that pins another idfkit version cannot install this release alongside it.
+- `new_model` without a version now creates an EnergyPlus 26.2.0 model, which EnergyPlus 26.1.0 and earlier reject. Pass the version explicitly to target an older release. The documentation tools default to the 26.2 documentation for the same reason.
 
 ## [0.9.3] - 2026-05-11
 
@@ -173,7 +180,8 @@ Initial public release.
 - Session persistence across server restarts.
 - PyPI trusted publishing (OIDC) for releases.
 
-[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.3...HEAD
+[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.0...v0.9.1
