@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import ToolResult, tool
-from idfkit import Scene, get_scene
+from idfkit import ResolvedSurface, Scene, get_scene
 from mcp.types import TextContent, ToolAnnotations
 from pydantic import Field
 
@@ -21,6 +21,19 @@ logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
+# Decimal places kept on each vertex coordinate in the viewer payload (one micrometre).
+_VERTEX_DIGITS = 6
+
+
+def _zone_names(scene: Scene) -> list[str]:
+    """The zones that hold at least one resolved surface, sorted."""
+    return sorted({s.zone for s in scene.surfaces if s.zone})
+
+
+def _surface_type(resolved: ResolvedSurface) -> str:
+    """The surface type, or the object type when the model leaves the field blank."""
+    return resolved.surface_type or resolved.object_type
+
 
 def _extract_geometry(scene: Scene, color_by: str) -> dict[str, object]:
     """Serialize a resolved scene for the viewer, in the frame EnergyPlus simulates.
@@ -28,32 +41,28 @@ def _extract_geometry(scene: Scene, color_by: str) -> dict[str, object]:
     ``scene`` comes from ``idfkit.get_scene``, which applies zone origins, zone rotations and the
     building's north axis under the model's ``GlobalGeometryRules``. Objects it could not place and
     geometry types it does not read are returned alongside, so that nothing is dropped silently.
+    Vertices are rounded to the micrometre, which removes floating-point residue from the rotations.
     """
     surfaces: list[dict[str, object]] = []
-    zones: set[str] = set()
-
     for resolved in scene.surfaces:
         polygon = resolved.polygon
-        if resolved.zone:
-            zones.add(resolved.zone)
-
         surfaces.append({
             "name": resolved.name,
             "objectType": resolved.object_type,
-            "surfaceType": resolved.surface_type,
+            "surfaceType": _surface_type(resolved),
             "zone": resolved.zone,
             "boundary": resolved.boundary,
             "construction": resolved.construction,
             "area": round(polygon.area, 2),
             "tilt": round(polygon.tilt, 1),
             "azimuth": round(polygon.azimuth, 1),
-            "vertices": [list(v.as_tuple()) for v in polygon.vertices],
+            "vertices": [[round(c, _VERTEX_DIGITS) for c in v.as_tuple()] for v in polygon.vertices],
         })
 
     return {
         "surfaces": surfaces,
-        "zones": sorted(zones),
-        # Informational only: the vertices above already carry the building rotation.
+        "zones": _zone_names(scene),
+        # Informational only: the vertices and azimuths above already carry the building rotation.
         "northAxis": scene.applied.north_axis,
         "coordinateSystem": scene.applied.coordinate_system,
         "unresolved": [
@@ -61,7 +70,7 @@ def _extract_geometry(scene: Scene, color_by: str) -> dict[str, object]:
                 "objectType": u.object_type,
                 "name": u.name,
                 "reason": u.reason,
-                "missingReference": u.missing_reference,
+                "missingReference": u.missing_reference or None,
             }
             for u in scene.unresolved
         ],
@@ -104,18 +113,22 @@ def view_geometry(
 ) -> ToolResult:
     """Show interactive 3D building geometry from the loaded model.
 
-    Renders all building surfaces, fenestration, and shading geometry in a
-    Three.js viewport with orbit controls.  Click surfaces to inspect
-    properties; toggle visibility by surface type or zone.
+    Renders detailed building surfaces, fenestration, and shading geometry in a
+    Three.js viewport with orbit controls, placed where EnergyPlus simulates
+    them (zone origins, zone rotations and the building north axis applied).
+    Click surfaces to inspect properties; toggle visibility by surface type or
+    zone. Surfaces that cannot be placed and simplified geometry types (for
+    example Wall:Exterior or Window) are not drawn; they are listed in the
+    payload and in the text summary.
     """
     scene = get_scene(get_state().require_model())
     data = _extract_geometry(scene, color_by)
     count = len(scene.surfaces)
-    zone_count = len({s.zone for s in scene.surfaces if s.zone})
+    zone_count = len(_zone_names(scene))
     logger.info("Extracted %d surfaces across %d zones for geometry viewer", count, zone_count)
 
     # Build a text summary for clients that don't support MCP Apps.
-    type_counts = Counter(s.surface_type for s in scene.surfaces)
+    type_counts = Counter(_surface_type(s) for s in scene.surfaces)
     breakdown = ", ".join(f"{c} {t}" for t, c in sorted(type_counts.items()))
     summary = f"Model geometry: {count} surfaces across {zone_count} zones ({breakdown})."
     skipped = _skipped_summary(scene)

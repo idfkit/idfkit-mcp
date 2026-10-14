@@ -110,6 +110,56 @@ class TestViewGeometry:
         assert "Orphan_Wall" in summary
         assert "zone-not-found" in summary
 
+    async def test_world_coordinates_ignore_zone_origin(self, client: object) -> None:
+        doc = _relative_model(zone_origin=(40.0, 10.0, 3.0))
+        doc.get_collection("GlobalGeometryRules").first().coordinate_system = "World"  # type: ignore[union-attr]
+        _load(doc)
+        data, _ = await _view(client)
+
+        (surface,) = data["surfaces"]
+        assert data["coordinateSystem"] == "World"
+        assert _flat(surface["vertices"]) == pytest.approx(_flat(_FLOOR))
+
+    async def test_fenestration_inherits_parent_zone(self, client: object) -> None:
+        doc = _relative_model(zone_origin=(0.0, 0.0, 0.0))
+        doc.add(
+            "FenestrationSurface:Detailed",
+            "Room_Skylight",
+            surface_type="Window",
+            construction_name="",
+            building_surface_name="Room_Floor",
+            number_of_vertices=4,
+            vertex_1_x_coordinate=1.0,
+            vertex_1_y_coordinate=1.0,
+            vertex_1_z_coordinate=0.0,
+            vertex_2_x_coordinate=1.0,
+            vertex_2_y_coordinate=2.0,
+            vertex_2_z_coordinate=0.0,
+            vertex_3_x_coordinate=2.0,
+            vertex_3_y_coordinate=2.0,
+            vertex_3_z_coordinate=0.0,
+            vertex_4_x_coordinate=2.0,
+            vertex_4_y_coordinate=1.0,
+            vertex_4_z_coordinate=0.0,
+            validate=False,
+        )
+        _load(doc)
+        data, _ = await _view(client)
+
+        window = next(s for s in data["surfaces"] if s["name"] == "Room_Skylight")
+        assert window["zone"] == "Room"
+        assert window["surfaceType"] == "Window"
+
+    async def test_blank_surface_type_falls_back_to_object_type(self, client: object) -> None:
+        doc = _relative_model(zone_origin=(0.0, 0.0, 0.0))
+        doc.get_collection("BuildingSurface:Detailed").first().surface_type = ""  # type: ignore[union-attr]
+        _load(doc)
+        data, summary = await _view(client)
+
+        (surface,) = data["surfaces"]
+        assert surface["surfaceType"] == "BuildingSurface:Detailed"
+        assert "(1 BuildingSurface:Detailed)" in summary
+
     async def test_unattempted_types_are_reported(self, client: object) -> None:
         doc = new_document()
         doc.add("Zone", "Room", validate=False)
