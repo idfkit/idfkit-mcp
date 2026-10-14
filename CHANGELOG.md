@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `view_geometry` now draws surfaces where EnergyPlus places them. It resolves vertices with `idfkit.get_scene`, which applies zone origins, zone rotations and the building north axis under `GlobalGeometryRules`. Previously, models in relative coordinates were drawn up to 40 m from their simulated position ([#78](https://github.com/idfkit/idfkit-mcp/issues/78)). Each surface's `azimuth` is consequently measured from true north rather than from building north, and the payload's `northAxis` is informational: it is already applied to the vertices and azimuths and must not be applied again.
+- `view_geometry` reports surfaces it cannot place, with the reason, and geometry types it does not read, with their counts, in both the viewer payload (`unresolved`, `unattempted`) and the text summary. Previously such surfaces were omitted without notice.
+
 ## [0.10.0] - 2026-10-14
 
 ### Added

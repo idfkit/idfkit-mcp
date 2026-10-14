@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
+from collections import Counter
 from typing import Annotated, Literal
 
 from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import ToolResult, tool
+from idfkit import ResolvedSurface, Scene, get_scene
 from mcp.types import TextContent, ToolAnnotations
 from pydantic import Field
 
@@ -20,73 +21,77 @@ logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
-# Surface object types that carry 3D vertex geometry.
-_SURFACE_TYPES = (
-    "BuildingSurface:Detailed",
-    "FenestrationSurface:Detailed",
-    "Shading:Site:Detailed",
-    "Shading:Building:Detailed",
-    "Shading:Zone:Detailed",
-)
+# Decimal places kept on each vertex coordinate in the viewer payload (one micrometre).
+_VERTEX_DIGITS = 6
 
 
-def _extract_geometry(color_by: str) -> dict[str, object]:
-    """Walk the loaded model and extract all surface vertices + metadata."""
-    from idfkit.geometry import get_surface_coords
+def _zone_names(scene: Scene) -> list[str]:
+    """The zones that hold at least one resolved surface, sorted."""
+    return sorted({s.zone for s in scene.surfaces if s.zone})
 
-    state = get_state()
-    doc = state.require_model()
 
+def _surface_type(resolved: ResolvedSurface) -> str:
+    """The surface type, or the object type when the model leaves the field blank."""
+    return resolved.surface_type or resolved.object_type
+
+
+def _extract_geometry(scene: Scene, color_by: str) -> dict[str, object]:
+    """Serialize a resolved scene for the viewer, in the frame EnergyPlus simulates.
+
+    ``scene`` comes from ``idfkit.get_scene``, which applies zone origins, zone rotations and the
+    building's north axis under the model's ``GlobalGeometryRules``. Objects it could not place and
+    geometry types it does not read are returned alongside, so that nothing is dropped silently.
+    Vertices are rounded to the micrometre, which removes floating-point residue from the rotations.
+    """
     surfaces: list[dict[str, object]] = []
-    zones: set[str] = set()
-
-    for obj_type in _SURFACE_TYPES:
-        collection = doc.get_collection(obj_type)
-        if not collection:
-            continue
-        for obj in collection:
-            polygon = get_surface_coords(obj)
-            if polygon is None or polygon.num_vertices < 3:
-                continue
-
-            zone_name = getattr(obj, "zone_name", None) or ""
-            surface_type = getattr(obj, "surface_type", None) or obj_type
-            boundary = getattr(obj, "outside_boundary_condition", None) or ""
-            construction = getattr(obj, "construction_name", None) or ""
-
-            if zone_name:
-                zones.add(zone_name)
-
-            surfaces.append({
-                "name": obj.name or "",
-                "objectType": obj_type,
-                "surfaceType": surface_type,
-                "zone": zone_name,
-                "boundary": boundary,
-                "construction": construction,
-                "area": round(polygon.area, 2),
-                "tilt": round(polygon.tilt, 1),
-                "azimuth": round(polygon.azimuth, 1),
-                "vertices": [list(v.as_tuple()) for v in polygon.vertices],
-            })
-
-    # Building north axis for compass orientation.
-    north_axis = 0.0
-    building_collection = doc.get_collection("Building")
-    if building_collection:
-        building = building_collection.first()
-        if building is not None:
-            raw = getattr(building, "north_axis", None)
-            if raw is not None:
-                with contextlib.suppress(ValueError, TypeError):
-                    north_axis = float(raw)
+    for resolved in scene.surfaces:
+        polygon = resolved.polygon
+        surfaces.append({
+            "name": resolved.name,
+            "objectType": resolved.object_type,
+            "surfaceType": _surface_type(resolved),
+            "zone": resolved.zone,
+            "boundary": resolved.boundary,
+            "construction": resolved.construction,
+            "area": round(polygon.area, 2),
+            "tilt": round(polygon.tilt, 1),
+            "azimuth": round(polygon.azimuth, 1),
+            "vertices": [[round(c, _VERTEX_DIGITS) for c in v.as_tuple()] for v in polygon.vertices],
+        })
 
     return {
         "surfaces": surfaces,
-        "zones": sorted(zones),
-        "northAxis": north_axis,
+        "zones": _zone_names(scene),
+        # Informational only: the vertices and azimuths above already carry the building rotation.
+        "northAxis": scene.applied.north_axis,
+        "coordinateSystem": scene.applied.coordinate_system,
+        "unresolved": [
+            {
+                "objectType": u.object_type,
+                "name": u.name,
+                "reason": u.reason,
+                "missingReference": u.missing_reference or None,
+            }
+            for u in scene.unresolved
+        ],
+        "unattempted": [{"objectType": u.object_type, "count": u.count} for u in scene.unattempted],
         "colorBy": color_by,
     }
+
+
+def _skipped_summary(scene: Scene) -> str:
+    """Name every geometry object the viewer does not draw, and why."""
+    parts: list[str] = []
+    if scene.unresolved:
+        details = "; ".join(
+            f"{u.object_type} '{u.name}' ({u.reason}{f': {u.missing_reference}' if u.missing_reference else ''})"
+            for u in scene.unresolved
+        )
+        parts.append(f"Not drawn, could not be placed: {details}.")
+    if scene.unattempted:
+        details = ", ".join(f"{u.count} {u.object_type}" for u in scene.unattempted)
+        parts.append(f"Not drawn, geometry type not read by the viewer: {details}.")
+    return " ".join(parts)
 
 
 @tool(
@@ -108,24 +113,27 @@ def view_geometry(
 ) -> ToolResult:
     """Show interactive 3D building geometry from the loaded model.
 
-    Renders all building surfaces, fenestration, and shading geometry in a
-    Three.js viewport with orbit controls.  Click surfaces to inspect
-    properties; toggle visibility by surface type or zone.
+    Renders detailed building surfaces, fenestration, and shading geometry in a
+    Three.js viewport with orbit controls, placed where EnergyPlus simulates
+    them (zone origins, zone rotations and the building north axis applied).
+    Click surfaces to inspect properties; toggle visibility by surface type or
+    zone. Surfaces that cannot be placed and simplified geometry types (for
+    example Wall:Exterior or Window) are not drawn; they are listed in the
+    payload and in the text summary.
     """
-    data = _extract_geometry(color_by)
-    surfaces = data["surfaces"]
-    zones = data["zones"]
-    count = len(surfaces)  # type: ignore[arg-type]
-    zone_count = len(zones)  # type: ignore[arg-type]
+    scene = get_scene(get_state().require_model())
+    data = _extract_geometry(scene, color_by)
+    count = len(scene.surfaces)
+    zone_count = len(_zone_names(scene))
     logger.info("Extracted %d surfaces across %d zones for geometry viewer", count, zone_count)
 
     # Build a text summary for clients that don't support MCP Apps.
-    type_counts: dict[str, int] = {}
-    for s in surfaces:  # type: ignore[union-attr]
-        st = s["surfaceType"]  # type: ignore[index]
-        type_counts[st] = type_counts.get(st, 0) + 1  # type: ignore[arg-type]
+    type_counts = Counter(_surface_type(s) for s in scene.surfaces)
     breakdown = ", ".join(f"{c} {t}" for t, c in sorted(type_counts.items()))
     summary = f"Model geometry: {count} surfaces across {zone_count} zones ({breakdown})."
+    skipped = _skipped_summary(scene)
+    if skipped:
+        summary = f"{summary} {skipped}"
 
     # The content array is delivered to the viewer via ontoolresult.
     # Non-Apps hosts display the text content to the LLM as a fallback.
