@@ -1,11 +1,15 @@
 name: adopt-energyplus
 
-# Adopt one EnergyPlus release in this project, as a draft pull request on `energyplus/X.Y.Z`.
+# Adopt one EnergyPlus release in this project, as a pull request on `energyplus/X.Y.Z`. The pull
+# request is a draft only when the roster declares a step that a person accepts. Every step of this
+# project is automated, so it opens ready for review.
 #
 # This file holds no logic. The steps, their order, the command each one runs and the gate are
 # declared for the project `idfkit-mcp` in `governance/energyplus.toml` of idfkit-conformance, and
-# the reusable workflow called below executes exactly those commands and no others. It never
-# merges, publishes or releases: the caller grants `contents: write` and `pull-requests: write` only.
+# the reusable workflow called below executes exactly those commands and no others. Neither it nor
+# those commands merge, publish or release. The permissions below, `contents: write` and
+# `pull-requests: write` only, bound the default token. The branch and the pull request are written
+# with the application's token, which they do not bound.
 #
 # THE TAG IS STATED TWICE, on `uses:` and as `governance_level`, because a called workflow cannot
 # see its own ref. The reusable workflow refuses the run unless the two are the same string, so
