@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 import pytest
-from idfkit import new_document, write_idf
+from idfkit import new_document, save_idf
 
 from idfkit_mcp.state import get_state
 from tests.conftest import call_tool
@@ -37,7 +37,7 @@ class TestSaveSession:
         doc = new_document()
         doc.add("Zone", "TestZone")
         idf_path = tmp_path / "test.idf"
-        write_idf(doc, idf_path)
+        save_idf(doc, idf_path)
 
         # Load via the tool (which calls save_session)
         state.document = doc
@@ -231,7 +231,7 @@ class TestClearSession:
 
         doc = new_document()
         idf_path = tmp_path / "model.idf"
-        write_idf(doc, idf_path)
+        save_idf(doc, idf_path)
         state.document = doc
         state.schema = doc.schema
         state.file_path = idf_path
@@ -253,7 +253,7 @@ class TestRequireAutoRestore:
         doc = new_document()
         doc.add("Zone", "AutoZone")
         idf_path = tmp_path / "auto.idf"
-        write_idf(doc, idf_path)
+        save_idf(doc, idf_path)
         state.document = doc
         state.schema = doc.schema
         state.file_path = idf_path

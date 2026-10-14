@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 from fastmcp.exceptions import ToolError
-from idfkit import new_document, write_idf
+from idfkit import new_document, save_idf
 
 from idfkit_mcp.models import ConvertOsmResult, ListObjectsResult, ModelSummary, SearchObjectsResult
 from idfkit_mcp.state import ServerState, get_state, session_uploads_dir
@@ -25,7 +25,7 @@ class TestLoadModel:
         doc = new_document()
         doc.add("Zone", "TestZone")
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
-            write_idf(doc, f.name)
+            save_idf(doc, f.name)
             path = f.name
 
         result = await call_tool(client, "load_model", {"file_path": path}, ModelSummary)
@@ -56,7 +56,7 @@ class TestLoadModel:
         doc = new_document()
         doc.add("Zone", "UploadedZone")
         with tempfile.NamedTemporaryFile(suffix=".idf", delete=False) as f:
-            write_idf(doc, f.name)
+            save_idf(doc, f.name)
             data = Path(f.name).read_bytes()
 
         state = get_state()
