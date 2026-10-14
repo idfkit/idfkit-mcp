@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires idfkit 1.0.0, which adds EnergyPlus 26.2.0. `new_model` without a version now creates a 26.2.0 model, which EnergyPlus 26.1.0 and earlier reject; pass the version explicitly to target an older release.
+
 ## [0.9.3] - 2026-05-11
 
 ### Added
