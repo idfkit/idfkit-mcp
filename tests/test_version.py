@@ -24,3 +24,11 @@ def test_version_flag_prints_the_report_and_exits(capsys: pytest.CaptureFixture[
 def test_transport_parsing_is_unchanged() -> None:
     assert _parse_args(["--transport", "streamable-http"]).transport == "http"
     assert _parse_args([]).transport in {"stdio", "sse", "http"}
+
+
+async def test_server_info_reports_this_servers_version(client: object) -> None:
+    from fastmcp import Client
+
+    assert isinstance(client, Client)
+    assert client.initialize_result is not None
+    assert client.initialize_result.serverInfo.version == metadata.version("idfkit-mcp")

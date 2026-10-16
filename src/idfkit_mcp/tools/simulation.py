@@ -75,8 +75,11 @@ def _build_output_variable_result(
     })
 
 
-def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | None:
-    """Resolve the weather file path from arguments or saved session state."""
+def _resolve_weather_path(weather_file: str | None, design_day: bool, annual: bool) -> str | None:
+    """Resolve the weather file path from arguments or saved session state.
+
+    Returns None only for a design-day-only run, which idfkit runs without a weather file.
+    """
     from pathlib import Path
 
     state = get_state()
@@ -84,10 +87,11 @@ def _resolve_weather_path(weather_file: str | None, design_day: bool) -> str | N
         return str(Path(weather_file))
     if state.weather_file is not None:
         return str(state.weather_file)
-    if design_day:
+    if design_day and not annual:
         return None
     raise ToolError(
-        "No weather file specified. Provide weather_file or use download_weather_file first, or set design_day=True."
+        "No weather file specified. Provide weather_file or use download_weather_file first, "
+        "or set design_day=True and annual=False for a design-day-only run."
     )
 
 
@@ -253,7 +257,8 @@ async def run_simulation(
     ``idfkit://simulation/results`` for full QA diagnostics: unmet hours by zone,
     end-use energy breakdown, classified warnings, and QA flags that drive the fix loop.
 
-    Preconditions: model loaded; weather file set via download_weather_file, or design_day=True.
+    Preconditions: model loaded; weather file set via download_weather_file, or a design-day-only
+    run (design_day=True, annual=False), which needs no weather file.
     Side effects: writes outputs to output_directory; updates session simulation result.
     Next step: read idfkit://simulation/results to assess result quality.
     """
@@ -267,7 +272,7 @@ async def run_simulation(
 
     async with state.simulation_lock:
         doc = state.require_model()
-        weather = _resolve_weather_path(weather_file, design_day)
+        weather = _resolve_weather_path(weather_file, design_day, annual)
 
         # Simulate on a copy so pre-flight injections (Output:SQLite,
         # Output:Table:SummaryReports) do not mutate the user's loaded model.
@@ -295,7 +300,7 @@ async def run_simulation(
         with BillingProbe() as probe:
             result = await async_simulate(
                 sim_doc,
-                weather="" if weather is None else weather,
+                weather=weather,
                 design_day=design_day,
                 annual=annual,
                 energyplus=config,

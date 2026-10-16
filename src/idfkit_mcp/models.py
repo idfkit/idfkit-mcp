@@ -630,9 +630,15 @@ class ZonePeakLoad(BaseModel):
 
 
 class FacilityPeakSummary(BaseModel):
-    """Facility-level peak load with component breakdown and zone ranking."""
+    """Facility-level peak load with component breakdown and zone ranking.
 
-    peak_w: float
+    When EnergyPlus recorded no peak, ``available`` is false, ``peak_w`` is ``None``,
+    and ``unavailable_reason`` states why.
+    """
+
+    available: bool = True
+    unavailable_reason: str | None = None
+    peak_w: float | None
     peak_w_per_m2: float | None = None
     peak_timestamp: str | None = None
     components: list[PeakLoadComponent] = []

@@ -14,6 +14,7 @@ from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from idfkit_mcp.errors import format_error
 from idfkit_mcp.models import (
     BatchAddResult,
     ClearSessionResult,
@@ -121,7 +122,7 @@ def batch_add_objects(
             results.append(entry)
             success_count += 1
         except Exception as e:
-            results.append({"index": i, "error": str(e)})
+            results.append({"index": i, "error": format_error(e)})
             error_count += 1
 
     logger.info("Batch add: %d total, %d success, %d errors", len(objects), success_count, error_count)

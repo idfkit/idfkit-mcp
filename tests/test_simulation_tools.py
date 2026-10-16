@@ -52,6 +52,11 @@ class TestRunSimulation:
         with pytest.raises(ToolError):
             await call_tool(client, "run_simulation")
 
+    async def test_annual_without_weather_is_refused(self, client: object, state_with_model: ServerState) -> None:
+        state_with_model.weather_file = None
+        with pytest.raises(ToolError, match="weather_file"):
+            await call_tool(client, "run_simulation", {"design_day": True, "annual": True})
+
     async def test_output_directory_accepted(self, client: object, state_with_model: ServerState) -> None:
         with pytest.raises(ToolError, match=r"weather|No weather"):
             await call_tool(client, "run_simulation", {"output_directory": "/tmp/test_out"})  # noqa: S108
@@ -102,6 +107,39 @@ class TestRunSimulation:
         assert result["success"] is True
         # The original model must NOT be mutated — simulation runs on a copy.
         assert "Output:SQLite" not in state_with_model.document  # type: ignore[operator]
+
+    async def test_design_day_without_weather_passes_none(
+        self, client: object, state_with_model: ServerState, tmp_path: Path
+    ) -> None:
+        """idfkit 1.1.0 runs a design-day-only simulation for weather=None and refuses ``""``."""
+        fake_config = SimpleNamespace(
+            version=(25, 2, 0),
+            install_dir=Path("/fake/energyplus"),
+            executable=Path("/fake/energyplus/energyplus"),
+        )
+        fake_errors = SimpleNamespace(
+            fatal_count=0,
+            severe_count=0,
+            warning_count=0,
+            has_fatal=False,
+            has_severe=False,
+            simulation_complete=True,
+        )
+        fake_result = SimpleNamespace(
+            success=True,
+            runtime_seconds=0.1,
+            run_dir=tmp_path / "fake-run",
+            errors=fake_errors,
+        )
+        state_with_model.weather_file = None
+
+        with (
+            patch("idfkit.simulation.config.find_energyplus", return_value=fake_config),
+            patch("idfkit.simulation.async_simulate", return_value=fake_result) as mock_simulate,
+        ):
+            await call_tool(client, "run_simulation", {"design_day": True})
+
+        assert mock_simulate.call_args.kwargs["weather"] is None
 
     async def test_upgrades_existing_output_sqlite(
         self, client: object, state_with_model: ServerState, tmp_path: Path

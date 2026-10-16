@@ -204,7 +204,12 @@ def list_objects(
     doc = state.require_model()
 
     if object_type not in doc:
-        raise ToolError(f"No objects of type '{object_type}' in the model.")
+        if state.schema is not None and object_type not in state.schema:
+            raise ToolError(
+                f"Unknown object type '{object_type}' for EnergyPlus {'.'.join(str(part) for part in doc.version)}. "
+                "Use search_schema to find the correct type name."
+            )
+        return ListObjectsResult(object_type=object_type, total=0, returned=0, objects=[])
 
     collection = doc.get_collection(object_type)
     total = len(collection)
