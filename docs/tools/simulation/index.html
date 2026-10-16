@@ -2219,6 +2219,7 @@
 <p>Behavior:</p>
 <ul>
 <li>Uses server-cached weather path when available.</li>
+<li>A design-day-only run (<code>design_day=True</code>, <code>annual=False</code>) needs no weather file. EnergyPlus then runs the model's <code>SizingPeriod:DesignDay</code> objects without <code>-w</code>. A model with <code>SizingPeriod:WeatherFileDays</code> or <code>SizingPeriod:WeatherFileConditionType</code> still needs one.</li>
 <li>Ensures SQLite and required summary reports are enabled on the simulation copy.</li>
 <li>Returns runtime, output directory, and error counts.</li>
 <li>Returns the resolved EnergyPlus executable, install directory, and version.</li>
@@ -2274,6 +2275,7 @@
 <li>surfaces timing checks, dominant-component checks, and sizing-oriented QA flags</li>
 <li>requires SQL output plus the <code>SensibleHeatGainSummary</code> and <code>HVACSizingSummary</code> reports</li>
 </ul>
+<p>The component decomposition comes from <code>SensibleHeatGainSummary</code>, which EnergyPlus computes only from weather-file run periods. After a design-day-only run, <code>cooling</code> and <code>heating</code> report <code>available: false</code>, <code>peak_w: null</code> and an <code>unavailable_reason</code>, and <code>flags</code> states the same. The design-day loads remain available in <code>sizing_cooling</code> and <code>sizing_heating</code>.</p>
 <h2 id="view_simulation_report"><code>view_simulation_report</code><a class="headerlink" href="#view_simulation_report" title="Permanent link">&para;</a></h2>
 <p>Builds the full tabular simulation report payload and opens the companion MCP Apps viewer when the client supports it.</p>
 <p>Use this when you want a browsable report browser instead of pulling individual tables with <code>query_simulation_table(...)</code>.</p>
@@ -2299,8 +2301,9 @@
 <h2 id="common-guardrail">Common Guardrail<a class="headerlink" href="#common-guardrail" title="Permanent link">&para;</a></h2>
 <p>If <code>run_simulation</code> reports missing weather, either:</p>
 <ul>
-<li>call <code>download_weather_file</code>, or</li>
-<li>pass an explicit EPW path.</li>
+<li>call <code>download_weather_file</code>,</li>
+<li>pass an explicit EPW path, or</li>
+<li>run design days only with <code>design_day=True</code> and <code>annual=False</code>.</li>
 </ul>
 
 

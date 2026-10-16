@@ -1180,10 +1180,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#error-shape" class="md-nav__link">
+  <a href="#error-messages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error Shape
+        Error Messages
       
     </span>
   </a>
@@ -1191,10 +1191,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#typed-error-mapping" class="md-nav__link">
+  <a href="#recommended-agent-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Typed Error Mapping
+        Recommended Agent Handling
       
     </span>
   </a>
@@ -1202,21 +1202,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#safe-agent-handling-pattern" class="md-nav__link">
+  <a href="#logging" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Safe Agent Handling Pattern
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-this-matters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why This Matters
+        Logging
       
     </span>
   </a>
@@ -1976,10 +1965,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#error-shape" class="md-nav__link">
+  <a href="#error-messages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error Shape
+        Error Messages
       
     </span>
   </a>
@@ -1987,10 +1976,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#typed-error-mapping" class="md-nav__link">
+  <a href="#recommended-agent-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Typed Error Mapping
+        Recommended Agent Handling
       
     </span>
   </a>
@@ -1998,21 +1987,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#safe-agent-handling-pattern" class="md-nav__link">
+  <a href="#logging" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Safe Agent Handling Pattern
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-this-matters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why This Matters
+        Logging
       
     </span>
   </a>
@@ -2051,36 +2029,62 @@
 
 
 <h1 id="error-semantics">Error Semantics<a class="headerlink" href="#error-semantics" title="Permanent link">&para;</a></h1>
-<p>Tools return structured dictionaries for both success and failure paths.</p>
-<h2 id="error-shape">Error Shape<a class="headerlink" href="#error-shape" title="Permanent link">&para;</a></h2>
-<p>Typical failure response:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">}</span>
-</span></code></pre></div>
-<p>Some errors include targeted hints, for example EnergyPlus discovery failures include a <code>suggestion</code> field.</p>
-<h2 id="typed-error-mapping">Typed Error Mapping<a class="headerlink" href="#typed-error-mapping" title="Permanent link">&para;</a></h2>
-<p>The server normalizes common exceptions from <code>idfkit</code>:</p>
-<ul>
-<li>validation failures</li>
-<li>unknown object types</li>
-<li>duplicate object names</li>
-<li>missing schema/version</li>
-<li>simulation failures</li>
-<li>missing EnergyPlus installation</li>
-</ul>
-<p>This allows clients and agents to build deterministic remediation branches.</p>
-<h2 id="safe-agent-handling-pattern">Safe Agent Handling Pattern<a class="headerlink" href="#safe-agent-handling-pattern" title="Permanent link">&para;</a></h2>
+<p>A tool that cannot complete returns an MCP tool error: the response has <code>isError: true</code> and a single text content item holding the message. A tool that completes returns its typed result. A partial outcome inside a successful result, such as a failed entry in <code>batch_add_objects</code>, is reported in that result's own fields.</p>
+<h2 id="error-messages">Error Messages<a class="headerlink" href="#error-messages" title="Permanent link">&para;</a></h2>
+<p>The server rewrites exceptions raised by <code>idfkit</code> into messages in the following categories:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Message form</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validation failure</td>
+<td><code>Validation failed: ...</code></td>
+</tr>
+<tr>
+<td>Unknown object type</td>
+<td><code>Unknown object type: '&lt;type&gt;'</code>, followed by a documentation search link</td>
+</tr>
+<tr>
+<td>Duplicate object name</td>
+<td><code>Duplicate &lt;type&gt; object with name '&lt;name&gt;'. It already exists in the model; use update_object to change its fields.</code></td>
+</tr>
+<tr>
+<td>Other missing key</td>
+<td><code>Not found: ...</code></td>
+</tr>
+<tr>
+<td>Missing schema or version</td>
+<td><code>Schema not found: ...</code> or <code>Version not found: ...</code></td>
+</tr>
+<tr>
+<td>Simulation failure</td>
+<td><code>Simulation error: ...</code></td>
+</tr>
+<tr>
+<td>Missing EnergyPlus installation</td>
+<td><code>EnergyPlus not found. Install EnergyPlus or set the ENERGYPLUS_DIR environment variable.</code></td>
+</tr>
+<tr>
+<td>Any other exception</td>
+<td><code>&lt;ExceptionName&gt;: ...</code>, for example <code>InvalidFieldError: Invalid field 'x' for object type 'Zone'</code></td>
+</tr>
+</tbody>
+</table>
+<p>A precondition failure, such as calling a model tool before <code>load_model</code> or <code>new_model</code>, returns the precondition's own message, for example <code>No model loaded. Use load_model or new_model first.</code> Errors raised deliberately by a tool keep the message that tool wrote.</p>
+<h2 id="recommended-agent-handling">Recommended Agent Handling<a class="headerlink" href="#recommended-agent-handling" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Check for <code>error</code> key on every tool response.</li>
-<li>If present, halt dependent calls.</li>
-<li>Apply the smallest argument change needed.</li>
+<li>Check whether each tool response is an error.</li>
+<li>If it is, stop any dependent calls.</li>
+<li>Make the smallest argument change that the message calls for.</li>
 <li>Retry that call.</li>
-<li>Re-run validation gates after recovery edits.</li>
+<li>Run the validation gates again after the recovery edits.</li>
 </ol>
-<h2 id="why-this-matters">Why This Matters<a class="headerlink" href="#why-this-matters" title="Permanent link">&para;</a></h2>
-<p>Without explicit error branching, autonomous workflows tend to drift into invalid model states and compound failures.</p>
+<h2 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h2>
+<p>An expected tool error is logged on the server at <code>WARNING</code> level as one line naming the tool, the session, the elapsed time and the message, with no traceback. An unexpected exception is logged with its traceback.</p>
 
 
 
