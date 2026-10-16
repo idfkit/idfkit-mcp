@@ -682,7 +682,10 @@ function renderMetrics() {
   );
 
   setText('metric-peak', summary ? formatWatts(summary.peak_w) : 'N/A');
-  setText('metric-peak-note', summary?.peak_timestamp || 'Peak timestamp unavailable');
+  setText(
+    'metric-peak-note',
+    summary?.available === false ? 'No peak recorded for this run' : summary?.peak_timestamp || 'Peak timestamp unavailable'
+  );
 
   setText('metric-density', summary ? formatDensity(summary.peak_w_per_m2) : 'N/A');
   setText(

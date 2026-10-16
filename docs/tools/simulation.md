@@ -16,6 +16,7 @@ Parameters:
 Behavior:
 
 - Uses server-cached weather path when available.
+- A design-day-only run (`design_day=True`, `annual=False`) needs no weather file. EnergyPlus then runs the model's `SizingPeriod:DesignDay` objects without `-w`. A model with `SizingPeriod:WeatherFileDays` or `SizingPeriod:WeatherFileConditionType` still needs one.
 - Ensures SQLite and required summary reports are enabled on the simulation copy.
 - Returns runtime, output directory, and error counts.
 - Returns the resolved EnergyPlus executable, install directory, and version.
@@ -86,6 +87,8 @@ Highlights:
 - surfaces timing checks, dominant-component checks, and sizing-oriented QA flags
 - requires SQL output plus the `SensibleHeatGainSummary` and `HVACSizingSummary` reports
 
+The component decomposition comes from `SensibleHeatGainSummary`, which EnergyPlus computes only from weather-file run periods. After a design-day-only run, `cooling` and `heating` report `available: false`, `peak_w: null` and an `unavailable_reason`, and `flags` states the same. The design-day loads remain available in `sizing_cooling` and `sizing_heating`.
+
 ## `view_simulation_report`
 
 Builds the full tabular simulation report payload and opens the companion MCP Apps viewer when the client supports it.
@@ -116,5 +119,6 @@ Simulation data is also exposed via read-only MCP resources:
 
 If `run_simulation` reports missing weather, either:
 
-- call `download_weather_file`, or
-- pass an explicit EPW path.
+- call `download_weather_file`,
+- pass an explicit EPW path, or
+- run design days only with `design_day=True` and `annual=False`.

@@ -63,19 +63,50 @@ def _summarize_tool_result(result: object) -> str:
     return _summarize_result(result)
 
 
+def _is_expected(cause: BaseException | None) -> bool:
+    """Whether a tool failure's cause is an anticipated error rather than a server defect.
+
+    Anticipated: no cause, a ToolError, an idfkit error, a RuntimeError (the session
+    preconditions, such as no model loaded, raise RuntimeError), or a pydantic
+    ValidationError (arguments that do not match the tool's schema).
+    """
+    from idfkit.exceptions import IdfKitError
+    from pydantic import ValidationError
+
+    return cause is None or isinstance(cause, (ToolError, IdfKitError, RuntimeError, ValidationError))
+
+
+class FastMCPToolErrorLogFilter(logging.Filter):
+    """Drop FastMCP's own per-call tool and resource error records.
+
+    FastMCP logs every exception raised by a tool or a resource with its traceback before
+    re-raising it. ``ToolExecutionMiddleware`` logs each failure once, with the traceback only
+    when the cause is a defect, so FastMCP's record is a duplicate.
+    """
+
+    _PREFIXES = ("Error calling tool ", "Error validating tool ", "Error reading resource ")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not record.getMessage().startswith(self._PREFIXES)
+
+
 def _mutation_summary(tool_name: str, result: object) -> str | None:
     """Extract a short human-readable summary from a mutation tool result."""
     structured = getattr(result, "structured_content", None)
-    if structured is None:
+    if not isinstance(structured, Mapping):
         return None
+    fields = cast(Mapping[str, Any], structured)
     # Prefer named fields that identify what changed
     for key in ("name", "new_name", "file_path", "version", "status"):
-        val = getattr(structured, key, None)
+        val = fields.get(key)
         if val:
+            object_type = fields.get("object_type")
+            if object_type and key in ("name", "new_name"):
+                return f"{tool_name}: {object_type} {key}={val}"
             return f"{tool_name}: {key}={val}"
     # Fall back to success/error counts for batch operations
-    success = getattr(structured, "success", None)
-    errors = getattr(structured, "errors", None)
+    success = fields.get("success")
+    errors = fields.get("errors")
     if success is not None and errors is not None:
         return f"{tool_name}: {success} succeeded, {errors} failed"
     return None
@@ -89,7 +120,18 @@ class ToolExecutionMiddleware(Middleware):
 
         with session_scope_from_context(context.fastmcp_context, context.message) as session_id:
             logger.debug("READ resource | session=%s | %s", session_id, context.message.uri)
-            return await call_next(context)
+            try:
+                return await call_next(context)
+            except Exception as e:
+                cause = e.__cause__ if e.__cause__ is not None else e
+                logger.warning(
+                    "FAIL resource %s | session=%s | %s",
+                    context.message.uri,
+                    session_id,
+                    error_text(cause),
+                    exc_info=None if _is_expected(cause) else cause,
+                )
+                raise
 
     async def on_call_tool(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
         from idfkit_mcp.state import session_scope_from_context
@@ -114,25 +156,43 @@ class ToolExecutionMiddleware(Middleware):
             start = time.monotonic()
             try:
                 result = await call_next(context)
-            except ToolError:
+            except ToolError as e:
                 elapsed_ms = (time.monotonic() - start) * 1000
+                # FastMCP wraps an exception raised inside a tool as
+                # ``ToolError("Error calling tool '<name>': {e}")``. Re-map the original cause of
+                # that wrapper only, so that idfkit errors carry their documented category and
+                # readable text, while a ToolError the tool raised itself keeps its message.
+                cause = e.__cause__
+                wrapped = str(e).startswith(f"Error calling tool {tool_name!r}:")
+                mapped = (
+                    ToolError(format_error(cause))
+                    if wrapped and isinstance(cause, Exception) and not isinstance(cause, ToolError)
+                    else e
+                )
+                # An expected tool error is a result for the agent, not a server fault: log
+                # one line without a traceback. Any other wrapped cause is a defect, and keeps
+                # its traceback.
                 logger.warning(
-                    "FAIL %s | session=%s | %.1fms",
+                    "FAIL %s | session=%s | %.1fms | %s",
                     tool_name,
                     session_id,
                     elapsed_ms,
-                    exc_info=True,
+                    mapped,
+                    exc_info=None if _is_expected(cause) else cause,
                 )
-                raise
+                if mapped is e:
+                    raise
+                raise mapped from cause
             except Exception as e:
                 elapsed_ms = (time.monotonic() - start) * 1000
                 error_msg = format_error(e)
-                logger.exception(
+                logger.warning(
                     "ERR  %s | session=%s | %.1fms | %s",
                     tool_name,
                     session_id,
                     elapsed_ms,
                     error_msg,
+                    exc_info=None if _is_expected(e) else e,
                 )
                 raise ToolError(error_msg) from e
 
@@ -173,23 +233,34 @@ def format_error(error: Exception) -> str:
 
     if isinstance(error, ValidationFailedError):
         return f"Validation failed: {error}"
+    if isinstance(error, UnknownObjectTypeError):
+        return error_text(error)
+    if isinstance(error, DuplicateObjectError):
+        return f"{error_text(error)}. It already exists in the model; use update_object to change its fields."
     if isinstance(error, KeyError):
-        return f"Not found: {error}"
+        return f"Not found: {error_text(error)}"
     if isinstance(error, EnergyPlusNotFoundError):
         return "EnergyPlus not found. Install EnergyPlus or set the ENERGYPLUS_DIR environment variable."
     if isinstance(error, SchemaNotFoundError):
         return f"Schema not found: {error}"
     if isinstance(error, VersionNotFoundError):
         return f"Version not found: {error}"
-    if isinstance(error, UnknownObjectTypeError):
-        return f"Unknown object type: {error}"
-    if isinstance(error, DuplicateObjectError):
-        return f"Duplicate object: {error}"
     if isinstance(error, SimulationError):
         return f"Simulation error: {error}"
     if isinstance(error, RuntimeError):
         return str(error)
     return f"{type(error).__name__}: {error}"
+
+
+def error_text(error: BaseException) -> str:
+    """Return an exception's message as written, without ``KeyError``'s quoting.
+
+    ``str(KeyError("msg"))`` is the repr of its argument, which wraps the message in
+    quotes and escapes its newlines. Several idfkit exceptions subclass ``KeyError``.
+    """
+    if isinstance(error, KeyError) and len(error.args) == 1 and isinstance(error.args[0], str):
+        return error.args[0]
+    return str(error)
 
 
 def tool_error(message: str, **extra: object) -> ToolError:

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 from fastmcp.server.lifespan import lifespan
 from fastmcp.server.providers import FileSystemProvider
 
-from idfkit_mcp.errors import ToolExecutionMiddleware
+from idfkit_mcp.errors import FastMCPToolErrorLogFilter, ToolExecutionMiddleware
 from idfkit_mcp.uploads import IdfUploadStore
 
 _INSTRUCTIONS = """\
@@ -95,13 +95,23 @@ uploads = IdfUploadStore(
     max_file_size=50 * 1024 * 1024,
 )
 
+
+def _distribution_version(distribution: str) -> str:
+    try:
+        return metadata.version(distribution)
+    except metadata.PackageNotFoundError:
+        return "not installed"
+
+
 mcp = FastMCP(
     "idfkit",
     instructions=_INSTRUCTIONS,
+    version=_distribution_version("idfkit-mcp"),
     lifespan=_configure_logging,
     providers=[FileSystemProvider(Path(__file__).parent / "tools"), uploads],
 )
 mcp.add_middleware(ToolExecutionMiddleware())
+logging.getLogger("fastmcp.server.server").addFilter(FastMCPToolErrorLogFilter())
 
 
 @mcp.custom_route("/health", methods=["GET"])
@@ -110,13 +120,6 @@ async def health_check(_request: Request) -> Response:
     from starlette.responses import JSONResponse
 
     return JSONResponse({"status": "ok"})
-
-
-def _distribution_version(distribution: str) -> str:
-    try:
-        return metadata.version(distribution)
-    except metadata.PackageNotFoundError:
-        return "not installed"
 
 
 def version_report() -> str:

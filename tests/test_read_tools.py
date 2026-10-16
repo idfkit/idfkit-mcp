@@ -217,9 +217,17 @@ class TestListObjects:
         assert "Office" in names
         assert "Corridor" in names
 
-    async def test_missing_type(self, client: object, state_with_zones: ServerState) -> None:
-        with pytest.raises(ToolError):
-            await call_tool(client, "list_objects", {"object_type": "Material"})
+    async def test_valid_type_with_no_objects_returns_empty(
+        self, client: object, state_with_zones: ServerState
+    ) -> None:
+        result = await call_tool(client, "list_objects", {"object_type": "Material"}, ListObjectsResult)
+        assert result.object_type == "Material"
+        assert result.total == 0
+        assert result.objects == []
+
+    async def test_unknown_type_raises(self, client: object, state_with_zones: ServerState) -> None:
+        with pytest.raises(ToolError, match="Unknown object type 'Zone:Bogus'"):
+            await call_tool(client, "list_objects", {"object_type": "Zone:Bogus"})
 
     async def test_include_all_fields(self, client: object, state_with_zones: ServerState) -> None:
         brief = await call_tool(client, "list_objects", {"object_type": "Zone"}, ListObjectsResult)

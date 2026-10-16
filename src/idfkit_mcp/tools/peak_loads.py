@@ -164,6 +164,28 @@ def _facility_total_area_m2(zone_areas: dict[str, ZoneAreaInfo]) -> float:
     return sum(info.effective_area_m2 for info in zone_areas.values())
 
 
+_PEAK_TIMESTAMP_COLUMN = "Time of Peak {TIMESTAMP}"
+
+_NO_PEAK_TIMESTAMPS = frozenset({"", "-"})
+"""Timestamp values EnergyPlus writes when no peak was recorded."""
+
+
+def _peak_timestamp(columns: dict[str, str]) -> str | None:
+    """Return the row's peak timestamp, or ``None`` when EnergyPlus recorded no peak."""
+    value = (columns.get(_PEAK_TIMESTAMP_COLUMN) or "").strip()
+    return None if value in _NO_PEAK_TIMESTAMPS else value
+
+
+def _no_peak_reason(table_name: str) -> str:
+    return (
+        f"EnergyPlus recorded no peak in SensibleHeatGainSummary '{table_name}'. "
+        "This report is computed only from weather-file run periods, so it is empty after a "
+        "design-day-only simulation; it is also empty when no zone carries this load. "
+        "Use sizing_cooling and sizing_heating for design-day loads, or re-run with annual=True "
+        "or a RunPeriod to obtain the decomposition."
+    )
+
+
 def _parse_peak_components(
     sql: Any,
     table_name: str,
@@ -174,6 +196,10 @@ def _parse_peak_components(
     EnergyPlus reports zone-level rows WITHOUT the multiplier applied, and the
     "Total Facility" row WITH multipliers. Per-zone W/m² therefore uses the zone's
     own area; facility W/m² uses the multiplier-weighted total.
+
+    When no row carries a peak timestamp, EnergyPlus computed no peak (for example,
+    after a design-day-only run). The summary is then reported as unavailable rather
+    than as a zero peak.
     """
     rows = sql.get_tabular_data(
         report_name="SensibleHeatGainSummary",
@@ -185,6 +211,9 @@ def _parse_peak_components(
     for r in rows:
         zone = by_zone.setdefault(r.row_name, {})
         zone[r.column_name] = r.value
+
+    if not any(_peak_timestamp(columns) for columns in by_zone.values()):
+        return FacilityPeakSummary(available=False, unavailable_reason=_no_peak_reason(table_name), peak_w=None)
 
     # Build zone-level results
     zones: list[ZonePeakLoad] = []
@@ -207,7 +236,7 @@ def _parse_peak_components(
                 peak_w_per_m2=round(peak_w / area, 1) if area and area > 0 else None,
                 floor_area_m2=round(area, 2) if area else None,
                 multiplier=info.multiplier if info else 1,
-                peak_timestamp=columns.get("Time of Peak {TIMESTAMP}"),
+                peak_timestamp=_peak_timestamp(columns),
                 components=components,
             )
         )
@@ -229,7 +258,7 @@ def _parse_peak_components(
             for z in zones
         )
 
-    fac_timestamp = facility_data.get("Time of Peak {TIMESTAMP}") if facility_data else None
+    fac_timestamp = _peak_timestamp(facility_data) if facility_data else None
 
     return FacilityPeakSummary(
         peak_w=round(fac_peak, 1),
@@ -330,6 +359,10 @@ def _generate_flags(  # noqa: C901
     """Generate QA/QC flags based on the analysis."""
     flags: list[str] = []
 
+    for label, summary in (("Cooling", cooling), ("Heating", heating)):
+        if not summary.available:
+            flags.append(f"{label} peak decomposition unavailable: {summary.unavailable_reason}")
+
     # --- Peak timing checks ---
     cooling_hour = _parse_hour(cooling.peak_timestamp)
     if cooling_hour is not None and not (12 <= cooling_hour <= 20):
@@ -386,7 +419,7 @@ def _generate_flags(  # noqa: C901
             )
 
     # --- Design-day vs annual discrepancy ---
-    if sizing_cooling and cooling.peak_w > 0:
+    if sizing_cooling and cooling.peak_w is not None and cooling.peak_w > 0:
         total_sizing_clg = sum(d.user_load_w or d.calculated_load_w or 0 for d in sizing_cooling)
         if total_sizing_clg > 0:
             ratio = cooling.peak_w / total_sizing_clg
@@ -482,7 +515,9 @@ def analyze_peak_loads() -> PeakLoadAnalysisResult:
     such as unusual peak timing, excessive loads, or component dominance.
 
     Requires a completed simulation with SQL output and the
-    SensibleHeatGainSummary and HVACSizingSummary reports.
+    SensibleHeatGainSummary and HVACSizingSummary reports. The decomposition
+    needs a weather-file run period; after a design-day-only run, cooling and
+    heating report available=false and only the sizing loads are populated.
     """
     return build_peak_load_analysis()
 

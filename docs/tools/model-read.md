@@ -47,6 +47,8 @@ Parameters:
 - `object_type` (required)
 - `limit` (default `50`)
 
+A valid object type with no objects in the model returns `total: 0` and an empty `objects` list. A type the model's EnergyPlus version does not define is an error.
+
 ## `search_objects`
 
 Case-insensitive substring search across names and string fields.
