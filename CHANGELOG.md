@@ -7,24 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-16
+
 ### Fixed
 
-- `run_simulation` runs a design-day-only simulation (`design_day=True`, `annual=False`) without a weather file, as documented. It passed an empty string as the weather file, which idfkit 1.0.0 could not run; it now passes `None`, which idfkit 1.1.0 accepts for such a run. A request with `annual=True` and no weather file is refused by the tool with a message naming `weather_file`.
-- `save_model` writes epJSON that EnergyPlus accepts. idfkit 1.0.0 wrote choice values and sizing keywords in spellings EnergyPlus's epJSON reader refuses, integer fields in repeating groups as `1.0`, and blank group fields as `""`; idfkit 1.1.0 corrects all four ([idfkit#226](https://github.com/idfkit/idfkit/pull/226)).
-- `view_geometry` now draws surfaces where EnergyPlus places them. It resolves vertices with `idfkit.get_scene`, which applies zone origins, zone rotations and the building north axis under `GlobalGeometryRules`. Previously, models in relative coordinates were drawn up to 40 m from their simulated position ([#78](https://github.com/idfkit/idfkit-mcp/issues/78)). Each surface's `azimuth` is consequently measured from true north rather than from building north, and the payload's `northAxis` is informational: it is already applied to the vertices and azimuths and must not be applied again.
-- `view_geometry` reports surfaces it cannot place, with the reason, and geometry types it does not read, with their counts, in both the viewer payload (`unresolved`, `unattempted`) and the text summary. Previously such surfaces were omitted without notice.
-- `analyze_peak_loads` no longer reports a 0 W peak after a design-day-only simulation, and no longer flags such a model as having no cooling or heating loads. EnergyPlus fills `SensibleHeatGainSummary` only from weather-file run periods. When it holds no peak, `cooling` and `heating` now report `available: false`, `peak_w: null` and an `unavailable_reason`, and `flags` states the same. The design-day loads remain in `sizing_cooling` and `sizing_heating`.
-- The server reports its own version in the MCP `initialize` response. Previously it reported the FastMCP version (`3.2.0`).
-- `list_objects` returns an empty list for a valid object type with no objects in the model. Previously it returned an error. A type the model's EnergyPlus version does not define is still an error.
-- Errors raised by `idfkit` now reach the client in the documented categories and with readable text. Previously, an unknown object type arrived wrapped in quotes and with an escaped newline, because FastMCP's wrapping bypassed the server's error mapping.
-- A duplicate-name error names `update_object` as the remedy. `new_model` already creates `Building`, `GlobalGeometryRules` and `SimulationControl`, so adding them again is the usual cause.
-- `get_change_log` entries carry a summary of each change, for example `add_object: Zone name=Office`. Previously every summary was `null`.
-- Expected tool errors are logged as one line, without a traceback. Unanticipated exceptions keep their traceback.
+- `run_simulation` runs a design-day-only simulation (`design_day=True`, `annual=False`) without a weather file, as documented. It passed an empty string as the weather file, which idfkit 1.0.0 could not run; it now passes `None`, which idfkit 1.1.0 accepts for such a run. A request with `annual=True` and no weather file is refused by the tool with a message naming `weather_file`. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- `save_model` writes epJSON that EnergyPlus accepts. idfkit 1.0.0 wrote choice values and sizing keywords in spellings EnergyPlus's epJSON reader refuses, integer fields in repeating groups as `1.0`, and blank group fields as `""`; idfkit 1.1.0 corrects all four ([idfkit#226](https://github.com/idfkit/idfkit/pull/226)). ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- `view_geometry` now draws surfaces where EnergyPlus places them. It resolves vertices with `idfkit.get_scene`, which applies zone origins, zone rotations and the building north axis under `GlobalGeometryRules`. Previously, models in relative coordinates were drawn up to 40 m from their simulated position ([#78](https://github.com/idfkit/idfkit-mcp/issues/78), [#83](https://github.com/idfkit/idfkit-mcp/pull/83)). Each surface's `azimuth` is consequently measured from true north rather than from building north, and the payload's `northAxis` is informational: it is already applied to the vertices and azimuths and must not be applied again.
+- `view_geometry` reports surfaces it cannot place, with the reason, and geometry types it does not read, with their counts, in both the viewer payload (`unresolved`, `unattempted`) and the text summary. Previously such surfaces were omitted without notice. ([#83](https://github.com/idfkit/idfkit-mcp/pull/83))
+- `analyze_peak_loads` no longer reports a 0 W peak after a design-day-only simulation, and no longer flags such a model as having no cooling or heating loads. EnergyPlus fills `SensibleHeatGainSummary` only from weather-file run periods. When it holds no peak, `cooling` and `heating` now report `available: false`, `peak_w: null` and an `unavailable_reason`, and `flags` states the same. The design-day loads remain in `sizing_cooling` and `sizing_heating`. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- The server reports its own version in the MCP `initialize` response. Previously it reported the FastMCP version (`3.2.0`). ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- `list_objects` returns an empty list for a valid object type with no objects in the model. Previously it returned an error. A type the model's EnergyPlus version does not define is still an error. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- Errors raised by `idfkit` now reach the client in the documented categories and with readable text. Previously, an unknown object type arrived wrapped in quotes and with an escaped newline, because FastMCP's wrapping bypassed the server's error mapping. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- A duplicate-name error names `update_object` as the remedy. `new_model` already creates `Building`, `GlobalGeometryRules` and `SimulationControl`, so adding them again is the usual cause. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- `get_change_log` entries carry a summary of each change, for example `add_object: Zone name=Office`. Previously every summary was `null`. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- Expected tool errors are logged as one line, without a traceback. Unanticipated exceptions keep their traceback. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
 
 ### Changed
 
-- Requires idfkit 1.1.0, up from 1.0.0 ([#85](https://github.com/idfkit/idfkit-mcp/pull/85)). In models read through `load_model`, numeric `Schedule:Compact` values are now numbers and blank fields inside repeating groups are absent; tool results reflect both.
-- `docs/concepts/error-semantics.md` now describes the error shape the server emits, an MCP tool error with a text message, instead of a structured `{"error": ...}` object it never returned.
+- Requires idfkit 1.1.0, up from 1.0.0 ([#85](https://github.com/idfkit/idfkit-mcp/pull/85), [#86](https://github.com/idfkit/idfkit-mcp/pull/86)). In models read through `load_model`, numeric `Schedule:Compact` values are now numbers and blank fields inside repeating groups are absent; tool results reflect both. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
+- `docs/concepts/error-semantics.md` now describes the error shape the server emits, an MCP tool error with a text message, instead of a structured `{"error": ...}` object it never returned. ([#86](https://github.com/idfkit/idfkit-mcp/pull/86))
 
 ## [0.10.0] - 2026-10-14
 
@@ -199,7 +201,8 @@ Initial public release.
 - Session persistence across server restarts.
 - PyPI trusted publishing (OIDC) for releases.
 
-[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.10.0...HEAD
+[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.1...v0.9.2
