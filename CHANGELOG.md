@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-19
+
+### Fixed
+
+- The server starts on Python 3.11. idfkit 1.1.0, which 0.11.0 requires, raised `ValueError` on import under Python 3.11, so `idfkit-mcp` 0.11.0 could not start on that version. This release requires idfkit 1.1.1, which corrects the import ([idfkit#232](https://github.com/idfkit/idfkit/pull/232)). Python 3.10, 3.12 and 3.13 were not affected. ([#88](https://github.com/idfkit/idfkit-mcp/pull/88))
+
 ## [0.11.0] - 2026-10-16
 
 ### Fixed
@@ -201,7 +207,8 @@ Initial public release.
 - Session persistence across server restarts.
 - PyPI trusted publishing (OIDC) for releases.
 
-[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.0...HEAD
+[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.2...v0.9.3
