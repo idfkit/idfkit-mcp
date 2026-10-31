@@ -12,8 +12,12 @@ repos:
       - id: pretty-format-json
         exclude: ^.devcontainer/devcontainer.json
         args: [--autofix, --no-sort-keys]
+      # docs/identity/ is vendored from idfkit-brand and compared byte for byte against the tag
+      # by check-identity.yml; a formatting hook must not touch it.
       - id: end-of-file-fixer
+        exclude: ^docs/identity/
       - id: trailing-whitespace
+        exclude: ^docs/identity/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.14.9"
