@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The site and the README adopt the idfkit visual identity at `identity-2026.1`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag.
+- The site and the README adopt the idfkit visual identity at `identity-2026.2`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag.
 
 ## [0.11.1] - 2026-10-19
 

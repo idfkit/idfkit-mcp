@@ -135,4 +135,4 @@ source = ["src"]
 # The identity tag this site vendors under docs/identity/ (touchpoints.toml in idfkit-brand,
 # id "mcp"). The check workflow refuses to run unless this value equals the tag on its uses: line.
 [tool.idfkit.identity]
-level = "identity-2026.1"
+level = "identity-2026.2"
