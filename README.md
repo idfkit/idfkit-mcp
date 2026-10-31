@@ -14,8 +14,6 @@ An MCP server that lets an AI assistant author, validate and simulate EnergyPlus
 
 [![Release](https://img.shields.io/github/v/release/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/releases) [![Build status](https://img.shields.io/github/actions/workflow/status/idfkit/idfkit-mcp/main.yml?branch=main)](https://github.com/idfkit/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain) [![License](https://img.shields.io/github/license/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/blob/main/LICENSE)
 
-[![codecov](https://codecov.io/gh/idfkit/idfkit-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/idfkit/idfkit-mcp)
-
 An [MCP](https://modelcontextprotocol.io/) server that lets AI assistants work directly with [EnergyPlus](https://energyplus.net/) building energy models. Connect it to Claude, ChatGPT, Cursor, Codex, or any MCP-compatible client and use natural language to:
 
 - **Build models from scratch** — describe a building and let the agent create zones, surfaces, constructions, schedules, and HVAC systems
