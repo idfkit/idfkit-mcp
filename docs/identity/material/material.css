@@ -184,18 +184,3 @@
   --md-text-font: var(--idfkit-font-stack-text);
   --md-code-font: var(--idfkit-font-stack-code);
 }
-
-/* The logo takes the colour of the text around it, on any header (FR-018 under forced colours). */
-.md-logo img {
-  object-position: 200vw 0;
-  background-color: currentColor;
-  -webkit-mask: url("logo.svg") center / contain no-repeat;
-  mask: url("logo.svg") center / contain no-repeat;
-}
-
-@media (forced-colors: active) {
-  .md-logo img {
-    forced-color-adjust: none;
-    background-color: CanvasText;
-  }
-}

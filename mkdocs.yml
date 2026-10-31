@@ -77,7 +77,7 @@ theme:
   # The fonts are self-hosted by the vendored identity derivation (identity/material/fonts.css);
   # false keeps the theme from linking its default remote font host.
   font: false
-  logo: identity/material/logo.svg
+  logo: identity/hosts/mcp.idfkit.com/lockup.svg
   favicon: identity/material/favicon.svg
   features:
     - announce.dismiss
@@ -132,6 +132,7 @@ extra:
 extra_css:
   - identity/material/material.css
   - identity/material/fonts.css
+  - identity/hosts/mcp.idfkit.com/lockup.css
   - stylesheets/extra.css
 
 markdown_extensions:
