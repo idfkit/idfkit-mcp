@@ -5,7 +5,7 @@ site_description: MCP server for EnergyPlus model authoring, validation, weather
 site_author: Samuel Letellier-Duchesne
 edit_uri: edit/main/docs/
 repo_name: idfkit/idfkit-mcp
-copyright: An idfkit project. MIT License.
+copyright: An idfkit project.
 
 nav:
   - Home: index.md
