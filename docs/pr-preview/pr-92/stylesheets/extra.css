@@ -1,0 +1,120 @@
+/* Layout rules only. Every colour, font and easing value is read from the vendored identity
+   derivation (identity/material/material.css and fonts.css) through its custom properties. */
+
+/* ===== Keep hero centered on landing ===== */
+.md-content__inner:has(> .hero) > .md-content__button {
+  display: none;
+}
+
+/* ===== Landing hero ===== */
+.md-typeset .hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1rem 3rem;
+  margin-bottom: 2rem;
+}
+
+.md-typeset .hero h1 {
+  font-size: 3rem;
+  font-weight: var(--idfkit-font-weight-extrabold);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  background: var(--idfkit-gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.md-typeset .hero h1 .headerlink {
+  display: none;
+}
+
+.md-typeset .hero .hero-tagline {
+  font-size: 1.25rem;
+  color: var(--md-default-fg-color--light);
+  max-width: 44rem;
+  margin-bottom: 1.5rem;
+}
+
+.md-typeset .hero .hero-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.md-typeset .hero .hero-buttons .md-button {
+  font-weight: var(--idfkit-font-weight-semibold);
+}
+
+/* ===== Badges ===== */
+.md-typeset .badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.md-typeset .badges img {
+  height: 20px;
+}
+
+/* ===== Feature chips ===== */
+.md-typeset .feature-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.md-typeset .feature-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--idfkit-radius-pill);
+  font-size: 0.8rem;
+  font-weight: var(--idfkit-font-weight-semibold);
+  background: var(--md-accent-fg-color--transparent);
+  color: var(--md-accent-fg-color);
+  border: 1px solid var(--md-accent-fg-color);
+}
+
+/* ===== Cards and code blocks ===== */
+.md-typeset .grid.cards > ul > li {
+  border-radius: var(--idfkit-radius-md);
+  transition:
+    transform var(--idfkit-motion-duration-fast) var(--idfkit-motion-ease-out-quart),
+    box-shadow var(--idfkit-motion-duration-fast) var(--idfkit-motion-ease-out-quart);
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--idfkit-elevation-overlay);
+}
+
+.md-typeset pre > code,
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: var(--idfkit-radius-sm);
+}
+
+.md-typeset .tabbed-labels > label {
+  border-radius: var(--idfkit-radius-sm) var(--idfkit-radius-sm) 0 0;
+}
+
+.md-social__link svg {
+  fill: currentcolor;
+}
+
+/* ===== Footer: the ownership line and the family links ===== */
+.md-copyright .idfkit-family {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.5rem;
+}
