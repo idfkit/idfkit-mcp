@@ -1,9 +1,20 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/idfkit/idfkit-brand/releases/download/identity-2026.1/mark-on-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/idfkit/idfkit-brand/releases/download/identity-2026.1/mark-on-light.svg">
+    <img alt="idfkit" width="72" src="https://github.com/idfkit/idfkit-brand/releases/download/identity-2026.1/tile.svg">
+  </picture>
+</p>
+
 # idfkit-mcp
 
-[![Release](https://img.shields.io/github/v/release/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/releases)
-[![Build status](https://img.shields.io/github/actions/workflow/status/idfkit/idfkit-mcp/main.yml?branch=main)](https://github.com/idfkit/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain)
+An MCP server that lets an AI assistant author, validate and simulate EnergyPlus models with idfkit.
+
+[idfkit](https://idfkit.com) · [Developers](https://developers.idfkit.com) · [EnergyPlus docs](https://docs.idfkit.com) · [Envelop](https://app.idfkit.com) · [MCP](https://mcp.idfkit.com) · [Shoebox](https://shoebox.idfkit.com) · [GitHub](https://github.com/idfkit)
+
+[![Release](https://img.shields.io/github/v/release/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/releases) [![Build status](https://img.shields.io/github/actions/workflow/status/idfkit/idfkit-mcp/main.yml?branch=main)](https://github.com/idfkit/idfkit-mcp/actions/workflows/main.yml?query=branch%3Amain) [![License](https://img.shields.io/github/license/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/blob/main/LICENSE)
+
 [![codecov](https://codecov.io/gh/idfkit/idfkit-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/idfkit/idfkit-mcp)
-[![License](https://img.shields.io/github/license/idfkit/idfkit-mcp)](https://github.com/idfkit/idfkit-mcp/blob/main/LICENSE)
 
 An [MCP](https://modelcontextprotocol.io/) server that lets AI assistants work directly with [EnergyPlus](https://energyplus.net/) building energy models. Connect it to Claude, ChatGPT, Cursor, Codex, or any MCP-compatible client and use natural language to:
 

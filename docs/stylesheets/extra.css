@@ -1,17 +1,5 @@
-/* ===== Brand palette aligned with idfkit ===== */
-:root {
-  --md-primary-fg-color: #e65100;
-  --md-primary-fg-color--light: #ff6d00;
-  --md-primary-fg-color--dark: #bf360c;
-  --md-accent-fg-color: #ff6d00;
-}
-
-[data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #ff6d00;
-  --md-primary-fg-color--light: #ff9100;
-  --md-primary-fg-color--dark: #e65100;
-  --md-accent-fg-color: #ff9100;
-}
+/* Layout rules only. Every colour, font and easing value is read from the vendored identity
+   derivation (identity/material/material.css and fonts.css) through its custom properties. */
 
 /* ===== Keep hero centered on landing ===== */
 .md-content__inner:has(> .hero) > .md-content__button {
@@ -30,10 +18,10 @@
 
 .md-typeset .hero h1 {
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: var(--idfkit-font-weight-extrabold);
   letter-spacing: -0.02em;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #e65100 0%, #ff6d00 50%, #ff9100 100%);
+  background: var(--idfkit-gradient-brand);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -41,13 +29,6 @@
 
 .md-typeset .hero h1 .headerlink {
   display: none;
-}
-
-[data-md-color-scheme="slate"] .md-typeset .hero h1 {
-  background: linear-gradient(135deg, #ff6d00 0%, #ff9100 50%, #ffab40 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .md-typeset .hero .hero-tagline {
@@ -65,7 +46,7 @@
 }
 
 .md-typeset .hero .hero-buttons .md-button {
-  font-weight: 600;
+  font-weight: var(--idfkit-font-weight-semibold);
 }
 
 /* ===== Badges ===== */
@@ -95,9 +76,9 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.85rem;
-  border-radius: 2rem;
+  border-radius: var(--idfkit-radius-pill);
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: var(--idfkit-font-weight-semibold);
   background: var(--md-accent-fg-color--transparent);
   color: var(--md-accent-fg-color);
   border: 1px solid var(--md-accent-fg-color);
@@ -105,29 +86,35 @@
 
 /* ===== Cards and code blocks ===== */
 .md-typeset .grid.cards > ul > li {
-  border-radius: 0.75rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: var(--idfkit-radius-md);
+  transition:
+    transform var(--idfkit-motion-duration-fast) var(--idfkit-motion-ease-out-quart),
+    box-shadow var(--idfkit-motion-duration-fast) var(--idfkit-motion-ease-out-quart);
 }
 
 .md-typeset .grid.cards > ul > li:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--idfkit-elevation-overlay);
 }
 
 .md-typeset pre > code,
 .md-typeset .admonition,
 .md-typeset details {
-  border-radius: 0.5rem;
+  border-radius: var(--idfkit-radius-sm);
 }
 
 .md-typeset .tabbed-labels > label {
-  border-radius: 0.5rem 0.5rem 0 0;
+  border-radius: var(--idfkit-radius-sm) var(--idfkit-radius-sm) 0 0;
 }
 
 .md-social__link svg {
   fill: currentcolor;
+}
+
+/* ===== Footer: the ownership line and the family links ===== */
+.md-copyright .idfkit-family {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.5rem;
 }
