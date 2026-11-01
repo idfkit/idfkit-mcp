@@ -118,3 +118,10 @@
   gap: 0.25rem 1rem;
   margin-top: 0.5rem;
 }
+
+/* ===== The drawer's lockup starts where the drawer's links start ===== */
+@media screen and (max-width: 76.234375em) {
+  .md-nav .md-nav__title[for="__drawer"] {
+    padding-inline: 1rem;
+  }
+}
