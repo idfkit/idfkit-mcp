@@ -5,7 +5,7 @@ site_description: MCP server for EnergyPlus model authoring, validation, weather
 site_author: Samuel Letellier-Duchesne
 edit_uri: edit/main/docs/
 repo_name: idfkit/idfkit-mcp
-copyright: Maintained by <a href="https://samuelduchesne.github.io">samuelduchesne</a>.
+copyright: An idfkit project.
 
 nav:
   - Home: index.md
@@ -74,9 +74,11 @@ plugins:
 theme:
   name: material
   custom_dir: docs/overrides
-  font:
-    text: Inter
-    code: JetBrains Mono
+  # The fonts are self-hosted by the vendored identity derivation (identity/material/fonts.css);
+  # false keeps the theme from linking its default remote font host.
+  font: false
+  logo: identity/hosts/mcp.idfkit.com/lockup.svg
+  favicon: identity/material/favicon.svg
   features:
     - announce.dismiss
     - content.action.edit
@@ -98,18 +100,19 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
+  # Pasted from docs/identity/material/palette.yml; both schemes read material.css.
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: custom
-      accent: deep orange
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: custom
-      accent: deep orange
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -117,7 +120,6 @@ theme:
     repo: fontawesome/brands/github
     edit: material/pencil
     view: material/eye
-    logo: material/fire
 
 extra:
   social:
@@ -128,6 +130,9 @@ extra:
   generator: false
 
 extra_css:
+  - identity/material/material.css
+  - identity/material/fonts.css
+  - identity/hosts/mcp.idfkit.com/lockup.css
   - stylesheets/extra.css
 
 markdown_extensions:
