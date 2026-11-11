@@ -62,6 +62,8 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   only. It survives server restarts but not the end of the session, and nothing is written to model files.
 - Q: Which ASHRAE 90.1 editions should the first envelope screening support? → A: Every 90.1 edition the standards
   data source covers (currently 2004 through 2025).
+- Q: Which EnergyPlus versions' example models should make up the reference corpus that decides when a connection
+  check can report errors? → A: The latest supported version only (26.2).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -323,8 +325,9 @@ value as evidence.
   - a setpoint or controller acting on a node that no flow component uses
   - a node used on only one side that no boundary rule explains
 - **FR-013**: A connection check MUST be reported at error severity only once it has produced no false findings on the
-  reference corpus of unmodified EnergyPlus example models. All other checks MUST be reported as warnings until
-  then.
+  reference corpus: the unmodified example models shipped with the latest supported EnergyPlus version (currently
+  26.2). All other checks MUST be reported as warnings until then. When the latest supported version changes, the
+  corpus moves with it and every error-severity check is re-qualified against it.
 - **FR-014**: Connection findings MUST appear in the existing model integrity check, under their own category.
 - **FR-015**: An agent MUST be able to ask, for a single node, what it connects and where it sits (FR-010, FR-011), and
   for a single component, its connections per stream and its loop memberships, with a bounded number of hops
@@ -453,8 +456,8 @@ value as evidence.
 
 ### Measurable Outcomes
 
-- **SC-001**: On every unmodified model in the reference corpus of EnergyPlus example models, connection checks report
-  zero error-severity findings.
+- **SC-001**: On every unmodified example model shipped with the latest supported EnergyPlus version (the reference
+  corpus, FR-013), connection checks report zero error-severity findings.
 - **SC-002**: Connection checks detect at least 95% of injected connection faults across the connection fault types
   in the catalogue, each with the responsible object and field.
 - **SC-003**: For a standard five-zone VAV model, an agent identifies the loops serving any zone, and what is upstream
@@ -498,8 +501,14 @@ value as evidence.
   optional dependency, so the core of idfkit keeps zero third-party dependencies. Version 0.3.3 was checked.
 - **Climate zone comes from the existing weather station index.** It is already curated in idfkit and currently
   dropped by idfkit-mcp.
-- **The reference corpus is the EnergyPlus example file set** for a supported version (the research used 24.1:
-  735 files, 575 with branches). Fault injection and fixtures are built from it.
+- **The reference corpus is the example file set of the latest supported EnergyPlus version**, currently 26.2
+  (confirmed in Clarifications, 2026-11-11). The research measured the 24.1 set (735 files, 575 with branches);
+  the 26.2 set is expected to be of similar size. The reference model set for the evaluation (FR-041), fault
+  injection and fixtures are drawn from it.
+- **Accepted risk: older versions are not part of qualification.** Models from 8.9 to 26.1 get the same checks.
+  Their schemas do not mark node fields, so those fields are found by other means, and false findings there are
+  not measured before a check is promoted to error severity. Reports of false findings on older models are fixed
+  as bugs, with a regression test built from the reported model.
 - **Topology is derived on request** from the current model, not stored. The model's change tracking decides when a
   cached derivation is out of date.
 - **Results linking needs EnergyPlus's SQL output.** idfkit-mcp already requests it on every simulation it runs.
