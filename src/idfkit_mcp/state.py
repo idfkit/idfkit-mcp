@@ -154,6 +154,23 @@ def _download_search_index(version: str, cache_path: Path) -> dict[str, Any]:
     return data
 
 
+SESSION_FILE_VERSION = 2
+"""Version written by :meth:`ServerState.save_session`.
+
+Version 2 added ``simulation_model_hash`` and ``simulation_run_dir`` as
+first-class session fields (research R-15). Version-1 files still load, with
+both fields ``None``.
+"""
+
+_READABLE_SESSION_VERSIONS = frozenset({1, SESSION_FILE_VERSION})
+
+
+def _optional_str(data: dict[str, Any], key: str) -> str | None:
+    """Return ``data[key]`` when it is a non-empty string, else ``None``."""
+    value = data.get(key)
+    return value if isinstance(value, str) and value else None
+
+
 def _read_session_file(session_id: str | None = None) -> dict[str, Any] | None:
     """Read and validate the session file, returning None on any failure."""
     import json
@@ -169,7 +186,14 @@ def _read_session_file(session_id: str | None = None) -> dict[str, Any] | None:
         logging.getLogger(__name__).warning("Corrupt session file, ignoring: %s", session_path)
         return None
 
-    if data.get("version") != 1:
+    version = data.get("version")
+    if version not in _READABLE_SESSION_VERSIONS:
+        logging.getLogger(__name__).warning(
+            "Session file has unsupported version %r (expected one of %s), ignoring: %s",
+            version,
+            sorted(_READABLE_SESSION_VERSIONS),
+            session_path,
+        )
         return None
     return data
 
@@ -184,7 +208,7 @@ class ServerState:
     ``streamable-http`` each connection gets an isolated instance keyed by
     the ``Mcp-Session-Id`` header.
 
-    Session state (file_path, simulation run dir, weather file) is persisted
+    Session state (file_path, simulation run dir and model hash, weather file) is persisted
     to a JSON file on disk so that clients that restart the server between
     turns (e.g. Codex) can transparently resume where they left off.
     Persistence is disabled for HTTP sessions since they receive a new
@@ -197,6 +221,10 @@ class ServerState:
     simulation_result: SimulationResult | None = None
     migration_report: MigrationReport | None = None
     weather_file: Path | None = None
+    simulation_model_hash: str | None = None
+    """SHA-256 of the IDF text written for the session's last run."""
+    simulation_run_dir: str | None = None
+    """Run directory of the session's last simulation, so linking can resume after a restart."""
     station_index: StationIndex | None = None
     docs_index: list[dict[str, object]] | None = None
     docs_version: str | None = None
@@ -356,15 +384,16 @@ class ServerState:
         import json
         from datetime import datetime, timezone
 
+        self._sync_simulation_run_dir()
         data: dict[str, Any] = {
-            "version": 1,
+            "version": SESSION_FILE_VERSION,
             "cwd": str(Path.cwd().resolve()),
             "updated_at": datetime.now(timezone.utc).isoformat(),
+            "simulation_model_hash": self.simulation_model_hash,
+            "simulation_run_dir": self.simulation_run_dir,
         }
         if self.file_path is not None and self.file_path.exists():
             data["file_path"] = str(self.file_path.resolve())
-        if self.simulation_result is not None and self.simulation_result.run_dir.is_dir():
-            data["simulation_run_dir"] = str(self.simulation_result.run_dir.resolve())
         if self.weather_file is not None and self.weather_file.exists():
             data["weather_file"] = str(self.weather_file.resolve())
 
@@ -376,6 +405,24 @@ class ServerState:
             session_path.write_text(json.dumps(data, indent=2))
         except OSError:
             logging.getLogger(__name__).warning("Failed to write session file: %s", session_path, exc_info=True)
+
+    def _sync_simulation_run_dir(self) -> None:
+        """Align ``simulation_run_dir`` with the in-memory simulation result.
+
+        The result's directory wins when it exists. When it differs from the
+        recorded directory, the recorded model hash belonged to another run and
+        is dropped rather than attributed to this one.
+        """
+        result = self.simulation_result
+        if result is None or not result.run_dir.is_dir():
+            return
+        run_dir = str(result.run_dir.resolve())
+        recorded = self.simulation_run_dir
+        if recorded is not None and str(Path(recorded).resolve()) == run_dir:
+            self.simulation_run_dir = run_dir
+            return
+        self.simulation_run_dir = run_dir
+        self.simulation_model_hash = None
 
     def _try_restore_session(self) -> None:
         """Attempt to restore state from the session file (called once lazily)."""
@@ -420,11 +467,12 @@ class ServerState:
         """Restore simulation result from a session data dict."""
         import logging
 
-        run_dir_str = data.get("simulation_run_dir")
+        run_dir_str = _optional_str(data, "simulation_run_dir")
         if run_dir_str is None or self.simulation_result is not None:
             return
         rd = Path(run_dir_str)
         if not rd.is_dir():
+            logging.getLogger(__name__).warning("Session simulation run directory no longer exists: %s", rd)
             return
         try:
             from idfkit.simulation.result import SimulationResult as SimResult
@@ -433,6 +481,13 @@ class ServerState:
             logging.getLogger(__name__).info("Restored simulation result from session: %s", rd)
         except Exception:
             logging.getLogger(__name__).warning("Failed to restore simulation result from %s", rd, exc_info=True)
+            return
+        # Version 1 recorded the run directory only as a restore hint: it says
+        # nothing about which model text produced the run, so the run identity
+        # stays unrecorded (both fields None) until the next run.
+        if data.get("version") == SESSION_FILE_VERSION:
+            self.simulation_run_dir = run_dir_str
+            self.simulation_model_hash = _optional_str(data, "simulation_model_hash")
 
     def _restore_weather(self, data: dict[str, Any]) -> None:
         """Restore weather file path from a session data dict."""
@@ -461,6 +516,8 @@ class ServerState:
         self.simulation_result = None
         self.migration_report = None
         self.weather_file = None
+        self.simulation_model_hash = None
+        self.simulation_run_dir = None
         self.change_log.clear()
         self._session_restored = False
 

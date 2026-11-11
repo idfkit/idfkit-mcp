@@ -2,14 +2,28 @@
 
 Exercises every tool and resource through the FastMCP Client,
 measuring both the tool listing overhead and per-call response sizes.
+
+Usage::
+
+    uv run python scripts/token_audit.py                 # full human-readable audit
+    uv run python scripts/token_audit.py --listing-json  # {"tools": N, "tokens": M}
+
+``--listing-json`` measures only the ``tools/list`` response as an agent
+receives it: every tool's name, title, description, input schema, output
+schema, annotations and ``_meta``, serialised as compact JSON (by alias,
+``None`` fields dropped) and counted at 4 characters per token. This is the
+SC-010 listing cost (research R-12); ``tests/test_tool_listing_budget.py``
+holds the server to it.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import sqlite3
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +40,22 @@ CHARS_PER_TOKEN = 4
 
 def estimate_tokens(text: str) -> int:
     return len(text) // CHARS_PER_TOKEN
+
+
+def tool_listing_cost(tools: Sequence[Any]) -> dict[str, int]:
+    """Return ``{"tools": N, "tokens": M}`` for a ``tools/list`` result (SC-010).
+
+    ``tools`` are the ``mcp.types.Tool`` objects a client receives. Output
+    schemas count: they are part of what the agent reads.
+    """
+    payload = json.dumps([t.model_dump(by_alias=True, exclude_none=True, mode="json") for t in tools])
+    return {"tools": len(tools), "tokens": estimate_tokens(payload)}
+
+
+async def measure_tool_listing() -> dict[str, int]:
+    """List the server's tools in-process and return their listing cost."""
+    async with Client(transport=FastMCPTransport(mcp)) as client:
+        return tool_listing_cost(await client.list_tools())
 
 
 def measure_result(result: Any) -> dict[str, int]:
@@ -466,5 +496,19 @@ async def main() -> None:  # noqa: C901
         print(f"  Typical validate_model call:       ~{validate_tokens:,} tokens")
 
 
+def cli() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
+    parser.add_argument(
+        "--listing-json",
+        action="store_true",
+        help='print only the tools/list cost as JSON: {"tools": N, "tokens": M}',
+    )
+    args = parser.parse_args()
+    if args.listing_json:
+        print(json.dumps(asyncio.run(measure_tool_listing())))
+    else:
+        asyncio.run(main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    cli()

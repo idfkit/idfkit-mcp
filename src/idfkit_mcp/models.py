@@ -7,7 +7,9 @@ FastMCP can populate both ``content`` (text) and ``structuredContent``
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Shared / reusable sub-models
@@ -47,6 +49,35 @@ class ObjectBrief(BaseModel):
 
     object_type: str
     name: str
+
+
+class ObjectKey(BaseModel):
+    """Object identity: schema type (or Node / Aggregate) and name."""
+
+    object_type: str
+    name: str
+
+
+UncoveredKind = Literal["hvac_template", "ems_program", "unclassified_type", "unlinked_result"]
+"""Closed set of parts a graph answer can leave out. Adding a kind is a minor change."""
+
+
+class UncoveredPart(BaseModel):
+    """A kind of model part the answer did not look at."""
+
+    kind: UncoveredKind
+    count: int
+    examples: list[ObjectKey] = Field(max_length=3)
+    reason: str
+
+
+class Coverage(BaseModel):
+    """What the answer covered; resolved/unresolved are for result linking only."""
+
+    partial: bool
+    uncovered: list[UncoveredPart]
+    resolved: int | None = None
+    unresolved: int | None = None
 
 
 class WeatherStationModel(BaseModel):

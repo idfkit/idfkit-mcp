@@ -381,3 +381,157 @@ class TestIdentityBoundPersistence:
 
         assert stdio_path != openai_a
         assert openai_a != openai_b
+
+
+class TestSessionFileVersion2:
+    """Version 2 records the last run's identity (research R-15)."""
+
+    def _make_run_dir(self, tmp_path: Path) -> Path:
+        run_dir = tmp_path / "sim_output"
+        run_dir.mkdir()
+        (run_dir / "eplus.err").write_text("Program Version,EnergyPlus, 25.2.0\nEnergyPlus Completed Successfully.")
+        return run_dir
+
+    def test_v2_round_trip(self, _enable_persistence: Path, tmp_path: Path) -> None:
+        from idfkit.simulation.result import SimulationResult
+
+        from idfkit_mcp.state import SESSION_FILE_VERSION
+
+        session_file = _enable_persistence
+        state = get_state()
+        run_dir = self._make_run_dir(tmp_path)
+        model_hash = "a" * 64
+
+        state.simulation_result = SimulationResult.from_directory(run_dir)
+        state.simulation_run_dir = str(run_dir.resolve())
+        state.simulation_model_hash = model_hash
+        state.save_session()
+
+        data = json.loads(session_file.read_text())
+        assert SESSION_FILE_VERSION == 2
+        assert data["version"] == 2
+        assert data["simulation_model_hash"] == model_hash
+        assert data["simulation_run_dir"] == str(run_dir.resolve())
+
+        # Simulate a new server process.
+        state.simulation_result = None
+        state.simulation_run_dir = None
+        state.simulation_model_hash = None
+        state._session_restored = False
+
+        state._try_restore_session()
+        assert state.simulation_result is not None
+        assert state.simulation_result.run_dir == run_dir.resolve()
+        assert state.simulation_run_dir == str(run_dir.resolve())
+        assert state.simulation_model_hash == model_hash
+
+    def test_v2_writes_null_fields_without_a_run(self, _enable_persistence: Path) -> None:
+        session_file = _enable_persistence
+        state = get_state()
+        state.save_session()
+
+        data = json.loads(session_file.read_text())
+        assert data["version"] == 2
+        assert data["simulation_model_hash"] is None
+        assert data["simulation_run_dir"] is None
+
+    def test_run_dir_taken_from_result_and_stale_hash_dropped(self, _enable_persistence: Path, tmp_path: Path) -> None:
+        """A hash recorded for another run directory is not attributed to the current run."""
+        from idfkit.simulation.result import SimulationResult
+
+        session_file = _enable_persistence
+        state = get_state()
+        run_dir = self._make_run_dir(tmp_path)
+
+        state.simulation_result = SimulationResult.from_directory(run_dir)
+        state.simulation_run_dir = str(tmp_path / "older_run")
+        state.simulation_model_hash = "b" * 64
+        state.save_session()
+
+        data = json.loads(session_file.read_text())
+        assert data["simulation_run_dir"] == str(run_dir.resolve())
+        assert data["simulation_model_hash"] is None
+        assert state.simulation_model_hash is None
+
+    def test_v1_file_loads_with_fields_none(self, _enable_persistence: Path, tmp_path: Path) -> None:
+        session_file = _enable_persistence
+        run_dir = self._make_run_dir(tmp_path)
+        weather_path = tmp_path / "test.epw"
+        weather_path.write_text("LOCATION,Test")
+        session_file.write_text(
+            json.dumps({
+                "version": 1,
+                "cwd": str(tmp_path),
+                "updated_at": "2026-01-01T00:00:00+00:00",
+                "simulation_run_dir": str(run_dir),
+                "weather_file": str(weather_path),
+            })
+        )
+
+        state = get_state()
+        state._try_restore_session()
+
+        # The rest of a version-1 file still restores ...
+        assert state.weather_file == weather_path
+        assert state.simulation_result is not None
+        # ... but no run identity is recorded.
+        assert state.simulation_model_hash is None
+        assert state.simulation_run_dir is None
+
+    def test_v2_missing_run_dir_leaves_fields_none(
+        self, _enable_persistence: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        session_file = _enable_persistence
+        session_file.write_text(
+            json.dumps({
+                "version": 2,
+                "cwd": str(tmp_path),
+                "updated_at": "2026-01-01T00:00:00+00:00",
+                "simulation_model_hash": "c" * 64,
+                "simulation_run_dir": str(tmp_path / "deleted_run"),
+            })
+        )
+
+        state = get_state()
+        with caplog.at_level("WARNING", logger="idfkit_mcp.state"):
+            state._try_restore_session()
+
+        assert state.simulation_result is None
+        assert state.simulation_model_hash is None
+        assert state.simulation_run_dir is None
+        assert "no longer exists" in caplog.text
+
+    def test_unknown_version_is_a_reported_restore_failure(
+        self, _enable_persistence: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        session_file = _enable_persistence
+        doc = new_document()
+        idf_path = tmp_path / "model.idf"
+        save_idf(doc, idf_path)
+        session_file.write_text(
+            json.dumps({
+                "version": 3,
+                "cwd": str(tmp_path),
+                "updated_at": "2026-01-01T00:00:00+00:00",
+                "file_path": str(idf_path),
+                "simulation_model_hash": "d" * 64,
+            })
+        )
+
+        state = get_state()
+        with caplog.at_level("WARNING", logger="idfkit_mcp.state"):
+            state._try_restore_session()
+
+        assert state.document is None
+        assert state.simulation_model_hash is None
+        assert "unsupported version 3" in caplog.text
+        with pytest.raises(RuntimeError, match="No model loaded"):
+            state.require_model()
+
+    def test_clear_session_resets_run_identity(self, _enable_persistence: Path) -> None:
+        state = get_state()
+        state.simulation_run_dir = "/tmp/run"  # noqa: S108
+        state.simulation_model_hash = "e" * 64
+        state.clear_session()
+        assert state.simulation_run_dir is None
+        assert state.simulation_model_hash is None
