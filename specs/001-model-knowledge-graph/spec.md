@@ -64,6 +64,8 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   data source covers (currently 2004 through 2025).
 - Q: Which EnergyPlus versions' example models should make up the reference corpus that decides when a connection
   check can report errors? → A: The latest supported version only (26.2).
+- Q: Should result linking and diagnosis also work on simulation outputs the agent did not produce, such as an
+  existing run directory? → A: No. Only runs started through the server in the current session.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -341,6 +343,9 @@ value as evidence.
 
 **Layer 2: Results attached to the model**
 
+- **FR-019**: Result linking and diagnosis (FR-020–FR-027) MUST apply only to simulations started through the server
+  in the current session. A request for results with no such simulation MUST fail with an actionable message.
+  Outputs produced elsewhere are out of scope.
 - **FR-020**: After a simulation, the system MUST link to model objects, or to nodes:
   - component sizing results
   - timeseries output keys
@@ -511,7 +516,8 @@ value as evidence.
   as bugs, with a regression test built from the reported model.
 - **Topology is derived on request** from the current model, not stored. The model's change tracking decides when a
   cached derivation is out of date.
-- **Results linking needs EnergyPlus's SQL output.** idfkit-mcp already requests it on every simulation it runs.
+- **Results linking needs EnergyPlus's SQL output.** idfkit-mcp already requests it on every simulation it runs,
+  which is why linking is limited to those runs (FR-019).
 - **The evaluation's agent configuration is a maintainer's choice** (model, prompts, budget). It is recorded with
   each run so results are comparable. The evaluation is a development instrument, not a shipped feature.
 
@@ -546,6 +552,8 @@ value as evidence.
 - Building or rewiring HVAC systems automatically. This feature reads, checks and renames. It does not construct
   loops.
 - A visual schematic of HVAC systems.
+- Linking or diagnosing simulation outputs that were not produced by the server in the current session, such as a
+  run directory a modeller brings from OpenStudio or a colleague (Clarifications, 2026-11-11).
 - Machine-learned ranking of causes. Ranking is rule-based and explained.
 
 ## Research Summary
