@@ -93,6 +93,9 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   asserted, and name-based suggestions are labelled unconfirmed. HVAC minimum efficiency, economizer and system
   requirements, IECC and 189.1 are later work, because they depend on the topology and results layers being
   finished.
+- Q: Which ASHRAE 90.1 lighting method should the lighting check use: per space type, or one allowance for the whole
+  building? → A: The space-by-space method only. Each zone gets one lighting verdict from its asserted space type,
+  the same role ventilation uses. The building area method is later work.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -490,7 +493,8 @@ release needs no change.
   support every ASHRAE 90.1 edition the data source covers (currently 2004 through 2025). Where a limit is given
   for a whole climate zone and also for its moist, dry or marine subtype (for example "3" and "3A"), the subtype
   row MUST be used. A requested edition the data source does not cover MUST be refused, with the covered editions
-  named. The agent MUST also be able to look up lighting power allowances by 90.1 edition and space type, and
+  named. The agent MUST also be able to look up lighting power allowances by 90.1 edition and space type, using the
+  space-by-space method only (the building area method is not part of this feature), and
   outdoor-air minimums by 62.1 edition and space type, for every edition the data source covers (currently 90.1
   2004 through 2025 and 62.1 1999 through 2022), in both unit systems with the table cited.
 - **FR-034**: An agent MUST be able to request a screening covering three topics: the envelope, lighting power and
@@ -667,7 +671,8 @@ release needs no change.
   deliverable. User Stories 1 and 2 form the first slice. User Story 6 waits for the decision gate in SC-009.
   Keeping one spec was confirmed in Clarifications (2026-11-11), so one plan covers all layers.
 - **Standards topics in this feature: envelope, lighting power and 62.1 ventilation** (confirmed in Clarifications,
-  2026-11-11). HVAC minimum efficiency, economizer and system requirements, other codes (IECC, 189.1, NECB) and
+  2026-11-11). Lighting uses the space-by-space method. The building area method, HVAC minimum efficiency,
+  economizer and system requirements, other codes (IECC, 189.1, NECB) and
   typical-value benchmarks are later work, because they depend on the topology and results layers. They reuse the
   standards context, roles and verdict shape defined here.
 - **The standards source is PNNL's building-energy-standards-data.** It is BSD-2 licensed, has no dependencies,
