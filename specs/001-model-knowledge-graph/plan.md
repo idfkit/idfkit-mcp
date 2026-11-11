@@ -158,7 +158,9 @@ idfkit/                                    # upstream (github.com/idfkit/idfkit)
 │   │   ├── units.py                       # IP <-> SI
 │   │   ├── roles.py                       # computed and unconfirmed roles
 │   │   └── envelope.py                    # lookup_envelope, screen_envelope
-│   └── codegen/generate_node_fields.py    # NEW
+│   └── codegen/
+│       ├── generate_node_fields.py        # NEW
+│       └── generate_port_rules.py         # NEW: runs ExampleFiles, harvests eplusout.bnd (needs EnergyPlus)
 ├── agent_references/{templates,snippets}/ # + hvac-topology, standards; update result-parsing, thermal
 ├── scripts/build_linking_fixtures.py      # NEW (needs EnergyPlus 26.2)
 ├── benchmarks/
@@ -219,7 +221,7 @@ The order follows the spec's priorities and the one hard dependency: idfkit befo
 | Slice | idfkit | idfkit-mcp | Gate to the next slice |
 |---|---|---|---|
 | 0 | `revision` and `_derived` cache slot, `SQLResult` readers, fixture builder and fixtures, **benchmark harness, reference model and `perf` gate** | Session v2 skeleton, `perf` protocol test harness | Fixtures committed; gate runs in CI |
-| 1: US1 | `idfkit.hvac` (node fields, about 40 rules, T010, T011, T030, T090, T091), corpus test, parity rows | `trace_node`, `hvac_topology` integrity group | SC-001 green on 26.2; **topology budget confirmed by benchmark before slice 3** |
+| 1: US1 | `idfkit.hvac` (node fields, **rules generated for all 257 node-bearing types** plus 3 by hand, coverage test, T010, T011, T030, T090, T091), corpus test, parity rows | `trace_node`, `hvac_topology` integrity group | SC-001 green on 26.2; **topology budget confirmed by benchmark before slice 3** |
 | 2: US2 | — | `eval/` harness, topology and standards faults | First baseline/treatment run on topology faults |
 | 3: US3 | `linking.py`, `err_catalog.py` (about 15 kinds) | `get_object_results`, `affected_objects`, peak-load object keys | SC-004 green on fixtures |
 | 4: US4 | Memberships, `chain`, `rename_node`, T001–T004 | `trace_component`, `get_hvac_topology`, `rename_node`, resource | SC-003 |

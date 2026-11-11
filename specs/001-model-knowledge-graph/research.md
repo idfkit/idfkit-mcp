@@ -86,10 +86,34 @@ fields the tags miss, and the reverse is also true (report 01, §2a).
 - **Roles.** A curated rule table `idfkit/hvac/_port_rules.py` mirrors EnergyPlus's own node-connection model:
   connection type (Inlet, Outlet, Internal, ZoneNode, Sensor, Actuator, OutsideAir, ReliefAir, ZoneInlet,
   ZoneReturn, ZoneExhaust, Setpoint), fluid stream number, and a parent flag.
-- **Defaults and overrides.** Defaults come from field-name pairing: a shared prefix, with "inlet" and "outlet".
-  Overrides cover about 40 object types in phase 1, growing to about 150–250 rows: loop definitions, Branch,
-  Connector:Splitter and Mixer, the outdoor-air system and mixer, zone equipment connections, setpoint managers,
-  controllers, and boundary emitters (exhaust fans, air-cooled condensers).
+- **Full coverage from the start (clarification, 2026-11-11).** Every node-bearing object type in the latest
+  supported schema gets rules at first release. **Measured during clarification**, over the 26.2 schema and the 735
+  EnergyPlus 24.1 example models:
+
+  | Node-bearing object types in 26.2 | Count |
+  |---|---|
+  | Total | 257 |
+  | Every node field pairs as inlet/outlet or is a control field (rules derivable from naming) | 169 |
+  | Used in at least one example model (rules derivable from EnergyPlus's own output) | 247 |
+  | Covered by one or the other | 254 |
+  | Neither: hand-written | 3 (`Lights:Instance`, `SpaceHVAC:ZoneReturnMixer`, `ThermalStorage:HotWater:Stratified`) |
+
+- **Generation.** A codegen script, `idfkit.codegen.generate_port_rules`, needs EnergyPlus only when it runs. It
+  works in five steps:
+  1. Run each example model for design days only, with `Output:Diagnostics` on so EnergyPlus writes
+     `eplusout.bnd`.
+  2. Parse the "Non-Parent Node Connection" and "Parent Node Connection" rows: object type, object name, node,
+     connection type and fluid stream.
+  3. Map each row back to a field by matching the node value in that object's input.
+  4. Merge across files. A field whose role differs between files is emitted as a predicate candidate for review,
+     never silently resolved. An object that uses the same node in two fields is an ambiguous match, which is also
+     queued for review.
+  5. Cross-check against the naming-derived roles of the 169 pairable types. Any disagreement fails generation
+     until it is reviewed.
+
+  The output, `_port_rules.py`, is committed, together with a reviewed overrides file holding the 3 hand-written
+  types and the resolved predicates. A coverage test fails if any node-bearing type in the latest schema has no
+  rule. Generation is repeated when a new EnergyPlus version is adopted.
 - **Predicates.** Rules that depend on a value are expressed as small predicates, for example "condenser type is
   AirCooled" makes the condenser nodes OutsideAir.
 - **Unknown types.** An object type with no rule and no clean pairing yields an `unclassified` finding at info
@@ -101,8 +125,11 @@ connection errors. It also makes the branch-and-node report (`eplusout.bnd`) usa
 
 **Alternatives considered.**
 - A pure name heuristic. Rejected: report 01 measured a misclassification on dual-duct outdoor-air terminals.
-- Harvesting the whole table from BND files now. Deferred to the FR-018 phase, because it needs EnergyPlus at
-  codegen time.
+- A hand-written table grown over several releases, the original plan with about 40 types first. Rejected after
+  the measurement above showed 254 of 257 types are derivable. It is replaced by generation from EnergyPlus's own
+  output.
+- A developer API for registering custom rules. Rejected in clarification: full built-in coverage is more
+  trustworthy, and it keeps the public API smaller.
 
 ## R-05 Topology model and node rename
 

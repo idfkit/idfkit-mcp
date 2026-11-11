@@ -78,6 +78,10 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 - Q: Should developers be able to export the graph to standard formats for use in other tools? → A: Yes, one format
   in this feature: node-link JSON, written with the standard library and loadable directly by networkx and common
   JavaScript graph tools.
+- Q: Should the feature cover every node-bearing object type from the start, with connection rules generated from
+  EnergyPlus's own output plus a few hand-written ones, so that no extension API for developers is needed? → A: Yes.
+  All node-bearing types in the latest supported schema are covered at first release (257 in 26.2: 254 by
+  generation and field naming, 3 by hand). There is no developer extension API.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -321,8 +325,10 @@ release needs no change.
 - **Node lists**: Fields that accept "node or node list" resolve to the node list first, as EnergyPlus does.
 - **Boundary nodes**: Outdoor-air inlets, relief outlets, exhaust fans and air-cooled condensers legitimately have
   nothing on one side. They are not reported as faults.
-- **Object types not yet covered**: An object whose connection roles are not known produces an informational
-  "unclassified" finding, never an error.
+- **Object types without connection rules**: Every node-bearing type in the latest supported schema has rules
+  (FR-010a). A type can still lack them in a model from a newer EnergyPlus release than idfkit knows, or in an older
+  version with a type since removed. Such an object produces an informational "unclassified" finding, never an
+  error.
 - **Generated names in results**: Loads applied through zone lists, mirrored shading surfaces, template-generated
   equipment and spaces mapped to zones follow EnergyPlus naming conventions. A link made through a convention is
   labelled with that convention.
@@ -369,6 +375,15 @@ release needs no change.
 - **FR-010**: The system MUST identify every use of a node name in the model. For each use it records the object, the
   field, the connection role (inlet, outlet, sensed, set, outdoor-air boundary, zone inlet, zone return, zone
   exhaust and similar) and the fluid stream it belongs to.
+- **FR-010a**: Connection roles MUST cover every node-bearing object type in the latest supported EnergyPlus schema
+  at first release, with no extension API for developers.
+  - Roles MUST be derived from the connections EnergyPlus itself reports when it runs the example models, and from
+    field naming where inlet and outlet fields pair unambiguously.
+  - The few types that appear in no example model are written by hand.
+  - Where examples disagree because a role depends on a field's value, the disagreement MUST become an explicit,
+    reviewed rule.
+  - An automated test MUST fail if any node-bearing type in the latest schema lacks rules.
+  - The rules MUST be regenerated when a new EnergyPlus version is adopted.
 - **FR-011**: The system MUST determine each component's membership in air loops, plant loops, condenser loops and
   zone equipment, including the supply or demand side and the branch and position where they apply. Components on
   several loops (water coils, chillers, heat exchangers) report every membership.
@@ -638,9 +653,13 @@ release needs no change.
 
   idfkit-mcp then adopts the new idfkit level through its pinned dependency and the bump procedure
   (Constitution, Principle VI).
-- **A machine with EnergyPlus installed** is needed to build the paired output fixtures, to run the evaluation's
-  simulation tasks, and to cross-check against EnergyPlus's branch and node report. The default test suite must not
-  need it.
+- **A machine with EnergyPlus installed** is needed for several jobs:
+  - generating the connection rules from the example models (once per adopted EnergyPlus version, FR-010a)
+  - building the paired output fixtures
+  - running the evaluation's simulation tasks
+  - cross-checking against EnergyPlus's branch and node report
+
+  The generated rules and fixtures are committed, so the default test suite never needs EnergyPlus.
 - **Agent reference documentation** in idfkit (the bundled `developing-with-idfkit` references) must be updated with
   each new capability, as idfkit's contribution rules require.
 - **Corrections outside this feature** are listed in [background/README.md](background/README.md#corrections-that-do-not-wait-for-this-feature).
@@ -656,6 +675,8 @@ release needs no change.
 - Building or rewiring HVAC systems automatically. This feature reads, checks and renames. It does not construct
   loops.
 - A visual schematic of HVAC systems.
+- A developer API for registering custom connection rules, message patterns or role vocabularies (Clarifications,
+  2026-11-11). Coverage gaps are closed by regenerating idfkit's rules.
 - Graph export formats other than node-link JSON (GraphML, RDF, database loaders). The node and edge vocabulary of
   FR-055 is designed so they can be added later.
 - Linking or diagnosing simulation outputs that were not produced by the server in the current session, such as a
