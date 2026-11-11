@@ -1,0 +1,275 @@
+"""Research prototype (kept as evidence for background/01-hvac-topology.md, not product code): derive node topology from an IDF with idfkit + 26.2 data_type=node oracle."""
+
+from __future__ import annotations
+
+import collections
+import gzip
+import json
+import re
+import sys
+from pathlib import Path
+
+import idfkit
+from idfkit import load_idf
+
+SCHEMA = str(Path(idfkit.__file__).parent / "schemas" / "V26-2-0" / "Energy+.schema.epJSON.gz")
+NODE_RX = re.compile(r"node(_or_nodelist)?_names?$")
+
+
+def oracle() -> set[tuple[str, str]]:
+    s = json.load(gzip.open(SCHEMA))
+    out: set[tuple[str, str]] = set()
+    for t, d in s["properties"].items():
+        pp = d.get("patternProperties")
+        f = next(iter(pp.values()))["properties"] if pp else d.get("properties", {})
+        for n, v in f.items():
+            its = (
+                v["items"].get("properties", {}).items()
+                if v.get("type") == "array" and isinstance(v.get("items"), dict)
+                else [(n, v)]
+            )
+            for n2, v2 in its:
+                if v2.get("data_type") == "node":
+                    out.add((t, n2))
+    return out
+
+
+ORACLE = oracle()
+
+# Per-type role overrides (field -> role). Roles: in, out, sensor, setpoint, zone, boundary_in, boundary_out
+OVERRIDES: dict[str, dict[str, str]] = {
+    "OutdoorAir:Mixer": {
+        "mixed_air_node_name": "out",
+        "outdoor_air_stream_node_name": "in",
+        "relief_air_stream_node_name": "boundary_out",
+        "return_air_stream_node_name": "in",
+    },
+    "ZoneHVAC:EquipmentConnections": {
+        "zone_air_node_name": "zone",
+        "zone_air_inlet_node_or_nodelist_name": "zone_inlet",
+        "zone_air_exhaust_node_or_nodelist_name": "zone_exhaust",
+        "zone_return_air_node_or_nodelist_name": "zone_return",
+    },
+    # loop objects: boundary declarations, not components
+    "AirLoopHVAC": dict.fromkeys(
+        (
+            "supply_side_inlet_node_name",
+            "demand_side_outlet_node_name",
+            "demand_side_inlet_node_names",
+            "supply_side_outlet_node_names",
+        ),
+        "loop",
+    ),
+    "PlantLoop": dict.fromkeys(
+        (
+            "plant_side_inlet_node_name",
+            "plant_side_outlet_node_name",
+            "demand_side_inlet_node_name",
+            "demand_side_outlet_node_name",
+        ),
+        "loop",
+    ),
+    "CondenserLoop": dict.fromkeys(
+        (
+            "condenser_side_inlet_node_name",
+            "condenser_side_outlet_node_name",
+            "demand_side_inlet_node_name",
+            "demand_side_outlet_node_name",
+        ),
+        "loop",
+    ),
+}
+STRUCTURAL = {"Branch", "NodeList", "OutdoorAir:NodeList", "OutdoorAir:Node"}
+
+
+def role_of(t: str, f: str) -> str:
+    if t in OVERRIDES and f in OVERRIDES[t]:
+        return OVERRIDES[t][f]
+    if "setpoint" in f:
+        return "setpoint"
+    if f == "zone_node_name":
+        return "zone"
+    if any(k in f for k in ("sensor", "reference", "control_zone", "actuator")):
+        return "sensor"
+    if "relief" in f:
+        return "boundary_out"
+    if "outdoor_air_inlet" in f or "condenser_air_inlet" in f or f.startswith("outdoor_air_node") or "ambient" in f:
+        return "boundary_in"
+    if "inlet" in f:
+        return "in"
+    if "outlet" in f:
+        return "out"
+    return "other"
+
+
+def main(path: str) -> None:
+    doc = load_idf(path)
+    nodelists: dict[str, list[str]] = {}
+    for t in ("NodeList",):
+        if t in doc:
+            for o in doc[t]:
+                nodelists[o.name.upper()] = [e["node_name"] for e in o.data.get("nodes", [])]
+    oa_nodes: set[str] = set()
+    if "OutdoorAir:NodeList" in doc:
+        for o in doc["OutdoorAir:NodeList"]:
+            for e in o.data.get("nodes", []) or []:
+                v = next(iter(e.values()))
+                oa_nodes.update(x.upper() for x in nodelists.get(v.upper(), [v]))
+    if "OutdoorAir:Node" in doc:
+        oa_nodes.update(o.name.upper() for o in doc["OutdoorAir:Node"])
+
+    def expand(v: str) -> list[str]:
+        return nodelists.get(v.upper(), [v])
+
+    uses: dict[str, list[tuple[str, str, str, str]]] = collections.defaultdict(list)  # node -> (role,type,name,field)
+    branch_claims: list[tuple[str, str, str, str, str]] = []  # branch, ctype, cname, in, out
+    unknown_fields = collections.Counter()
+    for obj in doc.all_objects:
+        t = obj.obj_type
+        if t in STRUCTURAL and t != "Branch":
+            continue
+        for f, v in obj.data.items():
+            if isinstance(v, list):
+                for e in v:
+                    if t == "Branch":
+                        branch_claims.append((
+                            obj.name,
+                            e["component_object_type"],
+                            e["component_name"],
+                            e.get("component_inlet_node_name", ""),
+                            e.get("component_outlet_node_name", ""),
+                        ))
+                        continue
+                    for f2, v2 in e.items():
+                        if isinstance(v2, str) and v2 and ((t, f2) in ORACLE or NODE_RX.search(f2)):
+                            for n in expand(v2):
+                                uses[n.upper()].append((role_of(t, f2), t, obj.name, f2))
+                continue
+            if isinstance(v, str) and v and ((t, f) in ORACLE or NODE_RX.search(f)):
+                r = role_of(t, f)
+                if r == "other":
+                    unknown_fields[(t, f)] += 1
+                for n in expand(v):
+                    uses[n.upper()].append((r, t, obj.name, f))
+
+    # Branch vs component consistency
+    mismatches = []
+    by_name = {(o.obj_type.upper(), o.name.upper()): o for o in doc.all_objects if o.name}
+    for b, ct, cn, i, o in branch_claims:
+        comp = by_name.get((ct.upper(), cn.upper()))
+        if comp is None:
+            mismatches.append((b, ct, cn, "component missing"))
+            continue
+        nodes = {r: set() for r in ("in", "out")}
+        for n, lst in uses.items():
+            for r, t, nm, f in lst:
+                if t.upper() == ct.upper() and nm.upper() == cn.upper() and r in nodes:
+                    nodes[r].add(n)
+        has_any = nodes["in"] or nodes["out"]
+        if has_any and (i.upper() not in nodes["in"] or o.upper() not in nodes["out"]):
+            mismatches.append((
+                b,
+                ct,
+                cn,
+                f"branch says {i}->{o}, component in={sorted(nodes['in'])} out={sorted(nodes['out'])}",
+            ))
+        uses[i.upper()].append(("branch_in", "Branch", b, cn))
+        uses[o.upper()].append(("branch_out", "Branch", b, cn))
+
+    # Connector rules: virtual junction edges between branch ends
+    bends = {}
+    for b, ct, cn, i, o in branch_claims:
+        bends.setdefault(b.upper(), [i, o])
+        bends[b.upper()][1] = o
+    for t in ("Connector:Splitter", "Connector:Mixer"):
+        if t not in doc:
+            continue
+        for c in doc[t]:
+            if t == "Connector:Splitter":
+                src = [c.data.get("inlet_branch_name", "")]
+                dst = [e.get("outlet_branch_name", "") for e in c.data.get("branches", [])]
+            else:
+                dst = [c.data.get("outlet_branch_name", "")]
+                src = [e.get("inlet_branch_name", "") for e in c.data.get("branches", [])]
+            for b in src:
+                if b.upper() in bends:
+                    uses[bends[b.upper()][1].upper()].append(("in", t, c.name, "junction"))
+            for b in dst:
+                if b.upper() in bends:
+                    uses[bends[b.upper()][0].upper()].append(("out", t, c.name, "junction"))
+    flow = {
+        "in",
+        "out",
+        "branch_in",
+        "branch_out",
+        "zone_inlet",
+        "zone_return",
+        "zone_exhaust",
+        "zone",
+        "loop",
+        "boundary_in",
+        "boundary_out",
+    }
+    dangling = []
+    sp_off_path = []
+    for n, lst in uses.items():
+        roles = {r for r, *_ in lst}
+        if roles & {"setpoint", "sensor"} and not (roles & flow) and n not in oa_nodes:
+            sp_off_path.append((n, [(t, nm) for r, t, nm, f in lst]))
+        produced = roles & {
+            "out",
+            "branch_out",
+            "zone_return",
+            "zone_exhaust",
+            "loop",
+            "zone",
+            "boundary_in",
+            "boundary_out",
+        }
+        consumed = roles & {"in", "branch_in", "zone_inlet", "loop", "zone", "boundary_out"}
+        if (roles & flow) and n not in oa_nodes and (not produced or not consumed):
+            dangling.append((n, sorted(roles), [(t, f) for r, t, nm, f in lst][:3]))
+    print(
+        f"== {path.split('/')[-1]}  objects={len(list(doc.all_objects))} nodes={len(uses)} branch_entries={len(branch_claims)}"
+    )
+    print("  unclassified node fields:", list(unknown_fields)[:8])
+    print("  branch/component node mismatches:", len(mismatches), mismatches[:4])
+    print("  single-ended flow nodes:", len(dangling))
+    c = collections.Counter((tuple(d[1]), tuple(d[2])) for d in dangling)
+    print("    role-signatures:", c.most_common(8))
+    for d in dangling[:5]:
+        print("    ", d)
+    print("  setpoint/sensor nodes not on any flow path:", len(sp_off_path), sp_off_path[:3])
+
+
+QUIET = False
+if __name__ == "__main__":
+    import contextlib
+    import io
+
+    args = sys.argv[1:]
+    if args and args[0] == "--summary":
+        QUIET = True
+        args = args[1:]
+    for p in args:
+        try:
+            if QUIET:
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    main(p)
+                out = buf.getvalue().splitlines()
+                print(
+                    p.split("/")[-1],
+                    "|",
+                    out[0].split("  ", 1)[1],
+                    "|",
+                    out[2].split(":")[0] + ":" + out[2].split(":")[1].split("[")[0],
+                    "|",
+                    out[3].strip(),
+                    "|",
+                    out[4].strip()[:200] if len(out) > 4 else "",
+                )
+            else:
+                main(p)
+        except Exception as e:
+            print("ERR", p, type(e).__name__, e)
