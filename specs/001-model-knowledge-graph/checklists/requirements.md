@@ -13,7 +13,8 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain
+- [ ] No [NEEDS CLARIFICATION] markers remain (one open since the 2026-11-11 review: FR-038a, standards data on
+  Python 3.14 and later)
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -57,3 +58,11 @@ Validation pass 1 (2026-11-11). All items pass, with these judgement calls recor
 - **Planning risk.** Principle VI will apply when the standards data becomes a runtime dependency of idfkit-mcp,
   because a new dependency must pass deptry and be justified in the change that adds it. `/speckit-plan` should
   decide whether idfkit-mcp depends on idfkit's optional extra or on the data package directly.
+
+Validation pass 2 (2026-11-11, after review). The review revisions listed in the spec add FR-004a, FR-013a,
+FR-016a, FR-038a, FR-040a, FR-040b, FR-042a to FR-042c, FR-046, FR-059, SC-001a, SC-009a and SC-010a, and tighten
+FR-027, SC-008, SC-009 and SC-010. All remain testable without naming a design. One item fails on purpose:
+FR-038a carries a [NEEDS CLARIFICATION] marker for `/speckit-clarify`. Downstream artifacts written before the
+review do not yet reflect it, notably research R-13 (baseline is the previous release, one run per task), R-14
+(no held-out, control, authoring or open-question tasks), R-16 (diagnosis states no strong candidate) and the
+tool list in contracts/mcp-tools.md (FR-059). Re-run `/speckit-plan` or amend them before `/speckit-tasks`.

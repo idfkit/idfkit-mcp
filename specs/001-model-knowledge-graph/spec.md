@@ -97,6 +97,31 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   building? → A: The space-by-space method only. Each zone gets one lighting verdict from its asserted space type,
   the same role ventilation uses. The building area method is later work.
 
+### Review revisions, 2026-11-11
+
+A review of the spec against the research and the knowledge-graph literature changed the following. None of
+them reverses a clarification above.
+
+- **The evaluation can now answer its question.** Each task runs several times and the comparison is paired, with
+  confidence intervals (FR-042a, SC-008, SC-009). Faults the checks were not designed against are held out
+  (FR-040a). Prompts do not reveal that a fault exists, and fault-free control tasks are included (FR-042b). The
+  baseline differs from the treatment only by this feature (FR-042c). Authoring tasks and open questions are
+  measured as well as fault fixing (FR-040b).
+- **The evaluation's role is stated as the plan applies it.** It hard-gates User Story 6 only. Every later slice
+  reports its own effect (User Story 2, FR-046).
+- **The tool surface is a requirement, not only a budget.** No two new tools may answer the same question, and the
+  listing cost counts input and output schemas against a stated base (FR-059, SC-010). The evaluation checks that
+  agents pick the right tool (FR-042).
+- **Older EnergyPlus versions are measured, not assumed.** False findings are measured on earlier example sets,
+  and a check is capped at warning for any version where it is not clean (FR-013a, SC-001a).
+- **Diagnosis must not anchor the agent.** It says when no candidate has strong evidence and what the catalogue
+  does not cover. The evaluation counts fixes applied to a wrong top-ranked candidate (FR-027, SC-009a).
+- **Blind spots are declared.** EnergyPlus Energy Management System (EMS) programs and other references held in
+  free text are listed as not covered (edge cases, FR-004a).
+- **Components carry a category** (heating coil, fan, pump and so on), so agents can ask questions across object
+  types (FR-016a).
+- **Standards availability on current Python is an open decision**, marked for `/speckit-clarify` (FR-038a).
+
 ## User Scenarios & Testing *(mandatory)*
 
 There are three actors:
@@ -145,18 +170,26 @@ no errors.
 ### User Story 2 - Measure whether the graph helps agents (Priority: P1)
 
 A maintainer wants evidence, not intuition, before investing in later phases. They run a repeatable evaluation.
-Known faults are injected into a set of real models, and an agent is asked to find and fix each one. This is done
-twice, once with the new capabilities and once without. The run produces success rate, effort and wrong-fix rate
-for each fault type.
+Known faults are injected into a set of real models. An agent is given the task a modeller would give it, such as
+"this model fails to simulate" or "zone 3 is too cold", without being told where the fault is. Some tasks contain
+no fault at all, and some ask the agent to build or change an HVAC system. Each task is run several times with the
+new capabilities and several times without, and the run produces success rate, effort and wrong-fix rate, with
+their uncertainty.
 
 **Why this priority**: All three research reports reached the same unknown. The capabilities are plausible, and no
-study shows they improve an agent's diagnosis. This evaluation decides whether User Stories 3 to 6 are worth their
-cost. It also produces the paired model and output fixtures the automated tests need anyway, which do not exist
-today.
+study shows they improve an agent's diagnosis. This evaluation hard-gates User Story 6, the most heuristic layer.
+User Stories 3 to 5 are built on their own evidence, and each one's slice re-runs the evaluation and reports its
+effect, so a layer that does not help is seen before the next is built. The evaluation also produces the paired
+model and output fixtures the automated tests need anyway, which do not exist today.
 
-**Independent Test**: Run the evaluation on the fault catalogue with the capabilities from User Story 1 enabled and
-then disabled. The output is a per-fault-type table comparing the two conditions, and repeating the run with the
-same agent configuration gives comparable figures.
+The evaluation must measure the agent, not the checks. If every fault were one a new check was written to catch,
+the treatment would win simply by calling that check. So part of the catalogue is held out: faults defined
+independently of the checks, preferably taken from failures seen in real agent sessions.
+
+**Independent Test**: Run the evaluation on the fault catalogue with the capabilities from User Story 1 and then
+without them. The output is a paired comparison per fault type and overall, with confidence intervals, held-out
+faults reported separately. Repeating the run with the same agent configuration gives figures within the stated
+spread.
 
 **Acceptance Scenarios**:
 
@@ -168,6 +201,10 @@ same agent configuration gives comparable figures.
    **Then** the comparison is reported per fault type and overall.
 3. **Given** a fault type whose detection needs simulation output, **When** the evaluation runs without EnergyPlus
    available, **Then** those tasks are reported as skipped with the reason, not as failures.
+4. **Given** a fault-free control task, **When** the agent reports a fault or changes the model, **Then** that is
+   recorded as a false fix, in both conditions.
+5. **Given** a task prompt, **When** it is shown to the agent, **Then** it describes a symptom or a goal and never
+   names the injected object, field or fault type.
 
 ---
 
@@ -367,7 +404,14 @@ release needs no change.
 - **Standards gaps**: A requirement the data source does not cover is reported as not evaluated, not as a pass.
 - **Version spread**: Models from every EnergyPlus version idfkit supports (currently 8.9 to 26.2) are handled.
   Only version 26.2's schema marks node fields explicitly, so earlier versions must reach the same result by
-  other means.
+  other means. Most models agents receive are older than the latest release, so false findings on older versions
+  are measured, not assumed away (FR-013a).
+- **References held in free text**: EMS sensors, actuators and programs, and some other objects, name model
+  objects in text that is not a schema reference. EMS sensors and actuators whose key fields name an object are
+  linked with a convention label. Program text is not parsed. A model that uses EMS is reported as partially
+  covered, so an agent knows the graph cannot see what EMS controls.
+- **Causes outside the catalogue**: A symptom can have a cause no diagnosis rule knows. Diagnosis then says that
+  no candidate has strong evidence, instead of promoting the best weak one.
 
 ## Requirements *(mandatory)*
 
@@ -383,6 +427,9 @@ release needs no change.
   MUST report the totals that the bounded view leaves out.
 - **FR-004**: Every response that depends on matching, linking or inference MUST report how complete the result is:
   coverage or unresolved counts, and what could not be evaluated.
+- **FR-004a**: Every response that answers from the graph MUST state the parts of the model the graph does not
+  cover: unexpanded templates, EMS program text, object types without rules, and results not linked. An agent
+  must be able to tell "nothing found" from "not looked at".
 - **FR-005**: The system MUST NOT present an inferred or pattern-matched value as a fact. Each inferred value MUST
   carry how it was obtained. Links made through EnergyPlus naming conventions MUST carry the convention used.
   Matches based only on free text MUST be labelled weak.
@@ -435,12 +482,22 @@ release needs no change.
   reference corpus: the unmodified example models shipped with the latest supported EnergyPlus version (currently
   26.2). All other checks MUST be reported as warnings until then. When the latest supported version changes, the
   corpus moves with it and every error-severity check is re-qualified against it.
+- **FR-013a**: False findings MUST also be measured on the unmodified example models of at least two earlier
+  EnergyPlus versions, one of them from the 9.x series. This does not change which checks qualify for error
+  severity (FR-013). A check that produces a false error on an earlier version's corpus MUST be reported at warning
+  severity for models of that version, until the cause is fixed and the measurement is clean. The measured rate per
+  version and check MUST be published with the release.
 - **FR-014**: Connection findings MUST appear in the existing model integrity check, under their own category.
 - **FR-015**: An agent MUST be able to ask, for a single node, what it connects and where it sits (FR-010, FR-011), and
   for a single component, its connections per stream and its loop memberships, with a bounded number of hops
   upstream and downstream.
 - **FR-016**: An agent MUST be able to ask for a compact summary of one loop or all loops. It describes supply and
   demand sides in flow order and collapses repeated parallel components.
+- **FR-016a**: Every component SHOULD carry a category drawn from a small, documented vocabulary (for example
+  heating coil, cooling coil, fan, pump, terminal unit, chiller, boiler, heat rejection, humidifier). The category
+  is derived from the object type alone, never from names, and any object type without one is reported as
+  uncategorised. Topology questions and neighbourhood requests SHOULD accept a category as a filter, so that an
+  agent can ask, for example, for every heating coil upstream of a zone in one request.
 - **FR-017**: An agent MUST be able to rename a node in one request. The rename updates every field and node-list entry
   that uses it, atomically, and is recorded in the session change log.
 - **FR-018**: After a simulation, an agent SHOULD be able to compare the statically derived connections with the
@@ -472,7 +529,9 @@ release needs no change.
 - **FR-027**: Given a symptom (such as unmet heating or cooling hours, an outlier peak load, or a message kind) and an
   optional target, an agent MUST be able to request a bounded, ranked list of candidate causes. Each candidate has
   evidence, a reason and a verification step. Candidates that rest only on free-text matches MUST NOT be ranked
-  first.
+  first. When no candidate has evidence stronger than a weak match, the response MUST say so first, before the
+  list. Every response MUST name the cause families the diagnosis rules cover for that symptom, so that a cause
+  outside them is visibly unexamined, not implicitly ruled out.
 
 **Layer 3: Standards knowledge**
 
@@ -522,11 +581,27 @@ release needs no change.
   gone, and screenings report the affected objects as "cannot tell" until roles are asserted again.
 - **FR-038**: Requirement data MUST come from an openly licensed, maintained third-party source. Neither idfkit nor
   idfkit-mcp may copy standards text, exceptions or footnotes, or reproduce requirement tables of their own.
+- **FR-038a**: The standards capabilities MUST state, on every Python version idfkit supports, whether they are
+  available. The data source currently declares support only below Python 3.14, while idfkit supports 3.10 and
+  later and 3.14 is a current release. [NEEDS CLARIFICATION: Is it acceptable to release the standards layer
+  unavailable on Python 3.14 and later, or must it be available on every supported Python before release (for
+  example through an upstream fix by the data source, or by shipping an unmodified, licensed copy of its data
+  files, which FR-038 would then need to allow)?]
 
 **Evaluation**
 
 - **FR-040**: The project MUST provide a fault catalogue of at least 10 fault types covering all three layers. Each
   fault type has a known correct fix and a way to inject it into a model automatically.
+- **FR-040a**: At least a third of the fault types MUST be held out: defined and committed before the checks that
+  might detect them are written, by someone not writing those checks, and preferably taken from failures recorded
+  in real agent sessions or published LLM model-generation studies. Results for held-out fault types MUST be
+  reported separately from the others.
+- **FR-040b**: Besides fault-fixing tasks, the evaluation MUST include:
+  - fault-free control tasks, at least one per five fault tasks
+  - authoring tasks, in which the agent builds or changes an HVAC system from a description and success is a
+    model that passes the connection check and simulates
+  - open questions about a model that no single new tool answers directly (for example "which zones served by
+    this air loop have unmet hours?"), with a known answer
 - **FR-041**: The project MUST provide a reference set of at least 20 EnergyPlus example models drawn from the
   EnergyPlus distribution, covering variable air volume, plant loops, packaged equipment, zone lists and template
   systems.
@@ -537,6 +612,15 @@ release needs no change.
   - tool calls made
   - response text consumed
   - unwanted changes to correct parts of the model
+  - for treatment runs, whether the agent used the new tool intended for the task, another new tool, or none
+- **FR-042a**: Every task MUST be run at least three times in each condition. Comparisons MUST be paired by task
+  and report a 95% confidence interval for each difference, overall and per layer. Per-fault-type figures are
+  reported as description, not as evidence, when a fault type has too few tasks for its interval to exclude zero.
+- **FR-042b**: Task prompts MUST describe a symptom or goal as a modeller would, and MUST NOT name the injected
+  object, field or fault type, or state that the model contains a fault.
+- **FR-042c**: The baseline condition MUST differ from the treatment only by this feature: the same server at the
+  revision just before the feature's first change, with the same agent, model, prompts and limits. A baseline that
+  includes other changes MUST be labelled as such in the report.
 - **FR-043**: Evaluation tasks that need simulation output MUST be skipped with a stated reason when EnergyPlus is
   unavailable.
 - **FR-044**: The project MUST keep paired model, simulation output and error report fixtures from the reference set,
@@ -544,6 +628,10 @@ release needs no change.
 - **FR-045**: Every new or changed capability MUST be covered by tests that exercise it through the server's protocol
   boundary, with no AI client involved (Constitution, Principle VII). Agent conversations, including the
   evaluation, are evidence of benefit, not tests of correctness.
+- **FR-046**: The change that completes each user story MUST include an evaluation run covering that story's fault
+  types and the comparison against the previous slice. A story whose run shows no benefit on any measure in
+  SC-009 MUST be reviewed by a maintainer before the next story is started, and the decision recorded with the
+  run.
 
 **Developer API**
 
@@ -581,6 +669,10 @@ release needs no change.
   node and edge kinds, and the 8 KB response budget. It states what was cut off. It is built from the combined view
   (FR-055) and uses the same node and edge vocabulary. The graph export (FR-057) MUST NOT be exposed through the
   server.
+- **FR-059**: The server MUST expose this feature through the fewest tools that cover its user stories. No two new
+  tools may answer the same question: where a targeted question (such as what a node connects) is a special case
+  of the neighbourhood request, either the targeted tool is justified by a measured saving in calls or tokens, or
+  it is not added. Each new tool's description MUST say when to use it instead of its nearest neighbour.
 
 ### Key Entities
 
@@ -611,8 +703,11 @@ release needs no change.
   result fact, message and verdict. Its edge kinds are reference, flow, control, membership, result link and
   verdict. Each node and edge carries its kind, its layer and the identity (object type and name, or node name) a
   developer can pass back to the layer APIs.
-- **Fault type and evaluation task**: A known, injectable defect with its correct fix. A task applies one fault to one
-  model and records how an agent performed.
+- **Component category**: A coarse class of HVAC component (heating coil, fan, pump and so on), derived from the
+  object type, used to filter questions across object types (FR-016a).
+- **Fault type and evaluation task**: A known, injectable defect with its correct fix, marked held out or not
+  (FR-040a). A task applies one fault to one model, or is a control, authoring or open-question task (FR-040b). It
+  is run several times per condition and records how an agent performed each time.
 
 ## Success Criteria *(mandatory)*
 
@@ -620,6 +715,8 @@ release needs no change.
 
 - **SC-001**: On every unmodified example model shipped with the latest supported EnergyPlus version (the reference
   corpus, FR-013), connection checks report zero error-severity findings.
+- **SC-001a**: On the earlier-version corpora of FR-013a, connection checks report zero error-severity findings
+  once the per-version warning cap is applied, and the false-finding rate per version and check is published.
 - **SC-002**: Connection checks detect at least 95% of injected connection faults across the connection fault types
   in the catalogue, each with the responsible object and field.
 - **SC-003**: For a standard five-zone VAV model, an agent identifies the loops serving any zone, and what is upstream
@@ -641,15 +738,24 @@ release needs no change.
 - **SC-007**: No screening verdict rests on a role inferred from a name. Every verdict cites its source and lists its
   assumptions.
 - **SC-008**: The evaluation runs repeatably on the full catalogue and reference set. Repeated runs under the same
-  configuration agree on overall success rate within 5 percentage points.
+  configuration agree on overall success rate within 5 percentage points, measured over the repeats required by
+  FR-042a.
 - **SC-009**: The decision gate for User Story 6 and later phases passes when, with the new capabilities, agents show
   either:
-  - at least 20 percentage points higher fix rate on the relevant fault types, or
+  - a fix rate at least 20 percentage points higher on the relevant fault types, or
   - at least 30% fewer tool calls at no lower fix rate,
 
-  with no increase in unwanted changes to correct parts of the model.
+  with the 95% confidence interval of that difference excluding zero (FR-042a). The gain MUST also hold, at
+  least in direction, on the held-out fault types (FR-040a). It MUST come with no increase in unwanted changes to
+  correct parts of the model and no increase in false fixes on control tasks.
+- **SC-009a**: On diagnosis tasks, including those whose cause is outside the diagnosis rules, the rate at which
+  agents apply a fix to a wrong top-ranked candidate is no higher with diagnosis than without it.
 - **SC-010**: The tools added by this feature together increase the cost of the server's tool listing by no more than
-  15%. The increase is stated in the change that adds them (Constitution, Principle II).
+  15%. Cost is the full listing as an agent receives it, input and output schemas included. The base is the
+  listing at the revision before the feature's first change, measured at 39 tools and about 15,300 tokens during
+  review. The increase is stated in the change that adds each tool (Constitution, Principle II).
+- **SC-010a**: In treatment runs, agents use the intended new tool on at least 80% of the tasks it was built for
+  (FR-042).
 - **SC-011**: On the largest reference model, at about 7,000 objects and 2,900 nodes, the following stay within
   budget:
   - Deriving the full connection view and running every connection check, after loading or after an edit, adds
@@ -685,10 +791,17 @@ release needs no change.
   (confirmed in Clarifications, 2026-11-11). The research measured the 24.1 set (735 files, 575 with branches);
   the 26.2 set is expected to be of similar size. The reference model set for the evaluation (FR-041), fault
   injection and fixtures are drawn from it.
-- **Accepted risk: older versions are not part of qualification.** Models from 8.9 to 26.1 get the same checks.
-  Their schemas do not mark node fields, so those fields are found by other means, and false findings there are
-  not measured before a check is promoted to error severity. Reports of false findings on older models are fixed
-  as bugs, with a regression test built from the reported model.
+- **Older versions are measured but do not qualify checks.** Models from 8.9 to 26.1 get the same checks. Their
+  schemas do not mark node fields, so those fields are found by other means. Promotion to error severity is decided
+  on the 26.2 corpus alone (Clarifications). False findings on older versions are measured on at least two earlier
+  example sets, and a check is capped at warning for any version where it is not clean (FR-013a). Reports of false
+  findings on other older models are fixed as bugs, with a regression test built from the reported model.
+- **The tool budget is tight.** At about 15,300 tokens for the current listing, the 15% cap allows about 2,300
+  tokens for every new tool together, roughly half the cost of an average tool today. Meeting it is expected to
+  require fewer, broader tools (FR-059), not shorter descriptions that leave agents unsure which tool to use.
+- **The evaluation costs real money and time.** Three repeats of each task in two conditions, across the catalogue,
+  control, authoring and open-question tasks, is several hundred agent runs per evaluation. That cost is accepted
+  because an underpowered evaluation would gate later work on noise.
 - **Topology is derived on request** from the current model, not stored. The model's change tracking decides when a
   cached derivation is out of date.
 - **Results linking needs EnergyPlus's SQL output.** idfkit-mcp already requests it on every simulation it runs,
@@ -761,4 +874,7 @@ Full reports: [background/](background/README.md). Highlights that shaped the re
 | Brick and 223P exports are low value now. 229 and its ruleset checking tool are unstable | Report 02, §§2.1, 3 | Out of Scope |
 | No published work joins agent, MCP and a live model graph. Graph retrieval helped LLMs by 20–40% on Brick data, and pasting the whole ontology did not help | Literature scan | FR-003, FR-015, FR-016, User Story 2 |
 | No study measures the benefit to an agent | All reports | User Story 2, SC-008, SC-009 |
+| A catalogue written by the authors of the checks measures whether agents call the checks, not whether they diagnose better | Review, 2026-11-11 | FR-040a, FR-042b, SC-009 |
+| Around 20 tasks per fault type, run once, gives a ±11-point uncertainty on each fix rate, wider than the effects the gate looks for | Review, 2026-11-11 | FR-042a, SC-008, SC-009 |
+| The current tool listing is 39 tools and about 15,300 tokens, so the 15% cap leaves about 175 tokens per planned new tool | Review, 2026-11-11, measured | FR-059, SC-010 |
 | A planned node-graph build takes 5.2 ms against 228 ms to load the largest example model. The results index takes 1.8 ms on a 32.5 MB SQL file. The standards table takes 43 ms to load once. An existing unbounded tool response is 110 KB | Performance measurements | FR-009, SC-011–SC-013 |
