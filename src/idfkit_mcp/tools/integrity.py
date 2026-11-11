@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 from fastmcp.tools import tool
 from idfkit import IDFDocument
+from idfkit.hvac import check_topology
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.models import IntegrityIssue, ModelIntegrityResult
@@ -212,17 +213,53 @@ def _check_hvac_zone_references(doc: IDFDocument) -> list[IntegrityIssue]:
     return issues
 
 
+_TOPOLOGY_LISTED = 50
+"""Topology findings listed one by one; the rest are grouped by code with a count."""
+
+
+def _check_hvac_topology(doc: IDFDocument) -> list[IntegrityIssue]:
+    """Static HVAC connection checks (idfkit.hvac): branch mismatches, unconnected nodes, coverage."""
+    findings = check_topology(doc)
+    issues: list[IntegrityIssue] = []
+    for f in findings[:_TOPOLOGY_LISTED]:
+        first = f.objects[0] if f.objects else None
+        issues.append(
+            IntegrityIssue(
+                severity=f.severity,
+                category="hvac_topology",
+                object_type=first.object_type if first is not None else None,
+                object_name=first.name if first is not None else None,
+                message=f"[{f.code}] {f.message}",
+            )
+        )
+    rest: dict[tuple[str, str], int] = {}
+    for f in findings[_TOPOLOGY_LISTED:]:
+        rest[f.code, f.severity] = rest.get((f.code, f.severity), 0) + 1
+    for (code, severity), count in rest.items():
+        issues.append(
+            IntegrityIssue(
+                severity=severity,
+                category="hvac_topology",
+                message=f"[{code}] {count} more findings of this code, not listed. Use trace_hvac on an object to see its own.",
+            )
+        )
+    return issues
+
+
 @tool(annotations=_READ_ONLY)
 def check_model_integrity() -> ModelIntegrityResult:
     """Domain-level pre-simulation QA — catches issues schema validation cannot.
 
-    Runs six checks against the loaded model:
+    Runs seven checks against the loaded model:
     - Zones with no BuildingSurface:Detailed surfaces
     - Missing required simulation control objects (Version, Building, Timestep, RunPeriod, SimulationControl)
     - Orphan schedules (defined but not referenced by any object)
     - Surface boundary condition mismatches (non-reciprocal 'Surface' pairs)
     - Fenestration surfaces referencing non-existent host surfaces
     - ZoneHVAC:EquipmentConnections referencing non-existent zones
+    - HVAC node connections (category "hvac_topology", message prefixed with the code): T010 a branch
+      naming a node its component lacks, T011 consecutive branch components that do not connect,
+      T030 an inlet nothing supplies, T090/T091 what could not be checked. Beyond 50, grouped by code.
 
     Use this after validate_model and before run_simulation. A model can pass
     validate_model but still fail these checks.
@@ -240,6 +277,7 @@ def check_model_integrity() -> ModelIntegrityResult:
         ("surface_boundary_mismatches", _check_surface_boundary_mismatches),
         ("fenestration_host_check", _check_fenestration_hosts),
         ("hvac_zone_references", _check_hvac_zone_references),
+        ("hvac_topology", _check_hvac_topology),
     ]
 
     all_issues: list[IntegrityIssue] = []

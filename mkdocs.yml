@@ -26,6 +26,7 @@ nav:
     - Model Read Tools: tools/model-read.md
     - Model Write Tools: tools/model-write.md
     - Validation Tools: tools/validation.md
+    - HVAC Topology Tools: tools/hvac-topology.md
     - Simulation Tools: tools/simulation.md
     - Weather Tools: tools/weather.md
     - Documentation Tools: tools/docs.md

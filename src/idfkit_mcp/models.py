@@ -796,7 +796,7 @@ class IntegrityIssue(BaseModel):
     """A single domain-level integrity issue found by check_model_integrity."""
 
     severity: str  # "error" | "warning" | "info"
-    category: str  # "geometry" | "controls" | "references" | "hvac" | "schedules"
+    category: str  # "geometry" | "controls" | "references" | "hvac" | "schedules" | "hvac_topology"
     object_type: str | None = None
     object_name: str | None = None
     message: str
@@ -830,3 +830,85 @@ class GetChangeLogResult(BaseModel):
 
     entry_count: int
     entries: list[ChangeLogEntry]
+
+
+# ---------------------------------------------------------------------------
+# HVAC topology (idfkit.hvac mirrors)
+# ---------------------------------------------------------------------------
+
+
+class NodeUse(BaseModel):
+    """One field naming a node, with the connection role EnergyPlus gives it."""
+
+    node: str
+    object: ObjectKey
+    category: str
+    field: str
+    connection: str | None  # Inlet, Outlet, ZoneInlet, Sensor, Setpoint, ...; None when unclassified
+    stream: int
+    fluid: str
+    is_parent: bool
+    via_nodelist: str | None = None
+    rule: str | None = None  # "ems_key" for an EMS sensor or actuator
+    provenance: str | None = None  # eplus_examples | eplus_test_model | hand_written
+
+
+class LoopMembership(BaseModel):
+    """Where a component sits in a loop."""
+
+    loop: ObjectKey
+    kind: Literal["air", "plant", "condenser", "zone_equipment"]
+    side: Literal["supply", "demand"] | None
+    branch: ObjectKey | None
+    position: int | None  # 0-based on the branch
+    stream: int
+
+
+class FlowEdge(BaseModel):
+    """Flow from one component (or zone) to the next through a shared node."""
+
+    source: ObjectKey
+    target: ObjectKey
+    node: str
+    fluid: str
+    kind: Literal["component", "branch_junction", "zone"]
+
+
+class TopologyFinding(BaseModel):
+    """A static connection finding (T0xx)."""
+
+    code: str
+    severity: Literal["error", "warning", "info"]
+    objects: list[ObjectKey]
+    message: str
+    provenance: str
+    node: str | None = None
+    field: str | None = None
+    expected: str | None = None
+    actual: str | None = None
+    capped_from: Literal["error"] | None = None
+    cap_reason: str | None = None
+
+
+class TraceStart(ObjectKey):
+    """The start of a trace: ``object_type="Node"`` for a node, else the component and its category."""
+
+    category: str | None = None
+
+
+class HVACTrace(BaseModel):
+    """Response from ``trace_hvac``."""
+
+    start: TraceStart
+    fluid: str | None = None  # node start only
+    ports: list[NodeUse] = []  # component start, by stream
+    producers: list[ObjectKey] = []  # node start
+    consumers: list[ObjectKey] = []  # node start
+    controls: list[NodeUse]
+    memberships: list[LoopMembership]
+    parent: ObjectKey | None = None
+    children: list[ObjectKey] = []
+    upstream: list[FlowEdge]
+    downstream: list[FlowEdge]
+    findings: list[TopologyFinding]
+    coverage: Coverage

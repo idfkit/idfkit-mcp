@@ -1,6 +1,6 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **37 tools** in ten categories, plus **13 MCP resources** for read-only data access.
+`idfkit-mcp` exposes **38 tools** in eleven categories, plus **13 MCP resources** for read-only data access.
 
 ## Categories
 
@@ -8,6 +8,7 @@
 - Model read: 6 tools
 - Model write: 10 tools
 - Validation: 2 tools
+- HVAC topology: 1 tool
 - Simulation: 8 tools
 - Geometry: 1 tool
 - Schedules: 1 tool
@@ -41,6 +42,7 @@
 | Write | `clear_session` | Clear persisted session and reset state |
 | Validation | `validate_model` | Full schema and reference validation |
 | Validation | `check_model_integrity` | Run domain-level pre-simulation QA checks |
+| HVAC topology | `trace_hvac` | Trace one node or component: ports, flow up and downstream, controls, connection findings |
 | Simulation | `run_simulation` | Execute EnergyPlus run |
 | Simulation | `list_output_variables` | Enumerate meters/variables |
 | Simulation | `query_timeseries` | Query time series data from SQL output |

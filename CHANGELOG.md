@@ -11,8 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The site and the README adopt the idfkit visual identity at `identity-2026.5`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag.
 
+- `trace_hvac` traces one HVAC node, `NodeList`, zone or component: the node uses with the role
+  EnergyPlus gives each field, producers and consumers, controls, the containing equipment and what it
+  contains, flow edges up and downstream with a component-category filter and a fluid filter, the
+  connection findings touching it, and what the view could not cover. Errors list the closest names and
+  never pick one. Its output schema lists the top-level fields only, which keeps it to about 580 tokens of
+  `tools/list`; the full shape is in `docs/tools/hvac-topology.md`. Requires idfkit's `idfkit.hvac`.
+
 ### Changed
 
+- `check_model_integrity` runs a seventh check group, `hvac_topology`: idfkit's static connection
+  checks, reported as issues with `category="hvac_topology"` and the code at the start of the message
+  (`[T010] …`). A branch naming a node its component does not have, and consecutive branch components
+  that do not connect, are errors; an inlet nothing supplies is a warning. Beyond 50, findings are
+  grouped by code with a count. No existing field changed.
 - `add_object` and `batch_add_objects` refuse a name on an object type without a Name field, such
   as `Output:Meter`, `Output:SQLite` or `Timestep`. The error names the field to pass instead
   (`key_name="Electricity:Facility"`). A name there used to be accepted and then dropped on write,

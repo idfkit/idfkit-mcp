@@ -31,6 +31,27 @@ Checks include:
 - non-reciprocal surface boundary-condition pairs
 - fenestration surfaces with missing host surfaces
 - `ZoneHVAC:EquipmentConnections` rows that reference missing zones
+- HVAC node connections, the `hvac_topology` group (see below)
+
+### The `hvac_topology` group
+
+Node names are strings, not references, so schema validation passes a mistyped node. This group runs
+idfkit's static connection checks and reports each finding as an issue with `category` set to
+`hvac_topology`, the first object involved in `object_type` and `object_name`, and the check code at the
+start of the message:
+
+| Code | Severity | Meaning |
+|---|---|---|
+| `T010` | error | A branch lists a node its component does not have |
+| `T011` | error | Consecutive branch components do not connect |
+| `T030` | warning | An inlet nothing supplies, or a branch outlet nothing takes |
+| `T090` | info | Object types the view has no rule for |
+| `T091` | info | Unexpanded `HVACTemplate` systems, which the checks cannot see |
+
+The first 50 findings are listed one by one. The rest are grouped by code, one issue per code with a
+count, and `trace_hvac` shows the findings that touch one node or component. A finding that relies on a
+rule written from a field's name, rather than one EnergyPlus reported, is never an error. A clean group
+does not mean the model simulates.
 
 ## Recommended Gate
 

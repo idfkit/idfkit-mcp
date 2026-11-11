@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import gzip
+import shutil
+from pathlib import Path
+
 import pytest
+from fastmcp import Client
+from fastmcp.client.transports import FastMCPTransport
 from fastmcp.exceptions import ToolError
 from idfkit import new_document
 
@@ -18,8 +24,8 @@ class TestCheckModelIntegrity:
 
     async def test_empty_model_runs_all_checks(self, client: object, state_with_model: ServerState) -> None:
         result = await call_tool(client, "check_model_integrity", model=ModelIntegrityResult)
-        # All 6 checks should run regardless of model state
-        assert len(result.checks_run) == 6
+        # All 7 checks should run regardless of model state
+        assert len(result.checks_run) == 7
         # No geometry or HVAC issues in an empty model — only missing controls
         geo_issues = [i for i in result.issues if i.category == "geometry"]
         assert len(geo_issues) == 0
@@ -131,5 +137,61 @@ class TestCheckModelIntegrity:
             "surface_boundary_mismatches",
             "fenestration_host_check",
             "hvac_zone_references",
+            "hvac_topology",
         }
         assert set(result.checks_run) == expected
+
+
+FIVE_ZONE_GZ = Path(__file__).parent / "fixtures" / "5ZoneAirCooled.idf.gz"
+
+
+@pytest.fixture()
+async def five_zone(client: Client[FastMCPTransport], tmp_path: Path) -> Client[FastMCPTransport]:
+    target = tmp_path / "5ZoneAirCooled.idf"
+    with gzip.open(FIVE_ZONE_GZ, "rb") as src, target.open("wb") as dst:
+        shutil.copyfileobj(src, dst)
+    await client.call_tool("load_model", {"file_path": str(target)})
+    return client
+
+
+class TestHVACTopologyGroup:
+    async def test_unmodified_model_has_no_topology_errors(self, five_zone: Client[FastMCPTransport]) -> None:
+        result = await call_tool(five_zone, "check_model_integrity", model=ModelIntegrityResult)
+        assert "hvac_topology" in result.checks_run
+        assert not [i for i in result.issues if i.category == "hvac_topology" and i.severity == "error"]
+
+    async def test_an_outlet_typo_is_a_t010_and_a_t030(self, five_zone: Client[FastMCPTransport]) -> None:
+        await five_zone.call_tool(
+            "update_object",
+            {
+                "object_type": "Coil:Cooling:Water",
+                "name": "Main Cooling Coil 1",
+                "fields": {"air_outlet_node_name": "TYPO NODE"},
+            },
+        )
+        result = await call_tool(five_zone, "check_model_integrity", model=ModelIntegrityResult)
+        topo = [i for i in result.issues if i.category == "hvac_topology"]
+        t010 = [i for i in topo if i.message.startswith("[T010]")]
+        assert t010 and t010[0].severity == "error"
+        assert any("TYPO NODE" in i.message for i in t010)
+        assert any(i.message.startswith("[T030]") and "TYPO NODE" in i.message for i in topo)
+        assert result.passed is False
+
+    async def test_findings_beyond_fifty_are_grouped_by_code(self, client: Client[FastMCPTransport]) -> None:
+        state = get_state()
+        doc = new_document()
+        state.document = doc
+        state.schema = doc.schema
+        for i in range(60):
+            doc.add(
+                "Coil:Heating:Electric",
+                f"Coil {i}",
+                air_inlet_node_name=f"In {i}",
+                air_outlet_node_name=f"Out {i}",
+                validate=False,
+            )
+        result = await call_tool(client, "check_model_integrity", model=ModelIntegrityResult)
+        topo = [i for i in result.issues if i.category == "hvac_topology"]
+        grouped = [i for i in topo if "more findings of this code" in i.message]
+        assert len(topo) - len(grouped) == 50
+        assert grouped and all(i.object_type is None for i in grouped)
