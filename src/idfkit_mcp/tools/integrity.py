@@ -198,15 +198,15 @@ def _check_hvac_zone_references(doc: IDFDocument) -> list[IntegrityIssue]:
     for conn in doc.get_collection("ZoneHVAC:EquipmentConnections"):
         zn = conn.data.get("zone_name", "")
         if zn and zn.lower() not in zone_names:
+            # The type has no Name field: an object is known by the zone it serves.
+            label = conn.name or zn
             issues.append(
                 IntegrityIssue(
                     severity="error",
                     category="hvac",
                     object_type="ZoneHVAC:EquipmentConnections",
-                    object_name=conn.name,
-                    message=(
-                        f"ZoneHVAC:EquipmentConnections '{conn.name}' references zone '{zn}' which does not exist."
-                    ),
+                    object_name=label,
+                    message=f"ZoneHVAC:EquipmentConnections for zone '{zn}' references a zone that does not exist.",
                 )
             )
     return issues

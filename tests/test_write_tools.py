@@ -49,6 +49,22 @@ class TestAddObject:
         with pytest.raises(ToolError):
             await call_tool(client, "add_object", {"object_type": "NonExistent", "name": "Test"})
 
+    async def test_name_on_a_type_without_a_name_field_is_refused(
+        self, client: object, state_with_model: ServerState
+    ) -> None:
+        with pytest.raises(ToolError, match=r'Output:Meter has no Name field.*key_name="Electricity:Facility"'):
+            await call_tool(client, "add_object", {"object_type": "Output:Meter", "name": "Electricity:Facility"})
+
+    async def test_first_field_of_a_nameless_type_is_a_field(
+        self, client: object, state_with_model: ServerState
+    ) -> None:
+        result = await call_tool(
+            client, "add_object", {"object_type": "Output:Meter", "fields": {"key_name": "Electricity:Facility"}}
+        )
+        assert isinstance(result, dict)
+        assert result["name"] == ""
+        assert result["key_name"] == "Electricity:Facility"
+
     async def test_add_without_model(self, client: object) -> None:
         with pytest.raises(ToolError):
             await call_tool(client, "add_object", {"object_type": "Zone", "name": "Test"})

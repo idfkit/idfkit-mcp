@@ -75,7 +75,16 @@ def new_model(
 @tool(annotations=_MUTATE, output_schema=None)
 def add_object(
     object_type: Annotated[str, Field(description='EnergyPlus object type (e.g. "Zone", "Material").')],
-    name: Annotated[str, Field(description="Object name (empty for unnamed types).")] = "",
+    name: Annotated[
+        str,
+        Field(
+            description=(
+                "Object name. Leave empty when describe_object_type reports has_name: false "
+                "(e.g. Output:Meter, Timestep); a name there is an error. Pass their first field "
+                "by its field name instead."
+            )
+        ),
+    ] = "",
     fields: Annotated[dict[str, Any] | None, Field(description="Field values as {field_name: value}.")] = None,
 ) -> dict[str, Any]:
     """Add one object. Use batch_add_objects for multiple."""
@@ -94,7 +103,14 @@ def add_object(
 
 @tool(annotations=_MUTATE)
 def batch_add_objects(
-    objects: Annotated[list[dict[str, Any]], Field(description="List of dicts with keys: object_type, name, fields.")],
+    objects: Annotated[
+        list[dict[str, Any]],
+        Field(
+            description=(
+                "List of dicts with keys: object_type, name, fields. Omit name for types without a Name field."
+            )
+        ),
+    ],
 ) -> BatchAddResult:
     """Add multiple objects in one call. Continues on errors."""
     state = get_state()

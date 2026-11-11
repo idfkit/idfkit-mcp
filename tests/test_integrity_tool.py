@@ -106,7 +106,6 @@ class TestCheckModelIntegrity:
         state.schema = doc.schema
         doc.add(
             "ZoneHVAC:EquipmentConnections",
-            "Conn1",
             zone_name="NonExistentZone",
             zone_conditioning_equipment_list_name="",
             zone_air_inlet_node_or_nodelist_name="",
@@ -119,6 +118,9 @@ class TestCheckModelIntegrity:
         result = await call_tool(client, "check_model_integrity", model=ModelIntegrityResult)
         hvac_errors = [i for i in result.issues if i.category == "hvac"]
         assert len(hvac_errors) >= 1
+        # The type has no Name field, so the issue names the zone the connections serve.
+        assert hvac_errors[0].object_name == "NonExistentZone"
+        assert "NonExistentZone" in hvac_errors[0].message
 
     async def test_checks_run_list(self, client: object, state_with_model: ServerState) -> None:
         result = await call_tool(client, "check_model_integrity", model=ModelIntegrityResult)

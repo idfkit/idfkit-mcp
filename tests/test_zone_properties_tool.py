@@ -117,7 +117,6 @@ class TestGetZoneProperties:
         doc.add("Zone", "Room")
         doc.add(
             "ZoneHVAC:EquipmentConnections",
-            "Room_HVAC",
             zone_name="Room",
             zone_conditioning_equipment_list_name="",
             zone_air_inlet_node_or_nodelist_name="",
@@ -128,4 +127,5 @@ class TestGetZoneProperties:
         )
 
         result = await call_tool(client, "get_zone_properties", {"zone_name": "Room"}, GetZonePropertiesResult)
-        assert "Room_HVAC" in result.zones[0].hvac_connections
+        # ZoneHVAC:EquipmentConnections has no Name field; it is listed by the zone it serves.
+        assert "Room" in result.zones[0].hvac_connections

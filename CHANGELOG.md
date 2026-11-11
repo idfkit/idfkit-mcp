@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The site and the README adopt the idfkit visual identity at `identity-2026.5`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag.
 
+### Changed
+
+- `add_object` and `batch_add_objects` refuse a name on an object type without a Name field, such
+  as `Output:Meter`, `Output:SQLite` or `Timestep`. The error names the field to pass instead
+  (`key_name="Electricity:Facility"`). A name there used to be accepted and then dropped on write,
+  so an agent could add an `Output:Meter` without its meter or an `Output:SQLite` that wrote no
+  file. `describe_object_type` now lists the first field of such types (`key_name` for
+  `Output:Meter`), and the `name` parameter's description tells agents to leave it empty when
+  `has_name` is false. Both come from idfkit (idfkit/idfkit#268).
+
+### Fixed
+
+- `check_model_integrity` reported a `ZoneHVAC:EquipmentConnections` that names a missing zone
+  with an empty `object_name` and the message `ZoneHVAC:EquipmentConnections '' references…`,
+  because the type has no Name field. The issue now names the zone the connections serve.
+
 ## [0.11.1] - 2026-10-19
 
 ### Fixed
