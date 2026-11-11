@@ -60,6 +60,14 @@ exclude = ["eval"]
 [tool.hatch.build.targets.sdist]
 exclude = ["eval"]
 
+# Developer mode: build against the unreleased idfkit feature branch while the model knowledge graph
+# (specs/001-model-knowledge-graph) is developed in both repositories. The level stays declared only by
+# the exact pin in project.dependencies, which the branch satisfies, so the consumer register is unchanged.
+# Refresh after pushing to the idfkit branch: `make dev-idfkit`. Remove this table, and bump the pin
+# through bump-idfkit.yml, once idfkit is released.
+[tool.uv.sources]
+idfkit = { git = "https://github.com/idfkit/idfkit", branch = "claude/relaxed-brown-oug1gx" }
+
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "strict"

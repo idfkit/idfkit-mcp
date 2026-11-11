@@ -4,6 +4,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1
 WORKDIR /app
 
+# git lets uv resolve a git source for idfkit ([tool.uv.sources], developer mode). Builder stage only.
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml uv.lock README.md /app/
 COPY src /app/src
 

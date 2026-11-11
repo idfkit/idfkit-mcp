@@ -87,3 +87,9 @@ help:
 	[[print(f'\033[36m{m[0]:<20}\033[0m {m[1]}') for m in re.findall(r'^([a-zA-Z_-]+):.*?## (.*)$$', open(makefile).read(), re.M)] for makefile in ('$(MAKEFILE_LIST)').strip().split()]"
 
 .DEFAULT_GOAL := help
+
+.PHONY: dev-idfkit
+dev-idfkit: ## Developer mode: re-lock idfkit to the head of the branch named in [tool.uv.sources]
+	@echo "🚀 Re-locking idfkit to the head of its development branch"
+	@uv lock --upgrade-package idfkit
+	@uv sync

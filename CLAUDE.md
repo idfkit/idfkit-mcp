@@ -55,6 +55,15 @@ records where the idfkit level is declared and never the level itself.
   The plugin and the hosted deployment both deliver this server to people, and each must be able to
   say which level it runs.
 
+## Developer mode (unreleased idfkit)
+
+While a feature spans both repositories, `[tool.uv.sources]` in `pyproject.toml` points `idfkit` at
+the idfkit development branch, and `uv.lock` records the commit. The exact `idfkit==X` pin is unchanged
+and stays the only place the level is declared, so the consumer register needs no change; the branch
+must keep the pinned version number. After pushing to the idfkit branch, run `make dev-idfkit` to
+re-lock to its head. Before a release of idfkit-mcp, the idfkit release must land, the table must be
+removed and the pin bumped (`bump-idfkit.yml`); never release idfkit-mcp from developer mode.
+
 ## Automated idfkit bumps
 
 When invoked by `.github/workflows/bump-idfkit.yml` on test failure after an idfkit version bump:
