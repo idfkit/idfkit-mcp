@@ -176,3 +176,17 @@ def hvac_loop(loop: str) -> ResourceResult:
     from idfkit_mcp.tools.topology import build_topology_summary
 
     return _to_resource_json(build_topology_summary(loop, "chain", 1))
+
+
+@resource(
+    "idfkit://simulation/objects/{object_type}/{name}",
+    name="object_results",
+    title="Object Results",
+    description="Every result and message of the last run for one object or node; same as get_object_results.",
+    mime_type="application/json",
+)
+def object_results(object_type: str, name: str) -> ResourceResult:
+    """One object's linked results as JSON."""
+    from idfkit_mcp.tools.results import build_object_results
+
+    return _to_resource_json(build_object_results(object_type, name))

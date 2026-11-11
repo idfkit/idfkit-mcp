@@ -21,6 +21,9 @@ Behavior:
 - Returns runtime, output directory, and error counts.
 - Returns the resolved EnergyPlus executable, install directory, and version.
 - Stores result in server state for follow-up tools.
+- Records the run's identity for result linking: the document revision it simulated, the SHA-256 of the IDF text
+  written for EnergyPlus and the run directory. [`get_object_results`](results.md) uses them to say whether the
+  results are still `fresh`.
 
 ## `list_output_variables`
 
@@ -87,6 +90,19 @@ Highlights:
 - surfaces timing checks, dominant-component checks, and sizing-oriented QA flags
 - requires SQL output plus the `SensibleHeatGainSummary` and `HVACSizingSummary` reports
 
+Fields that name model objects:
+
+- each zone row in `cooling.zones` and `heating.zones` has `object`, the model's `Zone` in the model's spelling
+  (`{"object_type": "Zone", "name": "Mid Center Zone"}` for the report row `MID CENTER ZONE`), or `null` when the
+  model has no zone of that name or no model is loaded;
+- `flag_details` has one entry per entry of `flags`, in the same order: `{flag, affected_objects}`, where `flag`
+  is the same text. A zone outlier flag names its zone; facility-level flags name no object.
+
+`flags` stays a list of strings. Zone rows are per instance: `multiplier` says how many instances the zone stands
+for.
+
+The output schema lists the top-level fields only, to keep the tool listing small.
+
 The component decomposition comes from `SensibleHeatGainSummary`, which EnergyPlus computes only from weather-file run periods. After a design-day-only run, `cooling` and `heating` report `available: false`, `peak_w: null` and an `unavailable_reason`, and `flags` states the same. The design-day loads remain available in `sizing_cooling` and `sizing_heating`.
 
 ## `view_simulation_report`
@@ -99,17 +115,34 @@ Use this when you want a browsable report browser instead of pulling individual 
 
 Simulation data is also exposed via read-only MCP resources:
 
-- `idfkit://simulation/results`: structured summary of the latest run, including `sql_available`, `unmet_hours`, `end_uses`, `classified_warnings`, `qa_flags`, and any notes
+- `idfkit://simulation/results`: structured summary of the latest run, including `sql_available`, `unmet_hours`, `end_uses`, `classified_warnings`, `qa_flags`, `link_coverage`, and any notes
+- `idfkit://simulation/objects/{object_type}/{name}`: every result and message for one object, as [`get_object_results`](results.md)
 - `idfkit://simulation/peak-loads`: the same peak-load QA/QC analysis returned by `analyze_peak_loads`
 - `idfkit://simulation/report`: the full tabular simulation report as JSON
 - `ui://idfkit/peak-loads-viewer.html`: companion MCP Apps viewer for peak-load analysis
 - `ui://idfkit/report-viewer.html`: companion MCP Apps viewer for the full tabular report
+
+### Objects in `idfkit://simulation/results`
+
+For a run this server started in this session, the summary names the objects behind each warning and flag.
+No existing field changes.
+
+| Field | Content |
+|---|---|
+| `classified_warnings[].kind` | The message catalogue id, such as `zonehvac.max_iterations`, or `other` |
+| `classified_warnings[].affected_objects` | The objects the warning names, `{object_type, name}` in the model's spelling |
+| `qa_flags[].affected_objects` | `fatal_errors` and `severe_errors`: the objects their messages name. `high_unmet_hours` and `very_high_unmet_hours`: the zones with unmet hours, worst first. `convergence_warnings`: the objects the convergence warnings name. Otherwise empty |
+| `link_coverage` | How many result items of the run were linked to objects, and what was not, in the `coverage` shape of [`get_object_results`](results.md#coverage) |
+
+Without such a run (or without SQLite output), `link_coverage` is `null`, every `affected_objects` is empty, and
+`kind` still comes from the message catalogue. A warning is matched to its linked message by its first line.
 
 ## Simulation Workflow
 
 1. `download_weather_file` or provide `weather_file`
 2. `run_simulation`
 3. Read `idfkit://simulation/results` resource
+   - `get_object_results(object_type, name)` for every result and message of an object a flag names
 4. `list_output_variables(search=...)`
 5. `query_timeseries(variable_name=...)` or `export_timeseries(...)`
 6. `list_simulation_reports()` and `query_simulation_table(...)`, or `view_simulation_report()`

@@ -28,7 +28,7 @@ Built on [idfkit](https://github.com/idfkit/idfkit), it supports **EnergyPlus 8.
 
 ## Tools
 
-The server exposes **43 tools** across thirteen categories, plus **10 MCP resources** and **5 resource templates** for read-only data access:
+The server exposes **44 tools** across fourteen categories, plus **10 MCP resources** and **6 resource templates** for read-only data access:
 
 | Category | Tools | What they do |
 | --- | --- | --- |
@@ -39,6 +39,7 @@ The server exposes **43 tools** across thirteen categories, plus **10 MCP resour
 | **HVAC Topology** | 3 | Trace a node or component, summarise loops in flow order, and rename a node everywhere it is used |
 | **Model Graph** | 1 | Walk the neighbourhood of one object or node across references, flow, controls and loop membership |
 | **Simulation** | 8 | Run EnergyPlus, query variables and tabular reports, export time series, analyze peak loads, and view reports |
+| **Results** | 1 | Every result and warning of the last run for one object or node, linked to the model, with counts and freshness |
 | **Weather** | 2 | Search weather stations worldwide and download EPW/DDY files |
 | **Geometry** | 1 | Interactive 3D building geometry viewer (MCP Apps) |
 | **Schedules** | 1 | Interactive schedule heatmap viewer (MCP Apps) |

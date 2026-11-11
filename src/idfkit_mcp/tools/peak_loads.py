@@ -13,11 +13,14 @@ from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.compact_schema import compact_output_schema
 from idfkit_mcp.models import (
     DesignDaySizing,
     FacilityPeakSummary,
+    ObjectKey,
     PeakLoadAnalysisResult,
     PeakLoadComponent,
+    PeakLoadFlag,
     ZonePeakLoad,
 )
 from idfkit_mcp.peak_loads_viewer import PEAK_LOADS_VIEWER_HTML
@@ -355,9 +358,12 @@ def _generate_flags(  # noqa: C901
     sizing_cooling: list[DesignDaySizing],
     sizing_heating: list[DesignDaySizing],
     total_area: float,
-) -> list[str]:
-    """Generate QA/QC flags based on the analysis."""
-    flags: list[str] = []
+) -> list[PeakLoadFlag]:
+    """Generate QA/QC flags based on the analysis.
+
+    Facility-level flags concern no single object; a zone outlier flag names its zone (``ZonePeakLoad.object``).
+    """
+    flags = _FlagList()
 
     for label, summary in (("Cooling", cooling), ("Heating", heating)):
         if not summary.available:
@@ -443,10 +449,34 @@ def _generate_flags(  # noqa: C901
                 if z.peak_w_per_m2 is not None and z.peak_w_per_m2 > mean_peak * 2.5:
                     flags.append(
                         f"Zone '{z.zone_name}' cooling peak {z.peak_w_per_m2:.0f} W/m² is "
-                        f">{2.5:.0f}x the mean — check zone inputs."
+                        f">{2.5:.0f}x the mean — check zone inputs.",
+                        [z.object] if z.object is not None else [],
                     )
 
-    return flags
+    return flags.items
+
+
+class _FlagList:
+    """Collects flags with the objects each concerns."""
+
+    def __init__(self) -> None:
+        self.items: list[PeakLoadFlag] = []
+
+    def append(self, text: str, objects: list[ObjectKey] | None = None) -> None:
+        self.items.append(PeakLoadFlag(flag=text, affected_objects=objects or []))
+
+
+def _attach_zone_objects(summaries: list[FacilityPeakSummary]) -> None:
+    """Set each zone row's ``object`` to the model's Zone of that name, in the model's spelling."""
+    doc = get_state().document
+    if doc is None or "Zone" not in doc:
+        return
+    zones = {zone.name.upper(): zone.name for zone in doc["Zone"]}
+    for summary in summaries:
+        for row in summary.zones:
+            name = zones.get(row.zone_name.upper())
+            if name is not None:
+                row.object = ObjectKey(object_type="Zone", name=name)
 
 
 def _parse_hour(timestamp: str | None) -> int | None:
@@ -479,7 +509,8 @@ def build_peak_load_analysis() -> PeakLoadAnalysisResult:
         sizing_cooling = _parse_sizing(sql, "Zone Sensible Cooling", zone_areas)
         sizing_heating = _parse_sizing(sql, "Zone Sensible Heating", zone_areas)
 
-    flags = _generate_flags(cooling, heating, sizing_cooling, sizing_heating, total_area)
+    _attach_zone_objects([cooling, heating])
+    flag_details = _generate_flags(cooling, heating, sizing_cooling, sizing_heating, total_area)
 
     return PeakLoadAnalysisResult(
         cooling=cooling,
@@ -487,7 +518,8 @@ def build_peak_load_analysis() -> PeakLoadAnalysisResult:
         sizing_cooling=sizing_cooling,
         sizing_heating=sizing_heating,
         total_floor_area_m2=round(total_area, 2),
-        flags=flags,
+        flags=[f.flag for f in flag_details],
+        flag_details=flag_details,
     )
 
 
@@ -498,6 +530,9 @@ def build_peak_load_analysis() -> PeakLoadAnalysisResult:
 
 @tool(
     annotations=_READ_ONLY,
+    # Compact like the graph tools' (R-12): the full schema inlines ZonePeakLoad twice and cost about
+    # 1,150 listing tokens; docs/tools/simulation.md gives the full shape.
+    output_schema=compact_output_schema(PeakLoadAnalysisResult),
     meta={
         "ui": app_config_to_meta_dict(
             AppConfig(

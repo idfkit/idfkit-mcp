@@ -1,6 +1,6 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **43 tools** in thirteen categories, plus **15 MCP resources** (10 fixed URIs and 5 URI templates) for read-only data access.
+`idfkit-mcp` exposes **44 tools** in fourteen categories, plus **16 MCP resources** (10 fixed URIs and 6 URI templates) for read-only data access.
 
 ## Categories
 
@@ -11,6 +11,7 @@
 - HVAC topology: 3 tools
 - Model graph: 1 tool
 - Simulation: 8 tools
+- Results: 1 tool
 - Geometry: 1 tool
 - Schedules: 1 tool
 - Weather: 2 tools
@@ -56,6 +57,7 @@
 | Simulation | `export_timeseries` | Export time series data to CSV |
 | Simulation | `analyze_peak_loads` | Analyze peak heating/cooling load breakdowns and QA flags |
 | Simulation | `view_simulation_report` | Browse the full tabular simulation report in an MCP Apps viewer |
+| Results | `get_object_results` | Every result and message of the last run for one object or node: facts, linked warnings with counts, recorded variables, neighbours |
 | Weather | `search_weather_stations` | Find weather stations |
 | Weather | `download_weather_file` | Download EPW/DDY and cache path |
 | Geometry | `view_geometry` | Interactive 3D building geometry viewer (MCP Apps) |
@@ -80,6 +82,7 @@ Read-only data is available via MCP resources without making tool calls:
 | `idfkit://docs/{object_type}` | Documentation URLs for an object type |
 | `idfkit://simulation/results` | Structured QA diagnostics from the most recent simulation |
 | `idfkit://simulation/peak-loads` | Peak heating/cooling load decomposition and QA analysis |
+| `idfkit://simulation/objects/{object_type}/{name}` | One object's linked results, as `get_object_results` |
 | `idfkit://simulation/report` | Full tabular simulation report as JSON |
 | `idfkit://migration/report` | Per-step stdout/stderr, structural diff, and versions for the last `migrate_model` run |
 | `ui://idfkit/geometry-viewer.html` | Interactive Three.js geometry viewer (MCP Apps) |

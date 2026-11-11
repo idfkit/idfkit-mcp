@@ -25,12 +25,18 @@ from idfkit import LATEST_VERSION, IDFDocument, get_schema
 if TYPE_CHECKING:
     from idfkit.migration import MigrationReport
     from idfkit.schema import EpJSONSchema
+    from idfkit.simulation import ResultIndex
     from idfkit.simulation.result import SimulationResult
     from idfkit.weather.index import StationIndex
 
 logger = logging.getLogger("idfkit_mcp")
 
 DOCS_BASE_URL = "https://docs.idfkit.com"
+
+NO_SIMULATION_RUN = "No simulation run in this session; run `run_simulation` first."
+"""FR-019: results linked to objects exist only for runs this server started."""
+
+ResultsState = Literal["fresh", "stale"]
 
 # ---------------------------------------------------------------------------
 # Per-session state registry
@@ -225,10 +231,23 @@ class ServerState:
     """SHA-256 of the IDF text written for the session's last run."""
     simulation_run_dir: str | None = None
     """Run directory of the session's last simulation, so linking can resume after a restart."""
+    simulation_run_revision: int | None = None
+    """``doc.revision`` of the document the session's last run simulated.
+
+    Not persisted: a revision counts the edits of one in-memory document, so a document
+    restored after a restart has its own count, and an equal number would mean nothing.
+    A restored session has ``None`` here and earns freshness only through the model hash.
+    """
     station_index: StationIndex | None = None
     docs_index: list[dict[str, object]] | None = None
     docs_version: str | None = None
     docs_separator: str | None = None
+
+    # The document the last run simulated, the model hash per (document, revision) already
+    # computed, and the session's result index with the run identity it was built for.
+    _run_document: IDFDocument[Literal[True]] | None = dataclasses.field(default=None, repr=False)
+    _hash_seen: tuple[int, int, str] | None = dataclasses.field(default=None, repr=False)
+    _result_index: tuple[tuple[object, ...], ResultIndex] | None = dataclasses.field(default=None, repr=False)
 
     # Session persistence control (disabled for HTTP sessions)
     persistence_enabled: bool = True
@@ -371,6 +390,134 @@ class ServerState:
             msg = "No simulation results available. Use run_simulation first."
             raise RuntimeError(msg)
         return self.simulation_result
+
+    # ------------------------------------------------------------------
+    # Simulation run identity and the linked results (FR-019, FR-026)
+    # ------------------------------------------------------------------
+
+    def record_simulation(
+        self, doc: IDFDocument[Literal[True]], result: SimulationResult, *, run_revision: int, model_hash: str
+    ) -> None:
+        """Record a run this server started: its result, the revision and model hash it simulated, its directory.
+
+        Args:
+            doc: The session document that was simulated.
+            result: The run.
+            run_revision: ``doc.revision`` when the model text was written for EnergyPlus.
+            model_hash: SHA-256 of that model text (:func:`idfkit_mcp.tools.simulation.model_text_hash`).
+        """
+        self.simulation_result = result
+        self.simulation_run_revision = run_revision
+        self.simulation_model_hash = model_hash
+        self.simulation_run_dir = str(result.run_dir.resolve())
+        self._run_document = doc
+        self._hash_seen = (id(doc), run_revision, model_hash)
+        self._result_index = None
+
+    def forget_simulation(self) -> None:
+        """Drop the last run: a new model was loaded or created, so the run says nothing about it."""
+        self.simulation_result = None
+        self.simulation_run_revision = None
+        self.simulation_model_hash = None
+        self.simulation_run_dir = None
+        self._run_document = None
+        self._hash_seen = None
+        self._result_index = None
+
+    def _current_hash(self, doc: IDFDocument[Literal[True]]) -> str:
+        """The model hash of *doc* as it is now, computed at most once per document revision."""
+        seen = self._hash_seen
+        if seen is not None and seen[0] == id(doc) and seen[1] == doc.revision:
+            return seen[2]
+        from idfkit_mcp.tools.simulation import model_text_hash
+
+        digest = model_text_hash(doc)
+        self._hash_seen = (id(doc), doc.revision, digest)
+        return digest
+
+    def _adopt_document(self, doc: IDFDocument[Literal[True]]) -> None:
+        """Decide whether *doc*, which is not the document the run simulated, is still that model.
+
+        This happens after a restart (the document was restored from its file) or after
+        ``migrate_model`` replaced the document. Only the model hash can tell: when the run's
+        hash is recorded and equals the hash of *doc* now, *doc* is the simulated model and its
+        current revision becomes the run revision. Otherwise the run revision stays as it was,
+        or ``None`` for a restored session, and the results are reported stale. Stale is the
+        safe answer when nothing proves the model unchanged.
+        """
+        self._run_document = doc
+        recorded = self.simulation_model_hash
+        if recorded is not None and self._current_hash(doc) == recorded:
+            self.simulation_run_revision = doc.revision
+        elif self.simulation_run_revision is not None and self.simulation_run_revision == doc.revision:
+            # Another document can carry the same revision number; it must not read as fresh.
+            self.simulation_run_revision = None
+
+    def require_results(self) -> tuple[ResultIndex, ResultsState]:
+        """Return the session's :class:`~idfkit.simulation.ResultIndex` and whether it is fresh.
+
+        The index is built lazily with :meth:`ResultIndex.build` on the first ask after a run
+        and kept for that run. ``"stale"`` means the model changed since the run (FR-026).
+
+        Raises:
+            ToolError: When this session has no simulation run (FR-019), or the run has no SQLite output.
+            RuntimeError: When no model is loaded.
+        """
+        from fastmcp.exceptions import ToolError
+
+        if self.simulation_result is None:
+            self._try_restore_session()
+        result = self.simulation_result
+        if result is None or self.simulation_run_dir is None:
+            raise ToolError(NO_SIMULATION_RUN)
+        doc = self.require_model()
+        if self._run_document is not doc:
+            self._adopt_document(doc)
+        # A restored session with no recorded run revision builds with -1, which no document
+        # revision equals, so its results always read stale (see _adopt_document).
+        run_revision = self.simulation_run_revision if self.simulation_run_revision is not None else -1
+        model_hash = self.simulation_model_hash or ""
+        index = self._build_index(doc, result, run_revision, model_hash)
+        # Hash only when the revision matches: a different revision is stale whatever the text.
+        current_hash = self._current_hash(doc) if doc.revision == index.run_revision and model_hash else None
+        fresh = index.is_fresh(doc, current_hash) and bool(model_hash)
+        return index, "fresh" if fresh else "stale"
+
+    def _build_index(
+        self, doc: IDFDocument[Literal[True]], result: SimulationResult, run_revision: int, model_hash: str
+    ) -> ResultIndex:
+        from fastmcp.exceptions import ToolError
+        from idfkit.simulation import ResultIndex
+        from idfkit.simulation.result import SimulationResult as SimResult
+
+        stamp: tuple[object, ...] = (id(doc), str(result.run_dir), run_revision, model_hash)
+        held = self._result_index
+        if held is not None and held[0] == stamp:
+            return held[1]
+        # Build from a private result handle: the session result's cached SQLite connection may
+        # belong to another worker thread, and this one is closed once the index holds what it read.
+        private = SimResult.from_directory(result.run_dir, output_prefix=result.output_prefix)
+        sql = private.sql
+        if sql is None:
+            msg = (
+                f"The last run in {result.run_dir} has no SQLite output, so its results cannot be linked to "
+                "objects. Run run_simulation again; it adds Output:SQLite."
+            )
+            raise ToolError(msg)
+        try:
+            index = ResultIndex.build(doc, private, run_revision=run_revision, run_model_hash=model_hash)
+        finally:
+            sql.close()
+        self._result_index = (stamp, index)
+        return index
+
+    def try_results(self) -> tuple[ResultIndex, ResultsState] | None:
+        """Like :meth:`require_results`, but ``None`` when results cannot be linked, for additive fields."""
+        try:
+            return self.require_results()
+        except Exception:
+            logger.debug("Result linking unavailable", exc_info=True)
+            return None
 
     # ------------------------------------------------------------------
     # Session persistence
@@ -516,8 +663,7 @@ class ServerState:
         self.simulation_result = None
         self.migration_report = None
         self.weather_file = None
-        self.simulation_model_hash = None
-        self.simulation_run_dir = None
+        self.forget_simulation()
         self.change_log.clear()
         self._session_restored = False
 

@@ -91,10 +91,17 @@ well as what it names.
 
 ### The results layer
 
-The results layer, with `result_fact` and `message` nodes and `result_link` edges, is not available yet.
-`unavailable` says why: `"results": "no simulation run in this session"` before a run, and
-`"results": "results are not linked to objects in this release"` after one. Those kinds are accepted as
-filters and return nothing. A missing layer is never an error.
+After a `run_simulation` in this session, the walk also reaches the run's results: `result_fact` nodes
+(one reported value, with `metric`, `value`, `units`, `source`, `where` and, for zones, `multiplier`) and
+`message` nodes (one warning, severe or fatal message, with `severity`, `message_kind`, `text`,
+`occurrences` and `first_seen`), each joined to its object or node by a `result_link` edge carrying the
+link's `confidence` and `rule`. An object can carry well over a hundred facts: pass
+`node_kinds=["result_fact"]` or `["message"]` to walk only those. `results_state` is `fresh`, or `stale`
+when the model changed since the run; stale results are still returned, with `stale: true` on each node.
+
+Without results, `unavailable` says why: `"results": "no simulation run in this session"` before a run,
+and `"results": "the session's run could not be linked to the model (no SQLite output)"` when the run
+wrote no SQLite file. A missing layer is never an error.
 
 ### Size and continuation
 
@@ -193,6 +200,7 @@ Each tool's description names the tool closest to it and when to use that one in
 | `trace_hvac` | `get_object_neighbourhood` | you need loop, side, branch, position and controls of one node or component |
 | `get_hvac_topology` | `trace_hvac` | you need a whole loop, or every loop, in flow order |
 | `rename_node` | `rename_object` | the name is a node name, not an object name |
+| `get_object_results` | `get_object_neighbourhood` | you need every result and message for one object, with counts |
 | `get_object_neighbourhood` | `trace_hvac` | you need to cross layers, or the object has no node fields |
 
 `trace_hvac` interprets the topology for you; `get_object_neighbourhood` returns the raw graph, references

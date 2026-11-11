@@ -66,7 +66,7 @@ def new_model(
     state.document = doc
     state.schema = doc.schema
     state.file_path = None
-    state.simulation_result = None
+    state.forget_simulation()
 
     logger.info("Created new model (version=%s)", version_string(ver))
     return NewModelResult(status="created", version=version_string(ver))

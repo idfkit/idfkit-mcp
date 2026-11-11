@@ -155,7 +155,7 @@ sequenceDiagram
     Client->>Server: load_model("office.idf")
     Server->>Disk: Save session state
     Client->>Server: run_simulation(...)
-    Server->>Disk: Save session state (+ sim_dir)
+    Server->>Disk: Save session state (+ sim_dir, model hash)
 
     Client->>Server: clear_session()
     Server->>Disk: Delete session file
@@ -224,6 +224,10 @@ graph TB
         E6[view_simulation_report]
         E7[analyze_peak_loads]
         E8[export_timeseries]
+    end
+
+    subgraph Results
+        R1[get_object_results]
     end
 
     subgraph Weather

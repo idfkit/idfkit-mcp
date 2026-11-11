@@ -29,6 +29,7 @@ nav:
     - HVAC Topology Tools: tools/hvac-topology.md
     - Model Graph Tool: tools/graph.md
     - Simulation Tools: tools/simulation.md
+    - Results Tool: tools/results.md
     - Weather Tools: tools/weather.md
     - Documentation Tools: tools/docs.md
 

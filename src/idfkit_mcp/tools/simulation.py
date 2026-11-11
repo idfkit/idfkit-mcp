@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from sqlite3 import OperationalError
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastmcp import Context
 from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
@@ -14,6 +15,7 @@ from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from fastmcp.tools.base import ToolResult
 from idfkit import IDFDocument
+from idfkit.simulation import ObjectKey
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -36,6 +38,11 @@ from idfkit_mcp.models import (
 )
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
+from idfkit_mcp.tools.results import affected, message_objects
+from idfkit_mcp.tools.topology import coverage_model
+
+if TYPE_CHECKING:
+    from idfkit.simulation import LinkedMessage, ResultIndex
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +203,31 @@ def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
     logger.info("Added missing summary reports: %s", sorted(missing))
 
 
+def prepare_for_energyplus(doc: IDFDocument[Literal[True]]) -> IDFDocument[Literal[True]]:
+    """A copy of *doc* with the pre-flight outputs ``run_simulation`` adds; *doc* is not changed."""
+    sim_doc = doc.copy()
+    _ensure_sqlite_output(sim_doc)
+    _ensure_summary_reports(sim_doc)
+    return sim_doc
+
+
+def _text_hash(sim_doc: IDFDocument[Literal[True]]) -> str:
+    from idfkit import write_idf
+
+    return hashlib.sha256(write_idf(sim_doc).encode("utf-8")).hexdigest()
+
+
+def model_text_hash(doc: IDFDocument[Literal[True]]) -> str:
+    """SHA-256 of the IDF text ``run_simulation`` would write for EnergyPlus from *doc* as it is now.
+
+    This is the session's ``simulation_model_hash`` (data-model "Session state"): the text of the
+    pre-flighted copy, so a run and a later check of the same model give the same hash. It costs a
+    copy and a write of the model (about 0.3 s on the largest example model), so the session computes
+    it once per document revision and only when the revision alone cannot decide freshness.
+    """
+    return _text_hash(prepare_for_energyplus(doc))
+
+
 def _resolve_simulation_output_dir(explicit: str | None, session_id: str) -> str | None:
     """Resolve the EnergyPlus run directory.
 
@@ -276,9 +308,11 @@ async def run_simulation(
 
         # Simulate on a copy so pre-flight injections (Output:SQLite,
         # Output:Table:SummaryReports) do not mutate the user's loaded model.
-        sim_doc = doc.copy()
-        _ensure_sqlite_output(sim_doc)
-        _ensure_summary_reports(sim_doc)
+        # The run's identity is the revision and the hash of the text written for EnergyPlus,
+        # both taken before any await so that they describe the copy that runs.
+        run_revision = doc.revision
+        sim_doc = prepare_for_energyplus(doc)
+        model_hash = _text_hash(sim_doc)
 
         config = find_energyplus(path=energyplus_dir, version=energyplus_version)
         resolved_output_dir = _resolve_simulation_output_dir(output_directory, state.session_id)
@@ -309,7 +343,7 @@ async def run_simulation(
                 on_progress=_build_progress_handler(ctx),
             )
 
-        state.simulation_result = result
+        state.record_simulation(doc, result, run_revision=run_revision, model_hash=model_hash)
         state.save_session()
 
         if result.success:
@@ -376,8 +410,48 @@ def _try_float(s: str) -> float | None:
         return None
 
 
-def _classify_warnings(errors: Any) -> list[ClassifiedWarning]:
-    """Classify simulation warnings from the .err file by domain category."""
+def _message_text_key(text: str) -> str:
+    """Compare message text from the ERR file and from the SQL ``Errors`` table loosely."""
+    return " ".join(text.split()).upper()
+
+
+class _LinkedByText:
+    """The run's linked messages, found by the first ERR line of a message.
+
+    The SQL ``Errors`` table joins a message's ERR lines with two spaces, and a linked message's text is
+    the part before the first of them. A warning's first ERR line is cut the same way, and it matches
+    every linked message whose text starts with it.
+    """
+
+    def __init__(self, index: ResultIndex | None) -> None:
+        pairs = [(_message_text_key(m.text), m) for m in index.messages] if index is not None else []
+        pairs.sort(key=lambda pair: pair[0])
+        self._keys = [key for key, _ in pairs]
+        self._messages = [message for _, message in pairs]
+
+    def find(self, first_line: str) -> list[LinkedMessage]:
+        import bisect
+
+        key = _message_text_key(first_line.split("  ", 1)[0])
+        if not key:
+            return []
+        found: list[LinkedMessage] = []
+        at = bisect.bisect_left(self._keys, key)
+        while at < len(self._keys) and self._keys[at].startswith(key):
+            found.append(self._messages[at])
+            at += 1
+        return found
+
+
+def _classify_warnings(errors: Any, index: ResultIndex | None = None) -> list[ClassifiedWarning]:
+    """Classify simulation warnings from the .err file by domain category, catalogue kind and named objects.
+
+    ``kind`` and ``affected_objects`` come from the run's linked message with the same first line when
+    results are linked; otherwise ``kind`` comes from the message catalogue and no objects are named.
+    """
+    from idfkit.simulation import classify_message
+
+    linked = _LinkedByText(index)
     classified: list[ClassifiedWarning] = []
     for msg in errors.warnings:
         text = (msg.message + " " + " ".join(msg.details)).lower()
@@ -386,7 +460,21 @@ def _classify_warnings(errors: Any) -> list[ClassifiedWarning]:
             if any(kw in text for kw in keywords):
                 category = cat
                 break
-        classified.append(ClassifiedWarning(category=category, message=msg.message, details=list(msg.details)))
+        matches = linked.find(msg.message)
+        if matches:
+            kind = matches[0].kind
+        else:
+            found, _ = classify_message(" ".join([msg.message, *msg.details]))
+            kind = found.kind if found is not None else "other"
+        classified.append(
+            ClassifiedWarning(
+                category=category,
+                message=msg.message,
+                details=list(msg.details),
+                kind=kind,
+                affected_objects=message_objects(matches),
+            )
+        )
     return classified
 
 
@@ -458,9 +546,17 @@ def _build_qa_flags(
     total_unmet_cooling: float,
     classified: list[ClassifiedWarning],
     sql_available: bool,
+    index: ResultIndex | None = None,
+    unmet_zones: list[ObjectKey] | None = None,
 ) -> list[SimulationQAFlag]:
-    """Derive high-level QA flags from simulation diagnostics."""
+    """Derive high-level QA flags from simulation diagnostics.
+
+    With linked results (*index*), each flag lists the objects it concerns: the objects named by the
+    fatal or severe messages, the zones with unmet hours (*unmet_zones*, worst first) or the objects
+    named by the convergence warnings.
+    """
     flags: list[SimulationQAFlag] = []
+    messages = index.messages if index is not None else ()
 
     if errors.has_fatal:
         flags.append(
@@ -468,6 +564,7 @@ def _build_qa_flags(
                 severity="critical",
                 flag="fatal_errors",
                 message=f"{errors.fatal_count} fatal error(s) — model did not simulate. Fix before proceeding.",
+                affected_objects=message_objects(x for x in messages if x.severity == "fatal"),
             )
         )
     if errors.has_severe:
@@ -476,6 +573,7 @@ def _build_qa_flags(
                 severity="warning",
                 flag="severe_errors",
                 message=f"{errors.severe_count} severe error(s) — results may be unreliable.",
+                affected_objects=message_objects(x for x in messages if x.severity == "severe"),
             )
         )
 
@@ -486,6 +584,7 @@ def _build_qa_flags(
                 severity="critical",
                 flag="very_high_unmet_hours",
                 message=f"{total_unmet:.0f} total unmet hours — HVAC system is severely undersized or misconfigured.",
+                affected_objects=affected(unmet_zones or []),
             )
         )
     elif total_unmet > 300:
@@ -494,16 +593,19 @@ def _build_qa_flags(
                 severity="warning",
                 flag="high_unmet_hours",
                 message=f"{total_unmet:.0f} total unmet hours — review HVAC sizing and thermostat setpoints.",
+                affected_objects=affected(unmet_zones or []),
             )
         )
 
-    convergence_count = sum(1 for w in classified if w.category == "convergence")
-    if convergence_count > 0:
+    convergence = [w for w in classified if w.category == "convergence"]
+    if convergence:
+        objects = {(k.object_type, k.name): k for w in convergence for k in w.affected_objects}
         flags.append(
             SimulationQAFlag(
                 severity="warning",
                 flag="convergence_warnings",
-                message=f"{convergence_count} convergence warning(s) — check HVAC controls and timestep.",
+                message=f"{len(convergence)} convergence warning(s) — check HVAC controls and timestep.",
+                affected_objects=list(objects.values()),
             )
         )
 
@@ -519,6 +621,17 @@ def _build_qa_flags(
     return flags
 
 
+def _unmet_zones(doc: IDFDocument[Any] | None, rows: list[UnmetHoursRow]) -> list[ObjectKey]:
+    """Zones with unmet hours, worst first, in the model's spelling; rows naming no model zone are left out."""
+    if doc is None or "Zone" not in doc:
+        return []
+    zones = {zone.name.upper(): zone.name for zone in doc["Zone"]}
+    worst = sorted(
+        (r for r in rows if r.heating_hours + r.cooling_hours > 0), key=lambda r: -(r.heating_hours + r.cooling_hours)
+    )
+    return [ObjectKey("Zone", zones[r.zone.upper()]) for r in worst if r.zone.upper() in zones]
+
+
 def get_results_summary() -> GetResultsSummaryResult:
     """Build results summary with QA diagnostics from the last simulation.
 
@@ -532,7 +645,11 @@ def get_results_summary() -> GetResultsSummaryResult:
     fatal_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.fatal]
     severe_msgs = [{"message": m.message, "details": list(m.details)} for m in errors.severe[:10]]
 
-    classified = _classify_warnings(errors)
+    # Results linked to objects exist only for a run this session started (FR-019); without one the
+    # new fields stay empty and every existing field is computed as before.
+    linked = state.try_results()
+    index = linked[0] if linked is not None else None
+    classified = _classify_warnings(errors, index)
 
     # --- SQL-based diagnostics (defensive: degrade gracefully if SQL unavailable) ---
     sql_available = False
@@ -561,7 +678,10 @@ def get_results_summary() -> GetResultsSummaryResult:
     else:
         notes.append("No SQL output file. Add Output:SQLite to the model for energy diagnostics.")
 
-    qa_flags = _build_qa_flags(errors, total_unmet_heating, total_unmet_cooling, classified, sql_available)
+    unmet_zones = _unmet_zones(state.document, unmet_hours) if index is not None else []
+    qa_flags = _build_qa_flags(
+        errors, total_unmet_heating, total_unmet_cooling, classified, sql_available, index, unmet_zones
+    )
 
     return GetResultsSummaryResult.model_validate({
         "success": result.success,
@@ -583,6 +703,7 @@ def get_results_summary() -> GetResultsSummaryResult:
         "classified_warnings": [w.model_dump() for w in classified] if classified else None,
         "qa_flags": [f.model_dump() for f in qa_flags] if qa_flags else None,
         "notes": notes if notes else None,
+        "link_coverage": coverage_model(index.coverage) if index is not None else None,
     })
 
 

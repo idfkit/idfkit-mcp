@@ -403,6 +403,8 @@ class ClassifiedWarning(BaseModel):
     category: str  # "convergence" | "geometry" | "unusual_value" | "hvac" | "other"
     message: str
     details: list[str]
+    kind: str = "other"  # message catalogue id (idfkit.simulation.MESSAGE_KINDS), or "other"
+    affected_objects: list[ObjectKey] = []  # objects the message names, model spelling
 
 
 class SimulationQAFlag(BaseModel):
@@ -411,6 +413,7 @@ class SimulationQAFlag(BaseModel):
     severity: str  # "info" | "warning" | "critical"
     flag: str
     message: str
+    affected_objects: list[ObjectKey] = []  # objects the flag concerns, model spelling
 
 
 # ---------------------------------------------------------------------------
@@ -486,6 +489,7 @@ class GetResultsSummaryResult(BaseModel):
     classified_warnings: list[ClassifiedWarning] | None = None
     qa_flags: list[SimulationQAFlag] | None = None
     notes: list[str] | None = None
+    link_coverage: Coverage | None = None  # result linking; None without a run of this session with SQLite output
 
 
 class OutputVariableEntry(BaseModel):
@@ -658,6 +662,7 @@ class ZonePeakLoad(BaseModel):
     multiplier: int = 1
     peak_timestamp: str | None = None
     components: list[PeakLoadComponent] = []
+    object: ObjectKey | None = None  # the Zone in the model's spelling; None when the model has no such zone
 
 
 class FacilityPeakSummary(BaseModel):
@@ -687,6 +692,13 @@ class DesignDaySizing(BaseModel):
     peak_timestamp: str | None = None
 
 
+class PeakLoadFlag(BaseModel):
+    """One peak-load flag with the objects it concerns; ``flag`` is the same text as in ``flags``."""
+
+    flag: str
+    affected_objects: list[ObjectKey] = []
+
+
 class PeakLoadAnalysisResult(BaseModel):
     """Complete peak load QA/QC analysis."""
 
@@ -696,6 +708,7 @@ class PeakLoadAnalysisResult(BaseModel):
     sizing_heating: list[DesignDaySizing] = []
     total_floor_area_m2: float
     flags: list[str] = []
+    flag_details: list[PeakLoadFlag] = []  # one per entry of flags, same order, with affected_objects
 
 
 # ---------------------------------------------------------------------------
@@ -985,3 +998,90 @@ class ObjectNeighbourhood(BaseModel):
     frontier: list[str]  # returned ids with neighbours not returned; start a new call from one
     results_state: Literal["fresh", "stale"] | None = None
     coverage: Coverage
+
+
+# ---------------------------------------------------------------------------
+# Results linked to objects (idfkit.simulation.linking mirrors)
+# ---------------------------------------------------------------------------
+
+
+class Resolution(BaseModel):
+    """How a raw result key was linked: the object (None if unresolved), the rule and its confidence."""
+
+    key: ObjectKey | None
+    rule: str
+    confidence: Literal["exact", "typed", "convention", "weak"]
+    via: list[ObjectKey] = []
+
+
+class ResultFact(BaseModel):
+    """One value EnergyPlus reported for an object; zone facts carry the zone multiplier (per-instance values)."""
+
+    source: Literal["sizing", "tabular", "timeseries_stat"]
+    metric: str
+    value: float | str | None
+    units: str | None = None
+    where: str  # Report/Table/Row/Column, or ComponentSizes#<id>
+    multiplier: int | None = None
+
+
+class LinkedMessage(BaseModel):
+    """An EnergyPlus warning or error naming the object, one per kind, occurrences summed."""
+
+    severity: Literal["info", "warning", "severe", "fatal"]
+    kind: str
+    text: str
+    objects: list[Resolution]
+    occurrences: int
+    first_seen: str | None = None
+
+
+class ObjectNeighbour(BaseModel):
+    """An object or node one hop away, with its first result fact."""
+
+    object: ObjectKey
+    top_fact: ResultFact | None = None
+
+
+class FactPage(BaseModel):
+    """Bounded list of facts."""
+
+    items: list[ResultFact]
+    total: int
+    omitted: int
+
+
+class MessagePage(BaseModel):
+    """Bounded list of linked messages."""
+
+    items: list[LinkedMessage]
+    total: int
+    omitted: int
+
+
+class VariablePage(BaseModel):
+    """Bounded list of output variable names recorded for the object."""
+
+    items: list[str]
+    total: int
+    omitted: int
+
+
+class NeighbourPage(BaseModel):
+    """Bounded list of neighbours."""
+
+    items: list[ObjectNeighbour]
+    total: int
+    omitted: int
+
+
+class ObjectResults(BaseModel):
+    """Response from ``get_object_results`` and ``idfkit://simulation/objects/{type}/{name}``."""
+
+    object: ObjectKey
+    facts: FactPage
+    messages: MessagePage
+    available_variables: VariablePage
+    neighbours: NeighbourPage
+    coverage: Coverage
+    results_state: Literal["fresh", "stale"]

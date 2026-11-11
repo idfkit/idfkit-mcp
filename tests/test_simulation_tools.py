@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +14,8 @@ from idfkit.simulation.result import SimulationResult
 
 from idfkit_mcp.models import ListOutputVariablesResult
 from idfkit_mcp.state import ServerState
-from tests.conftest import call_tool
+from tests.conftest import call_tool, read_resource_json
+from tests.linked_runs import install_run
 
 
 class TestResolveSimulationOutputDir:
@@ -488,3 +490,102 @@ class TestEnsureSummaryReports:
         obj = doc["Output:Table:SummaryReports"].first()
         # Nothing appended beyond what's already there
         assert len(obj.reports) == len(_REQUIRED_SUMMARY_REPORTS)
+
+
+class TestRunIdentity:
+    """run_simulation records what it ran: the revision, the hash of the text written, the run directory (T088)."""
+
+    async def test_records_revision_hash_and_run_dir(
+        self, client: object, state_with_model: ServerState, tmp_path: Path
+    ) -> None:
+        from idfkit_mcp.tools.simulation import model_text_hash
+
+        fake_config = SimpleNamespace(
+            version=(25, 2, 0), install_dir=Path("/fake/energyplus"), executable=Path("/fake/energyplus/energyplus")
+        )
+        fake_errors = SimpleNamespace(
+            fatal_count=0, severe_count=0, warning_count=0, has_fatal=False, has_severe=False, simulation_complete=True
+        )
+        run_dir = tmp_path / "fake-run"
+        run_dir.mkdir()
+        fake_result = SimpleNamespace(success=True, runtime_seconds=0.1, run_dir=run_dir, errors=fake_errors)
+        written: list[str] = []
+
+        async def _fake_simulate(doc: object, **_kwargs: object) -> object:
+            from idfkit import write_idf
+
+            written.append(write_idf(doc))  # type: ignore[arg-type]
+            return fake_result
+
+        doc = state_with_model.require_model()
+        with (
+            patch("idfkit.simulation.config.find_energyplus", return_value=fake_config),
+            patch("idfkit.simulation.async_simulate", side_effect=_fake_simulate),
+        ):
+            await call_tool(client, "run_simulation", {"design_day": True})
+
+        import hashlib
+
+        assert state_with_model.simulation_run_revision == doc.revision
+        assert state_with_model.simulation_model_hash == hashlib.sha256(written[0].encode("utf-8")).hexdigest()
+        assert state_with_model.simulation_model_hash == model_text_hash(doc)
+        assert state_with_model.simulation_run_dir == str(run_dir.resolve())
+        assert "Output:SQLite" not in doc  # the hash covers the pre-flighted copy, never the session model
+
+
+def _without_new_fields(summary: dict[str, Any]) -> dict[str, Any]:
+    old = {k: v for k, v in summary.items() if k != "link_coverage"}
+    for key, new in (("classified_warnings", ("kind", "affected_objects")), ("qa_flags", ("affected_objects",))):
+        if old.get(key):
+            old[key] = [{k: v for k, v in item.items() if k not in new} for item in old[key]]
+    return old
+
+
+class TestResultsSummaryLinked:
+    """idfkit://simulation/results gains kind, affected_objects and link_coverage, changing no field (T089)."""
+
+    async def test_new_fields_from_linked_results(self, client: object, tmp_path: Path) -> None:
+        install_run("5ZoneAirCooled", tmp_path)
+        summary = await read_resource_json(client, "idfkit://simulation/results")  # type: ignore[arg-type]
+
+        assert summary["link_coverage"] == {"partial": False, "uncovered": [], "resolved": 678, "unresolved": 0}
+        (warning,) = summary["classified_warnings"]
+        assert warning["kind"] == "sizing.system_flow_ratio"
+        assert warning["affected_objects"] == [{"object_type": "AirLoopHVAC", "name": "VAV Sys 1"}]
+        (flag,) = [f for f in summary["qa_flags"] if f["flag"] == "high_unmet_hours"]
+        zones = flag["affected_objects"]
+        assert {z["object_type"] for z in zones} == {"Zone"}
+        assert {z["name"] for z in zones} == {
+            r["zone"] for r in summary["unmet_hours"] if r["heating_hours"] + r["cooling_hours"] > 0
+        }
+
+    async def test_convergence_flag_names_the_units(self, client: object, tmp_path: Path) -> None:
+        install_run("MultiStory", tmp_path)
+        summary = await read_resource_json(client, "idfkit://simulation/results")  # type: ignore[arg-type]
+        (flag,) = [f for f in summary["qa_flags"] if f["flag"] == "convergence_warnings"]
+        assert {"object_type": "ZoneHVAC:WindowAirConditioner", "name": "Gnd West Window AC"} in flag[
+            "affected_objects"
+        ]
+        kinds = {w["kind"] for w in summary["classified_warnings"]}
+        assert {"zonehvac.max_iterations", "dxcoil.low_outlet_temp", "surface.shadowing"} <= kinds
+
+    async def test_existing_fields_unchanged(self, client: object, tmp_path: Path) -> None:
+        """The same run read with and without linking differs only in the new fields."""
+        state = install_run("MultiStory", tmp_path)
+        linked = await read_resource_json(client, "idfkit://simulation/results")  # type: ignore[arg-type]
+        state.simulation_run_dir = None  # no run identity: results cannot be linked (FR-019)
+        state.simulation_model_hash = None
+        unlinked = await read_resource_json(client, "idfkit://simulation/results")  # type: ignore[arg-type]
+
+        assert unlinked["link_coverage"] is None
+        assert all(f["affected_objects"] == [] for f in unlinked["qa_flags"])
+        assert all(w["affected_objects"] == [] for w in unlinked["classified_warnings"])
+        assert _without_new_fields(linked) == _without_new_fields(unlinked)
+        # Without linking, kind still comes from the message catalogue.
+        assert [w["kind"] for w in unlinked["classified_warnings"]] == [
+            w["kind"] for w in linked["classified_warnings"]
+        ]
+
+    async def test_summary_without_a_model(self, client: object, state_with_sql_only_simulation: ServerState) -> None:
+        summary = await read_resource_json(client, "idfkit://simulation/results")  # type: ignore[arg-type]
+        assert summary["link_coverage"] is None

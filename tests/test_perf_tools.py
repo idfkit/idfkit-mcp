@@ -292,3 +292,49 @@ async def test_get_object_neighbourhood_default_against_response_budget(
     if shrunk:
         assert sc["truncated"], "a walk cut below max_nodes must set truncated"
         assert sc["frontier"], "a cut walk must list the frontier to continue from"
+
+
+# ---------------------------------------------------------------------------
+# get_object_results (T094)
+# ---------------------------------------------------------------------------
+
+RESULT_STARTS = [
+    ("5ZoneAirCooled", {"object_type": "AirLoopHVAC", "name": "VAV Sys 1"}),
+    ("5ZoneAirCooled", {"object_type": "AirTerminal:SingleDuct:VAV:Reheat", "name": "SPACE1-1 VAV Reheat"}),
+    ("5ZoneAirCooled", {"object_type": "Zone", "name": "SPACE1-1"}),
+    ("MultiStory", {"object_type": "Zone", "name": "Mid Center Zone"}),
+    ("MultiStory", {"object_type": "ZoneHVAC:WindowAirConditioner", "name": "Gnd West Window AC"}),
+]
+"""The largest default answers of the committed linked runs: the air loop (104 facts, 20+ neighbours), a reheat
+terminal, and zones with 218 to 262 facts. HospitalLowEnergy has no committed SQLite output, so these budgets are
+measured on the result-linking fixtures (``tests/linked_runs.py``), each installed as if ``run_simulation`` had
+just run it."""
+
+
+def _results_id(case: tuple[str, dict[str, Any]]) -> str:
+    return f"{case[0]}-{case[1]['object_type']}"
+
+
+@pytest.mark.parametrize("case", RESULT_STARTS, ids=_results_id)
+async def test_get_object_results_first_call_after_run(
+    client: Client[FastMCPTransport], tmp_path: Path, case: tuple[str, dict[str, Any]]
+) -> None:
+    """The first call after a run builds the result index and the topology view (contracts/mcp-tools.md)."""
+    from tests.linked_runs import install_run
+
+    install_run(case[0], tmp_path)
+    m = await assert_call_within_budget(client, "get_object_results", case[1], max_seconds=0.25)
+    assert m.result.structured_content["results_state"] == "fresh"
+
+
+@pytest.mark.parametrize("case", RESULT_STARTS, ids=_results_id)
+async def test_get_object_results_cached(
+    client: Client[FastMCPTransport], tmp_path: Path, case: tuple[str, dict[str, Any]]
+) -> None:
+    """Afterwards every answer takes 10 ms and fits 8 KB, at the default limit and at the largest."""
+    from tests.linked_runs import install_run
+
+    install_run(case[0], tmp_path)
+    await client.call_tool("get_object_results", case[1])
+    await assert_call_within_budget(client, "get_object_results", case[1], max_seconds=0.01, repeat=5)
+    await assert_call_within_budget(client, "get_object_results", {**case[1], "limit": 100}, max_seconds=0.01, repeat=5)

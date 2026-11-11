@@ -11,6 +11,7 @@ from idfkit.simulation.result import SimulationResult
 from idfkit_mcp.models import PeakLoadAnalysisResult
 from idfkit_mcp.state import ServerState, get_state
 from tests.conftest import call_tool
+from tests.linked_runs import install_run
 
 _COOLING_TABLE = "Peak Cooling Sensible Heat Gain Components"
 _HEATING_TABLE = "Peak Heating Sensible Heat Gain Components"
@@ -121,3 +122,50 @@ class TestAnalyzePeakLoads:
         assert result.cooling.peak_timestamp == "21-JUL-15:00"
         assert [z.zone_name for z in result.cooling.zones] == ["OFFICE"]
         assert not any("unavailable" in flag for flag in result.flags)
+
+
+class TestPeakLoadObjects:
+    """Zone rows gain ``object`` and flags gain ``affected_objects`` (via ``flag_details``), changing no field (T090)."""
+
+    async def test_zone_rows_carry_the_model_zone(self, client: object, tmp_path: Path) -> None:
+        install_run("MultiStory", tmp_path)
+        result = await call_tool(client, "analyze_peak_loads", model=PeakLoadAnalysisResult)
+
+        rows = {z.zone_name: z for z in result.cooling.zones}
+        center = rows["MID CENTER ZONE"]  # EnergyPlus upper-cases report rows
+        assert center.object is not None
+        assert center.object.model_dump() == {"object_type": "Zone", "name": "Mid Center Zone"}
+        assert center.multiplier == 32
+        assert all(z.object is not None and z.object.object_type == "Zone" for z in result.cooling.zones)
+
+    async def test_flag_details_follow_flags(self, client: object, tmp_path: Path) -> None:
+        install_run("MultiStory", tmp_path)
+        result = await call_tool(client, "analyze_peak_loads", model=PeakLoadAnalysisResult)
+
+        assert [d.flag for d in result.flag_details] == result.flags
+        (outlier,) = [d for d in result.flag_details if d.flag.startswith("Zone 'MID CENTER ZONE'")]
+        assert [k.model_dump() for k in outlier.affected_objects] == [
+            {"object_type": "Zone", "name": "Mid Center Zone"}
+        ]
+        facility = [d for d in result.flag_details if not d.flag.startswith("Zone '")]
+        assert all(d.affected_objects == [] for d in facility)
+
+    async def test_existing_fields_unchanged(self, client: object, tmp_path: Path) -> None:
+        """Without a model the zone objects are unknown; every other field is the same."""
+        state = install_run("MultiStory", tmp_path)
+        with_model = await call_tool(client, "analyze_peak_loads", model=PeakLoadAnalysisResult)
+        state.document = None
+        state._session_restored = True  # keep the session from reloading a model
+        without = await call_tool(client, "analyze_peak_loads", model=PeakLoadAnalysisResult)
+
+        assert all(z.object is None for z in without.cooling.zones + without.heating.zones)
+        assert all(d.affected_objects == [] for d in without.flag_details)
+        drop = {"cooling": {"zones": {"__all__": {"object"}}}, "heating": {"zones": {"__all__": {"object"}}}}
+        assert with_model.model_dump(exclude={**drop, "flag_details": True}) == without.model_dump(
+            exclude={**drop, "flag_details": True}
+        )
+
+    async def test_synthetic_run_without_model(self, client: object, weather_file_simulation: ServerState) -> None:
+        result = await call_tool(client, "analyze_peak_loads", model=PeakLoadAnalysisResult)
+        assert result.cooling.zones[0].object is None
+        assert [d.flag for d in result.flag_details] == result.flags

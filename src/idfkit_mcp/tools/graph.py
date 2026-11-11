@@ -14,7 +14,7 @@ from pydantic import Field
 
 from idfkit_mcp import models as m
 from idfkit_mcp.compact_schema import compact_output_schema
-from idfkit_mcp.state import get_state
+from idfkit_mcp.state import ResultsState, get_state
 from idfkit_mcp.tools.topology import RESPONSE_BYTES, closest, coverage_model, find_object, parse_categories
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -27,7 +27,7 @@ DEFAULT_NODES = 20
 """Measured on the reference model: about 20 nodes and their edges fit the 8 KB response budget (T124)."""
 _ENVELOPE_BYTES = 64
 _NO_RUN = "no simulation run in this session"
-_NOT_LINKED = "results are not linked to objects in this release"
+_NOT_LINKED = "the session's run could not be linked to the model (no SQLite output)"
 
 
 def _kinds(given: list[str] | None, vocabulary: tuple[str, ...], what: str) -> list[str] | None:
@@ -54,7 +54,7 @@ def _edge(edge: GraphEdge) -> m.GraphEdge:
     return m.GraphEdge(source=edge.source, target=edge.target, kind=edge.kind, key=edge.key, attrs=attrs)
 
 
-def _mirror(sub: Subgraph, *, simulated: bool) -> m.ObjectNeighbourhood:
+def _mirror(sub: Subgraph, *, simulated: bool, results_state: ResultsState | None = None) -> m.ObjectNeighbourhood:
     unavailable = {
         str(layer): (_NOT_LINKED if simulated else _NO_RUN) if layer == "results" else reason
         for layer, reason in sub.unavailable.items()
@@ -68,7 +68,7 @@ def _mirror(sub: Subgraph, *, simulated: bool) -> m.ObjectNeighbourhood:
         truncated=sub.truncated,
         omitted_nodes=sub.omitted_nodes,
         frontier=sub.frontier,
-        results_state=sub.results_state,
+        results_state=results_state if results_state is not None else sub.results_state,
         coverage=coverage_model(sub.coverage),
     )
 
@@ -105,7 +105,8 @@ def get_object_neighbourhood(
     max_nodes: Annotated[int, Field(description="Most nodes returned, 1-100.")] = DEFAULT_NODES,
 ) -> m.ObjectNeighbourhood:
     """Walk the model graph around one object or node, across layers: objects joined by references,
-    and fluid nodes joined to objects by flow, control and loop-membership edges.
+    fluid nodes joined to objects by flow, control and loop-membership edges, and, after a run in this
+    session, its result facts and messages joined to their objects by result_link edges.
 
     Nearest neighbours: trace_hvac, for one node or component's loop, side, branch, position and
     controls already interpreted; get_hvac_topology, for a whole loop in flow order. Use this one to
@@ -130,8 +131,14 @@ def get_object_neighbourhood(
         "categories": parse_categories(categories),
     }
     start = _start(doc, object_type, name)
-    sub = ModelGraph(doc).neighbourhood(start, max_nodes=max_nodes, **walk)
-    return fit(_mirror(sub, simulated=state.simulation_result is not None))
+    linked = state.try_results()
+    if linked is None:
+        sub = ModelGraph(doc).neighbourhood(start, max_nodes=max_nodes, **walk)
+        return fit(_mirror(sub, simulated=state.simulation_result is not None))
+    index, results_state = linked
+    sub = ModelGraph(doc, results=index).neighbourhood(start, max_nodes=max_nodes, **walk)
+    # The session's freshness also compares the model text hash, which the library view cannot see.
+    return fit(_mirror(sub, simulated=True, results_state=results_state))
 
 
 def _prefix(full: m.ObjectNeighbourhood, count: int) -> m.ObjectNeighbourhood:

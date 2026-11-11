@@ -16,6 +16,7 @@ from mcp.types import TextContent
 from idfkit_mcp.models import ObjectNeighbourhood
 from idfkit_mcp.state import get_state
 from tests.conftest import call_tool
+from tests.linked_runs import install_run
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FIVE_ZONE_GZ = FIXTURES / "5ZoneAirCooled.idf.gz"
@@ -202,13 +203,52 @@ class TestStarts:
         assert {n.kind for n in result.nodes} == {"object"}
         assert_closed(result)
 
-    async def test_results_unlinked_after_simulation(self, five_zone: Client[FastMCPTransport], tmp_path: Path) -> None:
+    async def test_results_unlinked_when_the_run_has_no_sqlite(
+        self, five_zone: Client[FastMCPTransport], tmp_path: Path
+    ) -> None:
         get_state().simulation_result = SimulationResult(
             run_dir=tmp_path, success=True, exit_code=0, stdout="", stderr="", runtime_seconds=0.1
         )
         result = await neighbourhood(five_zone, **TERMINAL)
         assert result.layers == ["model", "topology"]
-        assert result.unavailable == {"results": "results are not linked to objects in this release"}
+        assert result.unavailable == {
+            "results": "the session's run could not be linked to the model (no SQLite output)"
+        }
+
+    async def test_results_layer_after_a_linked_run(self, five_zone: Client[FastMCPTransport], tmp_path: Path) -> None:
+        install_run("5ZoneAirCooled", tmp_path, load=False)
+        result = await neighbourhood(
+            five_zone, object_type="AirLoopHVAC", name="VAV Sys 1", node_kinds=["result_fact", "message"], max_nodes=10
+        )
+        assert result.layers == ["model", "topology", "results"]
+        assert result.unavailable == {}
+        assert result.results_state == "fresh"
+        assert "result_fact" in {n.kind for n in result.nodes}
+        messages = await neighbourhood(
+            five_zone, object_type="AirLoopHVAC", name="VAV Sys 1", node_kinds=["message"], max_nodes=10
+        )
+        assert [n.attrs.get("message_kind") for n in messages.nodes if n.kind == "message"] == [
+            "sizing.system_flow_ratio"
+        ]
+        links = [e for e in result.edges if e.kind == "result_link"]
+        assert links
+        assert all(e.target == "object:AIRLOOPHVAC:VAV SYS 1" for e in links)
+        facts = [n for n in result.nodes if n.kind == "result_fact"]
+        assert all(n.attrs.get("stale") is False for n in facts)
+        assert_closed(result)
+
+    async def test_results_layer_reads_stale_after_an_edit(
+        self, five_zone: Client[FastMCPTransport], tmp_path: Path
+    ) -> None:
+        install_run("5ZoneAirCooled", tmp_path, load=False)
+        next(iter(get_state().require_model()["Zone"])).multiplier = 2
+        result = await neighbourhood(
+            five_zone, object_type="AirLoopHVAC", name="VAV Sys 1", node_kinds=["result_fact", "message"], max_nodes=10
+        )
+        assert result.results_state == "stale"
+        results = [n for n in result.nodes if n.kind in {"result_fact", "message"}]
+        assert results
+        assert all(n.attrs.get("stale") is True for n in results)
 
 
 class TestErrors:

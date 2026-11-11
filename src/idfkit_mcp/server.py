@@ -58,6 +58,7 @@ RESOURCES (read-only state, read any time):
   idfkit://docs/{type}                       — documentation URLs
   idfkit://simulation/results                — post-run QA diagnostics (primary QA signal)
   idfkit://simulation/peak-loads             — peak heating/cooling load decomposition
+  idfkit://simulation/objects/{type}/{name}  — one object's linked results (as get_object_results)
   idfkit://migration/report                  — last migrate_model run (per-step logs + diff)
 
 TIPS:

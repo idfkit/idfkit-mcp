@@ -82,7 +82,7 @@ def load_model(
     state.document = doc
     state.schema = doc.schema
     state.file_path = path
-    state.simulation_result = None
+    state.forget_simulation()
     state.save_session()
 
     logger.info("Loaded model %s (version=%s, objects=%d)", path, doc.version, len(list(doc.all_objects)))
@@ -157,7 +157,7 @@ def convert_osm_to_idf(
     state.document = doc
     state.schema = doc.schema
     state.file_path = out_path
-    state.simulation_result = None
+    state.forget_simulation()
     state.save_session()
     logger.info("Converted OSM %s -> %s", input_path, out_path)
 

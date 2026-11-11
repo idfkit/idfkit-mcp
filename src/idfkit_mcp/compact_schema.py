@@ -28,7 +28,7 @@ def _kind(prop: dict[str, Any]) -> dict[str, Any]:
         types: list[str] = []
         for alt in cast("list[dict[str, Any]]", prop["anyOf"]):
             reduced = _kind(alt)
-            kind = reduced.get("type")
+            kind = reduced.get("type") or _value_type(reduced)
             if isinstance(kind, str) and kind not in types:
                 types.append(kind)
         return {"type": types[0] if len(types) == 1 else types}
@@ -46,6 +46,18 @@ def _kind(prop: dict[str, Any]) -> dict[str, Any]:
     if isinstance(kind, str) and kind in _SCALARS:
         return {"type": kind}
     return {}
+
+
+def _value_type(reduced: dict[str, Any]) -> str | None:
+    """The JSON type of an ``enum`` or ``const`` schema, from its values; ``None`` when they are mixed.
+
+    An optional ``Literal`` is ``anyOf: [{enum: [...]}, {type: null}]``; without this, the enum branch has
+    no ``type`` and the union would collapse to ``null``, so a real value would fail validation.
+    """
+    values = reduced.get("enum", [reduced["const"]] if "const" in reduced else [])
+    names: dict[type, str] = {bool: "boolean", int: "integer", float: "number", str: "string", type(None): "null"}
+    kinds = {names.get(type(v)) for v in cast("list[object]", values)}
+    return kinds.pop() if len(kinds) == 1 else None
 
 
 def compact_output_schema(model: type[BaseModel]) -> dict[str, Any]:
