@@ -86,21 +86,38 @@ fields the tags miss, and the reverse is also true (report 01, §2a).
 - **Roles.** A curated rule table `idfkit/hvac/_port_rules.py` mirrors EnergyPlus's own node-connection model:
   connection type (Inlet, Outlet, Internal, ZoneNode, Sensor, Actuator, OutsideAir, ReliefAir, ZoneInlet,
   ZoneReturn, ZoneExhaust, Setpoint), fluid stream number, and a parent flag.
-- **Full coverage from the start (clarification, 2026-11-11).** Every node-bearing object type in the latest
-  supported schema gets rules at first release. **Measured during clarification**, over the 26.2 schema and the 735
-  EnergyPlus 24.1 example models:
+- **Full coverage from the start, verified by EnergyPlus (clarification, 2026-11-11).** Every node-bearing object
+  type in the latest supported schema gets rules at first release. **EnergyPlus's own connection report is the only
+  source of truth.** Field naming is a cross-check and never decides a role.
 
-  | Node-bearing object types in 26.2 | Count |
-  |---|---|
-  | Total | 257 |
-  | Every node field pairs as inlet/outlet or is a control field (rules derivable from naming) | 169 |
-  | Used in at least one example model (rules derivable from EnergyPlus's own output) | 247 |
-  | Covered by one or the other | 254 |
-  | Neither: hand-written | 3 (`Lights:Instance`, `SpaceHVAC:ZoneReturnMixer`, `ThermalStorage:HotWater:Stratified`) |
+  **Why naming is not trusted. Measured or observed during clarification:**
+  - **Boundaries named as inlets.** Report 01's prototype misread `AirTerminal:DualDuct:VAV:OutdoorAir`'s
+    `outdoor_air_inlet_node_name`, which is fed by an outdoor-air system's splitter, not by the outdoors (11 nodes).
+    The 26.2 schema has 29 fields named like outdoor or condenser inlets. Some connect to the outdoors, some to
+    other components, and for some a blank value means outdoors.
+  - **Parents pair perfectly by name.** About two dozen of the name-pairable types are parent objects: unitary
+    systems, coil systems and packaged terminal units. The count comes from a rough pattern match and is to be
+    confirmed by generation. Their inlet and outlet repeat their children's nodes, so naming would add false flow
+    edges. Only EnergyPlus's parent and non-parent connection rows tell them apart.
+  - **Naming gives neither connection type nor stream.** It cannot tell a zone inlet from an inlet, or the
+    evaporator stream from the condenser stream.
+  - **Value-dependent roles.** For example, an air-cooled versus water-cooled condenser.
+
+  **Coverage**, measured over the 26.2 schema and the 735 EnergyPlus 24.1 example models:
+
+  | Node-bearing object types in 26.2 | Count | Source of rules |
+  |---|---|---|
+  | Total | 257 | |
+  | Used in at least one example model | 247 | EnergyPlus connection report from the example models |
+  | Name-pairable but in no example model | 7 (`Generator:FuelCell:StackCooler`, `HeatPump:AirToWater`, `PlantEquipmentOperation:OutdoorDewpointDifference`, `SetpointManager:FollowSystemNodeTemperature`, `SetpointManager:MultiZone:Cooling:Average`, `SetpointManager:MultiZone:Heating:Average`, `ThermalStorage:PCM`) | EnergyPlus connection report from a minimal test model |
+  | Neither | 3 (`Lights:Instance`, `SpaceHVAC:ZoneReturnMixer`, `ThermalStorage:HotWater:Stratified`) | EnergyPlus connection report from a minimal test model |
+
+  The 169 name-pairable types are used only to cross-check: 162 of them also appear in example models.
 
 - **Generation.** A codegen script, `idfkit.codegen.generate_port_rules`, needs EnergyPlus only when it runs. It
-  works in five steps:
-  1. Run each example model for design days only, with `Output:Diagnostics` on so EnergyPlus writes
+  works in six steps:
+  1. Run each example model, and each of the 10 minimal test models committed under
+     `src/idfkit/codegen/port_rule_models/`, for design days only, with `Output:Diagnostics` on so EnergyPlus writes
      `eplusout.bnd`.
   2. Parse the "Non-Parent Node Connection" and "Parent Node Connection" rows: object type, object name, node,
      connection type and fluid stream.
@@ -108,23 +125,26 @@ fields the tags miss, and the reverse is also true (report 01, §2a).
   4. Merge across files. A field whose role differs between files is emitted as a predicate candidate for review,
      never silently resolved. An object that uses the same node in two fields is an ambiguous match, which is also
      queued for review.
-  5. Cross-check against the naming-derived roles of the 169 pairable types. Any disagreement fails generation
-     until it is reviewed.
+  5. Cross-check every generated role against field naming. Any disagreement fails generation until a person has
+     reviewed it and recorded the resolution in the reviewed overrides file.
+  6. Write `_port_rules.py`, recording each rule's provenance: `eplus_examples`, `eplus_test_model` or `hand_written`.
 
-  The output, `_port_rules.py`, is committed, together with a reviewed overrides file holding the 3 hand-written
-  types and the resolved predicates. A coverage test fails if any node-bearing type in the latest schema has no
-  rule. Generation is repeated when a new EnergyPlus version is adopted.
+  A type whose test model cannot be made to run gets a hand-written rule with provenance `hand_written`. Its findings
+  are capped at warning severity permanently. Provenance travels on every `NodeUse` and `TopologyFinding`. A
+  coverage test fails if any node-bearing type in the latest schema has no rule. Generation is repeated when a new
+  EnergyPlus version is adopted.
 - **Predicates.** Rules that depend on a value are expressed as small predicates, for example "condenser type is
   AirCooled" makes the condenser nodes OutsideAir.
-- **Unknown types.** An object type with no rule and no clean pairing yields an `unclassified` finding at info
-  severity, never an error (spec edge cases).
+- **Unknown types.** An object type with no rule, which can only happen for a model newer than idfkit's schema,
+  yields an `unclassified` finding at info severity, never an error (spec edge cases).
 
 **Rationale.** The schema says *that* a field is a node, never *how* it connects. EnergyPlus decides that per
 call site in C++. Mirroring its connection types lets idfkit's findings map one-to-one onto EnergyPlus's own node
 connection errors. It also makes the branch-and-node report (`eplusout.bnd`) usable as an oracle later (FR-018).
 
 **Alternatives considered.**
-- A pure name heuristic. Rejected: report 01 measured a misclassification on dual-duct outdoor-air terminals.
+- A pure name heuristic, or naming as the source for name-pairable types. Rejected: it misreads boundaries,
+  parents, streams and value-dependent roles (see above). Naming is kept only as a cross-check.
 - A hand-written table grown over several releases, the original plan with about 40 types first. Rejected after
   the measurement above showed 254 of 257 types are derivable. It is replaced by generation from EnergyPlus's own
   output.

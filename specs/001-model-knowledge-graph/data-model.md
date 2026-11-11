@@ -70,6 +70,7 @@ Generated and curated table rows. Internal, not on the wire.
 | `is_parent` | `bool` | Parent uses add no flow edges |
 | `accepts_nodelist` | `bool` | |
 | `when` | `tuple[str, str] \| None` | Value predicate, for example `("condenser_type", "AirCooled")` |
+| `provenance` | `"eplus_examples" \| "eplus_test_model" \| "hand_written"` | Where the rule came from (FR-010a). `hand_written` rules can never yield an error-severity finding |
 
 ### NodeUse
 
@@ -85,6 +86,7 @@ One field of one object naming a node (spec: *Node use*).
 | `fluid` | `Fluid` | |
 | `is_parent` | `bool` | |
 | `via_nodelist` | `str \| None` | The NodeList name when reached through one |
+| `provenance` | `"eplus_examples" \| "eplus_test_model" \| "hand_written" \| None` | From the rule. `None` when unclassified |
 
 ### LoopMembership
 
@@ -122,6 +124,7 @@ Spec: *Connection finding*.
 | `field` | `str \| None` | |
 | `expected` / `actual` | `str \| None` | For mismatch findings |
 | `message` | `str` | |
+| `provenance` | `str` | The weakest provenance among the rules the finding relied on |
 
 | Code | Check (FR-012) | Initial severity |
 |---|---|---|

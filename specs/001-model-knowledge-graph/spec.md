@@ -80,8 +80,11 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   JavaScript graph tools.
 - Q: Should the feature cover every node-bearing object type from the start, with connection rules generated from
   EnergyPlus's own output plus a few hand-written ones, so that no extension API for developers is needed? → A: Yes.
-  All node-bearing types in the latest supported schema are covered at first release (257 in 26.2: 254 by
-  generation and field naming, 3 by hand). There is no developer extension API.
+  All node-bearing types in the latest supported schema are covered at first release. There is no developer
+  extension API. *Refined the same day:* field naming is not trusted as a source of roles. EnergyPlus's own
+  connection report is the only source of truth: 247 of the 257 types in 26.2 come from the example models, and
+  the 10 others from minimal test models run through EnergyPlus. Naming is only a cross-check, and any rule
+  EnergyPlus cannot verify is labelled and capped at warning severity (FR-010a).
 - Q: Should agents also get MCP tools to walk the combined graph and export it, or should the combined view and
   export be available only to Python developers? → A: One bounded MCP tool returns the cross-layer neighbourhood of
   an object. Export stays Python-only.
@@ -380,9 +383,20 @@ release needs no change.
   exhaust and similar) and the fluid stream it belongs to.
 - **FR-010a**: Connection roles MUST cover every node-bearing object type in the latest supported EnergyPlus schema
   at first release, with no extension API for developers.
-  - Roles MUST be derived from the connections EnergyPlus itself reports when it runs the example models, and from
-    field naming where inlet and outlet fields pair unambiguously.
-  - The few types that appear in no example model are written by hand.
+  - **The only source of truth for a role is the set of connections EnergyPlus itself reports when it runs a
+    model.** That covers connection type, fluid stream and whether the object is a parent of other components.
+    Field naming MUST NOT decide any role on its own. Naming does not reveal parent objects, outdoor boundaries,
+    fluid streams or value-dependent roles, and the research found a field named as an outdoor inlet that is fed by
+    another component.
+  - Field naming MUST be used only as a cross-check. Any disagreement between naming and EnergyPlus's report stops
+    rule generation until a person has reviewed it.
+  - Types that appear in no EnergyPlus example model (10 in 26.2) MUST each get a minimal test model. The test model
+    is run through EnergyPlus in the same generation step, so that its roles are verified like every other type.
+  - A type whose test model cannot be made to run gets a hand-written rule labelled "not verified by EnergyPlus".
+    Its findings MUST never be reported above warning severity.
+  - Every rule MUST record its provenance: "EnergyPlus-verified from example models", "EnergyPlus-verified from a
+    test model", or "hand-written, not verified". Every connection finding and connection use MUST carry the
+    provenance of the rule that produced it.
   - Where examples disagree because a role depends on a field's value, the disagreement MUST become an explicit,
     reviewed rule.
   - An automated test MUST fail if any node-bearing type in the latest schema lacks rules.
@@ -543,11 +557,12 @@ release needs no change.
 
 - **Node**: A named connection point through which air or water flows. It is not an object. It is used by two or
   more object fields.
-- **Node use**: One field of one object naming a node, with a connection role and a fluid stream.
+- **Node use**: One field of one object naming a node. It has a connection role, a fluid stream, and the provenance of
+  the rule that assigned them (FR-010a).
 - **Loop membership**: A component's place in a loop: loop, loop kind (air, plant, condenser, zone equipment), side,
   branch and position.
-- **Connection finding**: The result of a connection check. It has a rule, a severity, and the objects and nodes
-  involved.
+- **Connection finding**: The result of a connection check. It has a check rule, a severity, the objects and nodes
+  involved, and the provenance of the connection rules it relied on.
 - **Result link**: A tie between an output item and an object or node. It records the method used (exact, typed,
   naming convention, weak) and the output item's source.
 - **Result fact**: One value attached to an object, such as a design capacity, peak load or unmet hours. It records
