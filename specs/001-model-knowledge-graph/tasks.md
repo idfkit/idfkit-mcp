@@ -80,10 +80,10 @@ first commit that adds `idfkit/src/idfkit/hvac/checks.py`** (R-33); the held-out
 
 ### idfkit: SQL readers and linking fixtures (R-07, R-19, FR-044)
 
-- [ ] T013 Add frozen dataclasses `ComponentSize`, `SQLErrorRow` (severity, message, count), `ZoneRow` (name, multiplier, list multiplier) and readers `SQLResult.component_sizes()`, `errors()`, `zones()` and `report_keys()` (ReportDataDictionary keys only, never `ReportData`), opening the file read-only (`mode=ro`, `PRAGMA query_only`) with one query per table, in `idfkit/src/idfkit/simulation/parsers/sql.py`
-- [ ] T014 Write `scripts/build_linking_fixtures.py` (needs EnergyPlus 26.2 via `ENERGYPLUS_DIR`): run about 10 reference models with `Output:SQLite SimpleAndTabular`, AllSummary and a small `Output:Variable` set with `*` keys; trim each SQL to the tables linking reads, `VACUUM`; copy `(IDF, SQL, ERR)` triples into `idfkit/tests/fixtures/simulation/linked/`; fail if the directory exceeds 10 MB, in `idfkit/scripts/build_linking_fixtures.py`
+- [X] T013 Add frozen dataclasses `ComponentSize`, `SQLErrorRow` (severity, message, count), `ZoneRow` (name, multiplier, list multiplier) and readers `SQLResult.component_sizes()`, `errors()`, `zones()` and `report_keys()` (ReportDataDictionary keys only, never `ReportData`), opening the file read-only (`mode=ro`, `PRAGMA query_only`) with one query per table, in `idfkit/src/idfkit/simulation/parsers/sql.py`
+- [X] T014 Write `scripts/build_linking_fixtures.py` (needs EnergyPlus 26.2 via `ENERGYPLUS_DIR`): run about 10 reference models with `Output:SQLite SimpleAndTabular`, AllSummary and a small `Output:Variable` set with `*` keys; trim each SQL to the tables linking reads, `VACUUM`; copy `(IDF, SQL, ERR)` triples into `idfkit/tests/fixtures/simulation/linked/`; fail if the directory exceeds 10 MB, in `idfkit/scripts/build_linking_fixtures.py`
 - [ ] T015 Run `T014` on a machine with EnergyPlus 26.2 and commit the triples (including `5ZoneAirCooled` and HospitalLowEnergy if within budget) under `idfkit/tests/fixtures/simulation/linked/`
-- [ ] T016 [P] Write fixture-based tests for the four new readers (row counts, multipliers carried, `report_keys` never touches `ReportData`) in `idfkit/tests/test_sql_readers.py`
+- [X] T016 [P] Write fixture-based tests for the four new readers (row counts, multipliers carried, `report_keys` never touches `ReportData`) in `idfkit/tests/test_sql_readers.py`
 
 ### idfkit: benchmark harness and perf gate (R-21, FR-009)
 
