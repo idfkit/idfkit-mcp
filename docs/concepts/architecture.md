@@ -211,6 +211,10 @@ graph TB
         J3[rename_node]
     end
 
+    subgraph ModelGraph["Model Graph"]
+        N1[get_object_neighbourhood]
+    end
+
     subgraph Simulation
         E1[run_simulation]
         E2[list_output_variables]

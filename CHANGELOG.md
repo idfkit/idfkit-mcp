@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the change log.
 - The `idfkit://model/hvac/{loop}` resource returns one loop in flow order, the same content as
   `get_hvac_topology(loop=..., detail="chain")`.
+- `get_object_neighbourhood` walks the model graph around one object or node, 1 to 3 hops, across
+  layers: objects joined by `reference` edges, and fluid nodes joined to objects by `flow` (object to node
+  for an outlet, node to object for an inlet), `control` and loop `membership` edges. Object nodes carry
+  their component category, fluid nodes their fluid. The walk can be limited to node kinds, edge kinds
+  or component categories. It returns up to 20 nodes by default, and a response
+  stays within 8 KB by keeping the longest breadth-first part of the walk that fits, never a partial node
+  or edge; a cut walk sets `truncated`, counts `omitted_nodes` and lists the
+  `frontier` to continue from. The results layer is not linked yet, and `unavailable` says why. Errors
+  list the closest object or node names, or the valid kinds and categories, and never pick one. There is
+  no export tool; from Python, `idfkit.graph.write_node_link` writes the graph as node-link JSON. Its
+  output schema lists the top-level fields only; the full shape is in `docs/tools/graph.md`. Requires
+  idfkit's `idfkit.graph`. `trace_hvac` names it as its nearest neighbour, and its error for an object
+  with no node fields points to it.
 
 ### Changed
 

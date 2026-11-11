@@ -1,6 +1,6 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **42 tools** in twelve categories, plus **15 MCP resources** (10 fixed URIs and 5 URI templates) for read-only data access.
+`idfkit-mcp` exposes **43 tools** in thirteen categories, plus **15 MCP resources** (10 fixed URIs and 5 URI templates) for read-only data access.
 
 ## Categories
 
@@ -9,6 +9,7 @@
 - Model write: 10 tools
 - Validation: 2 tools
 - HVAC topology: 3 tools
+- Model graph: 1 tool
 - Simulation: 8 tools
 - Geometry: 1 tool
 - Schedules: 1 tool
@@ -46,6 +47,7 @@
 | HVAC topology | `get_hvac_topology` | Summarise every loop, or one: sides as counts or in flow order, zones served, setpoint nodes, findings per code |
 | HVAC topology | `trace_hvac` | Trace one node or component: ports, loop memberships, flow up and downstream, controls, connection findings |
 | HVAC topology | `rename_node` | Rename a node in every field and `NodeList` entry that uses it |
+| Model graph | `get_object_neighbourhood` | Walk the graph around one object or node: references, flow, controls and loop membership together |
 | Simulation | `run_simulation` | Execute EnergyPlus run |
 | Simulation | `list_output_variables` | Enumerate meters/variables |
 | Simulation | `query_timeseries` | Query time series data from SQL output |

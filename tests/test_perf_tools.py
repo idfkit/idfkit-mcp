@@ -221,3 +221,74 @@ async def test_rename_node(hospital: Client[FastMCPTransport]) -> None:
         hospital, "rename_node", {"old": "DOAS6 Renamed Outlet Node", "new": RENAMED_NODE}, max_seconds=0.05
     )
     assert back.result.structured_content["fields_updated"] == there.result.structured_content["fields_updated"]
+
+
+NEIGHBOURHOOD_STARTS = [
+    {"object_type": "Zone", "name": "Floor 1 Cafe"},
+    {"object_type": "Coil:Heating:Water", "name": "Floor 2 Operating VAV Box Reheat Coil"},
+]
+"""A zone (surfaces, loads, controls and equipment by reference) and a reheat coil (flow, control and membership
+edges onto a plant loop with hundreds of members)."""
+
+NEIGHBOURHOOD_WALKS = [{}, {"hops": 2}, {"hops": 3, "max_nodes": 100}]
+"""The defaults (``hops=1``, ``max_nodes=40``), the default node count two hops out, and the widest walk allowed."""
+
+
+def _neighbourhood_id(arguments: dict[str, Any]) -> str:
+    return f"{arguments['object_type']}-hops{arguments.get('hops', 1)}-max{arguments.get('max_nodes', 40)}"
+
+
+NEIGHBOURHOOD_QUERIES = [{**start, **walk} for start in NEIGHBOURHOOD_STARTS for walk in NEIGHBOURHOOD_WALKS]
+
+
+@pytest.mark.parametrize("arguments", NEIGHBOURHOOD_QUERIES, ids=_neighbourhood_id)
+async def test_get_object_neighbourhood_cached(hospital: Client[FastMCPTransport], arguments: dict[str, Any]) -> None:
+    """With the topology view cached, every neighbourhood answers within 50 ms and 8 KB (contracts/mcp-tools.md).
+
+    The 8 KB check is the tool's own shrink loop seen from outside: whatever ``max_nodes`` asks for, the
+    serialised answer fits.
+    """
+    await hospital.call_tool("get_object_neighbourhood", arguments)
+    await assert_call_within_budget(hospital, "get_object_neighbourhood", arguments, max_seconds=0.05, repeat=5)
+
+
+DEFAULT_SIZE_STARTS = [
+    *NEIGHBOURHOOD_STARTS,
+    {"object_type": "Fan:VariableVolume", "name": "DOAS2_Fan"},
+    {"object_type": "Connector:Splitter", "name": "SWHSys1 Supply Splitter"},
+    {"object_type": "Node", "name": "DOAS6 Supply Equipment Outlet Node"},
+]
+"""Starts used to check the default node count against the response budget."""
+
+
+@pytest.mark.parametrize("start", DEFAULT_SIZE_STARTS, ids=lambda s: s["object_type"])
+async def test_get_object_neighbourhood_default_against_response_budget(
+    hospital: Client[FastMCPTransport], start: dict[str, Any], record_property: Any
+) -> None:
+    """Record what the default of 40 nodes yields two hops out, and whether the 8 KB shrink loop cut it.
+
+    On the reference model it always does: a node serialises to about 240 bytes and an edge to about 200, so
+    some 8 to 14 nodes fit in 8 KB, not 40 (measured for T124: 8 to 12 nodes at ``hops=2`` from these starts,
+    6.2 to 8.1 KB). The test holds the shrink loop's contract rather than those counts: the answer fits, a cut
+    walk says so, and the cut never empties the answer.
+    """
+    requested = 40
+    arguments = {**start, "hops": 2, "max_nodes": requested}
+    await hospital.call_tool("get_object_neighbourhood", arguments)
+    m = await assert_call_within_budget(hospital, "get_object_neighbourhood", arguments, max_seconds=0.05, repeat=5)
+    sc = m.result.structured_content
+    returned = len(sc["nodes"])
+    shrunk = returned < requested and sc["omitted_nodes"] > 0
+    record_property("response_bytes", m.response_bytes)
+    record_property("nodes_returned", returned)
+    record_property("edges_returned", len(sc["edges"]))
+    record_property("omitted_nodes", sc["omitted_nodes"])
+    record_property("shrunk", shrunk)
+    print(
+        f"\n{start['object_type']} {start['name']!r}: {m.response_bytes} B, {returned}/{requested} nodes, "
+        f"{len(sc['edges'])} edges, {sc['omitted_nodes']} omitted, shrunk={shrunk}, {m.seconds * 1000:.1f} ms"
+    )
+    assert returned >= 1
+    if shrunk:
+        assert sc["truncated"], "a walk cut below max_nodes must set truncated"
+        assert sc["frontier"], "a cut walk must list the frontier to continue from"

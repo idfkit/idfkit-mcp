@@ -23,6 +23,8 @@ NODE_KINDS = ("object", "node", "result_fact", "message")
 EDGE_KINDS = ("reference", "flow", "control", "membership", "result_link")
 MAX_HOPS = 3
 MAX_NODES = 100
+DEFAULT_NODES = 20
+"""Measured on the reference model: about 20 nodes and their edges fit the 8 KB response budget (T124)."""
 _ENVELOPE_BYTES = 64
 _NO_RUN = "no simulation run in this session"
 _NOT_LINKED = "results are not linked to objects in this release"
@@ -39,16 +41,17 @@ def _kinds(given: list[str] | None, vocabulary: tuple[str, ...], what: str) -> l
 
 
 def _node(node: GraphNode) -> m.GraphNode:
-    key = None if node.key is None else m.ObjectKey(object_type=node.key.object_type, name=node.key.name)
-    return m.GraphNode(
-        id=node.id, kind=node.kind, layer=node.layer, key=key, node=node.node, label=node.label, attrs=dict(node.attrs)
-    )
+    if node.key is not None:
+        return m.GraphNode(
+            id=node.id, kind=node.kind, object_type=node.key.object_type, name=node.key.name, attrs=dict(node.attrs)
+        )
+    return m.GraphNode(id=node.id, kind=node.kind, name=node.node or node.label, attrs=dict(node.attrs))
 
 
 def _edge(edge: GraphEdge) -> m.GraphEdge:
-    return m.GraphEdge(
-        source=edge.source, target=edge.target, kind=edge.kind, layer=edge.layer, key=edge.key, attrs=dict(edge.attrs)
-    )
+    # The field is already in the key ("flow:air_inlet_node_name"); unset attributes say nothing.
+    attrs: dict[str, m.GraphScalar] = {k: v for k, v in edge.attrs.items() if v is not None and k != "field"}
+    return m.GraphEdge(source=edge.source, target=edge.target, kind=edge.kind, key=edge.key, attrs=attrs)
 
 
 def _mirror(sub: Subgraph, *, simulated: bool) -> m.ObjectNeighbourhood:
@@ -99,7 +102,7 @@ def get_object_neighbourhood(
         list[str] | None,
         Field(description="Keep only objects of these component categories (and the start), e.g. heating_coil."),
     ] = None,
-    max_nodes: Annotated[int, Field(description="Most nodes returned, 1-100.")] = 40,
+    max_nodes: Annotated[int, Field(description="Most nodes returned, 1-100.")] = DEFAULT_NODES,
 ) -> m.ObjectNeighbourhood:
     """Walk the model graph around one object or node, across layers: objects joined by references,
     and fluid nodes joined to objects by flow, control and loop-membership edges.
@@ -127,13 +130,46 @@ def get_object_neighbourhood(
         "categories": parse_categories(categories),
     }
     start = _start(doc, object_type, name)
-    graph = ModelGraph(doc)
-    simulated = state.simulation_result is not None
-    limit = max_nodes
-    while True:
-        result = _mirror(graph.neighbourhood(start, max_nodes=limit, **walk), simulated=simulated)
-        size = len(result.model_dump_json()) + _ENVELOPE_BYTES
-        if size <= RESPONSE_BYTES or limit == 1:
-            return result
-        # Shrink in proportion, at least by one node, until whole nodes and edges fit.
-        limit = max(1, min(limit - 1, int(limit * RESPONSE_BYTES / size * 0.95)))
+    sub = ModelGraph(doc).neighbourhood(start, max_nodes=max_nodes, **walk)
+    return fit(_mirror(sub, simulated=state.simulation_result is not None))
+
+
+def _prefix(full: m.ObjectNeighbourhood, count: int) -> m.ObjectNeighbourhood:
+    """The first *count* nodes in breadth-first order, the edges between them, and the new frontier."""
+    if count >= len(full.nodes):
+        return full
+    kept = [n.id for n in full.nodes[:count]]
+    keep = set(kept)
+    edges = [e for e in full.edges if e.source in keep and e.target in keep]
+    cut = {e.source for e in full.edges if e.target not in keep} | {
+        e.target for e in full.edges if e.source not in keep
+    }
+    was = set(full.frontier)
+    frontier = [i for i in kept if i in cut or i in was]
+    return full.model_copy(
+        update={
+            "nodes": full.nodes[:count],
+            "edges": edges,
+            "truncated": True,
+            "omitted_nodes": full.omitted_nodes + len(full.nodes) - count,
+            "frontier": frontier,
+        }
+    )
+
+
+def _size(result: m.ObjectNeighbourhood) -> int:
+    return len(result.model_dump_json()) + _ENVELOPE_BYTES
+
+
+def fit(full: m.ObjectNeighbourhood) -> m.ObjectNeighbourhood:
+    """The largest breadth-first prefix of *full* whose response fits the 8 KB budget (whole nodes and edges)."""
+    if _size(full) <= RESPONSE_BYTES:
+        return full
+    low, high = 1, len(full.nodes) - 1  # one node always fits; the whole answer does not
+    while low < high:
+        mid = (low + high + 1) // 2
+        if _size(_prefix(full, mid)) <= RESPONSE_BYTES:
+            low = mid
+        else:
+            high = mid - 1
+    return _prefix(full, low)

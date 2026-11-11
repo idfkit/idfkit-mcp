@@ -953,25 +953,22 @@ GraphScalar = str | int | float | bool | None
 
 
 class GraphNode(BaseModel):
-    """A node of the model graph: an object (layer model) or a fluid node (layer topology)."""
+    """A node of the model graph. Its layer is fixed by its kind: object -> model, node -> topology."""
 
     id: str
     kind: str  # object | node | result_fact | message; ignore kinds you do not know
-    layer: str  # model | topology | results
-    key: ObjectKey | None = None  # object nodes
-    node: str | None = None  # node nodes, model spelling
-    label: str
+    object_type: str | None = None  # object nodes; pass with name to other tools
+    name: str  # model spelling: the object's name, or the node name
     attrs: dict[str, GraphScalar] = {}  # object: category; node: fluid
 
 
 class GraphEdge(BaseModel):
-    """A directed edge of the model graph between two returned node ids."""
+    """A directed edge between two returned node ids. Its layer is fixed by its kind."""
 
     source: str
     target: str
     kind: str  # reference | flow | control | membership | result_link
-    layer: str
-    key: str  # unique per endpoint pair, e.g. reference:zone_name, flow:air_inlet_node_name
+    key: str  # "<kind>:<field>" for reference, flow and control edges; unique per endpoint pair
     attrs: dict[str, GraphScalar] = {}
 
 

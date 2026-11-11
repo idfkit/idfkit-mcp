@@ -192,11 +192,16 @@ Errors name the cause and never pick for you:
 - no model loaded;
 - a name or type that is not in the model, with the closest names;
 - a node or `NodeList` no object uses, with the closest node names;
-- an object with no node fields, pointing at `idfkit://model/references/{name}`;
+- an object with no node fields, pointing at [`get_object_neighbourhood`](graph.md) to see what it references
+  and what references it;
 - an unknown category or fluid, with the list of valid ones.
 
 The tool's output schema lists the top-level fields only, to keep the tool listing small; the tables above
 give the full shape.
+
+Nearest neighbour: [`get_object_neighbourhood`](graph.md), to cross layers (references and nodes together) or
+for an object with no node fields. Use `trace_hvac` for loop, side, branch, position and controls already
+interpreted.
 
 ## Example: which plant serves a coil?
 
