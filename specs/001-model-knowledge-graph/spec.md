@@ -60,6 +60,8 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   umbrella spec. One plan covers all layers, and stories are delivered in priority order.
 - Q: When a modeller or agent asserts an object's role, where should that assertion be saved? → A: In the session
   only. It survives server restarts but not the end of the session, and nothing is written to model files.
+- Q: Which ASHRAE 90.1 editions should the first envelope screening support? → A: Every 90.1 edition the standards
+  data source covers (currently 2004 through 2025).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -372,7 +374,10 @@ value as evidence.
   assuming a default.
 - **FR-033**: An agent MUST be able to look up requirement values for envelope assemblies by standard, edition,
   climate zone and assembly class. Results come back in SI and inch-pound units with the standard's table cited.
-  A lookup without the filters needed to keep it bounded MUST be refused with guidance.
+  A lookup without the filters needed to keep it bounded MUST be refused with guidance. Lookups and screenings MUST
+  support every ASHRAE 90.1 edition the data source covers (currently 2004 through 2025). This includes editions
+  whose limits are formulas of heating degree days rather than fixed values. A requested edition the data source
+  does not cover MUST be refused, with the covered editions named.
 - **FR-034**: An agent MUST be able to request an envelope screening. Each opaque construction and fenestration type
   receives one of three verdicts: meets, does not meet, or cannot tell. Each verdict comes with:
   - the computed value
@@ -464,7 +469,8 @@ value as evidence.
 - **SC-005**: After any simulation, every quality flag and warning class names its affected objects. An agent can get
   all results for one object in one request, compared with three to ten requests today.
 - **SC-006**: For every screening verdict in a hand-checked sample of at least 30, the requirement and its units match
-  the cited table, and the computed value matches a hand calculation within 2%.
+  the cited table, and the computed value matches a hand calculation within 2%. The sample includes at least three
+  verdicts from every supported 90.1 edition, and at least one limit computed from heating degree days.
 - **SC-007**: No screening verdict rests on a role inferred from a name. Every verdict cites its source and lists its
   assumptions.
 - **SC-008**: The evaluation runs repeatably on the full catalogue and reference set. Repeated runs under the same
