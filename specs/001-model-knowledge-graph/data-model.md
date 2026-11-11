@@ -1,6 +1,8 @@
 # Data Model: Model Knowledge Graph for Agents
 
-Phase 1 output of `/speckit-plan`. The entities come from the spec's Key Entities. Each one is defined in two
+Phase 1 output of `/speckit-plan`, revision 2 (2026-11-11): the standards layer is deferred
+([deferred-standards.md](deferred-standards.md)), and the review requirements are added (research R-31 to R-37).
+The entities come from the spec's Key Entities. Each one is defined in two
 places:
 
 - **idfkit** (core): a frozen, slotted dataclass. Standard library only, pyright strict.
@@ -29,13 +31,29 @@ for the bounded set of items a call returns (research R-21).
 
 ### Coverage
 
-Attached to every response that matches, links or infers (FR-004).
+Attached to every response that answers from the graph: matching, linking, inference or walking (FR-004,
+FR-004a, research R-35). One shape everywhere.
 
 | Field | Type | Rule |
 |---|---|---|
-| `partial` | `bool` | True when anything was skipped (templates, unknown types, missing data) |
-| `skipped` | `list[str]` | Human-readable reasons, deduplicated |
-| `resolved` / `unresolved` | `int` | For linking. Omitted elsewhere |
+| `partial` | `bool` | True when `uncovered` is not empty |
+| `uncovered` | `list[UncoveredPart]` | What the answer did not look at. Empty means the whole model was covered |
+| `resolved` / `unresolved` | `int \| None` | For linking. `None` elsewhere |
+
+### UncoveredPart
+
+| Field | Type | Rule |
+|---|---|---|
+| `kind` | `"hvac_template" \| "ems_program" \| "unclassified_type" \| "unlinked_result"` | Closed set. Adding a kind is a minor change (FR-053) |
+| `count` | `int` | Objects or items of this kind left out |
+| `examples` | `list[ObjectKey]` | At most 3. For `unlinked_result`, the raw keys as `ObjectKey("Unresolved", key)` |
+| `reason` | `str` | One sentence, for example "EMS program text is not parsed; what it controls is not visible" |
+
+The kinds:
+- `hvac_template`: unexpanded `HVACTemplate:*` systems (R-17)
+- `ems_program`: `EnergyManagementSystem:Program` and `:Subroutine` objects
+- `unclassified_type`: object types with node fields but no connection rule (T090)
+- `unlinked_result`: result items listed as unresolved (R-07)
 
 ### Bounded list envelope
 
@@ -55,6 +73,14 @@ roles are `OutsideAir` and `ReliefAir`.
 ### Fluid (enum)
 
 `Air`, `Water`, `Steam`, `Refrigerant`, `Unknown`.
+
+### ComponentCategory (enum)
+
+`heating_coil`, `cooling_coil`, `fan`, `pump`, `terminal_unit`, `chiller`, `boiler`, `heat_rejection`,
+`humidifier`, `heat_exchanger`, `zone_equipment`, `unitary`, `outdoor_air`, `setpoint_manager`, `controller`,
+`other`. Derived from the object type alone, through the committed table `_categories.py` (research R-36). Never
+from names. A node-bearing type missing from the table is `other`, and a coverage test lists such types. Adding a
+member is a minor change (FR-053).
 
 ### PortRule
 
@@ -80,12 +106,14 @@ One field of one object naming a node (spec: *Node use*).
 |---|---|---|
 | `node` | `str` | Display spelling |
 | `object` | `ObjectKey` | |
+| `category` | `ComponentCategory` | The owner's category (R-36) |
 | `field` | `str` | |
 | `connection` | `ConnectionType \| None` | `None` means unclassified, which yields an info finding |
 | `stream` | `int` | |
 | `fluid` | `Fluid` | |
 | `is_parent` | `bool` | |
 | `via_nodelist` | `str \| None` | The NodeList name when reached through one |
+| `rule` | `str \| None` | `ems_key` for an EMS sensor or actuator use (R-35). `None` for port rules |
 | `provenance` | `"eplus_examples" \| "eplus_test_model" \| "hand_written" \| None` | From the rule. `None` when unclassified |
 
 ### LoopMembership
@@ -118,7 +146,9 @@ Spec: *Connection finding*.
 | Field | Type | Rule |
 |---|---|---|
 | `code` | `str` | Stable code from the table below |
-| `severity` | `"error" \| "warning" \| "info"` | Only qualified codes may be `error` (FR-013) |
+| `severity` | `"error" \| "warning" \| "info"` | The effective severity, after the version cap. Only qualified codes may be `error` (FR-013) |
+| `capped_from` | `"error" \| None` | Set when the version cap lowered the severity (FR-013a) |
+| `cap_reason` | `str \| None` | For example "T011 produced false errors on the EnergyPlus 9.6 example files" |
 | `objects` | `list[ObjectKey]` | At least one, or `node` set (FR-002) |
 | `node` | `str \| None` | |
 | `field` | `str \| None` | |
@@ -142,9 +172,45 @@ Spec: *Connection finding*.
 reports zero findings for that code. The promotion is recorded in idfkit's CHANGELOG. `error → warning` happens
 when a reported false finding is reproduced, and it must come with a regression test.
 
+**Effective severity, per model version (FR-013a, research R-34).** The committed table `_version_caps.py` maps
+`(code, schema version)` to a maximum severity, written by the earlier-version corpus measurement (9.6.0 and
+23.2.0). For a model of version *v*, the cap is the entry for the nearest measured version at or below *v*;
+versions older than 9.6.0 take 9.6.0's entry, and 26.2 has no cap. The effective severity is
+`min(qualified severity, cap)`. When the cap lowers it, `capped_from` and `cap_reason` say so. The table changes
+only with a new measurement, and the release notes list the rates.
+
+### VersionCap
+
+A row of `_version_caps.py`. Internal, not on the wire.
+
+| Field | Type | Rule |
+|---|---|---|
+| `code` | `str` | A check code |
+| `version` | `str` | A measured schema version, `9.6.0` or `23.2.0` |
+| `max_severity` | `"warning" \| "info"` | |
+| `models` / `false_findings` | `int` | The measurement behind the row |
+
 ### HVACTopology
 
 A derived view, not stored. Built by `from_document(doc)`. Cached per `(document, revision)`.
+
+### HVACTrace
+
+The answer to one trace, from a node or from a component (`trace_hvac`, research R-31). Built only for the start
+asked for, never stored.
+
+| Field | Type | Rule |
+|---|---|---|
+| `start` | `ObjectKey` | `object_type="Node"` for a node start. A component start carries its `category` |
+| `fluid` | `Fluid \| None` | Node start only |
+| `ports` | `list[NodeUse]` | Component start only, grouped by stream |
+| `producers`, `consumers` | `list[ObjectKey]` | Node start only |
+| `controls` | `list[NodeUse]` | Sensor, setpoint and actuator uses, EMS uses included (rule `ems_key`) |
+| `memberships` | `list[LoopMembership]` | Every loop the start touches |
+| `parent`, `children` | `ObjectKey \| None`, `list[ObjectKey]` | Component start only |
+| `upstream`, `downstream` | `list[FlowEdge]` | Bounded by `hops`, filtered by `categories` when given |
+| `findings` | `list[TopologyFinding]` | Only those touching the start, severities after the version cap |
+| `coverage` | `Coverage` | |
 
 ### Node rename result
 
@@ -168,8 +234,8 @@ Spec: *Result link*.
 | Field | Type | Rule |
 |---|---|---|
 | `key` | `ObjectKey \| None` | `None` means unresolved |
-| `rule` | `str` | `exact`, `typed`, `zonelist_composite`, `space_to_zone`, `mirrored_shading`, `aggregate`, `ideal_loads_suffix`, `substring` |
-| `confidence` | `"exact" \| "typed" \| "convention" \| "weak"` | `substring` is always `weak` (FR-005) |
+| `rule` | `str` | `exact`, `typed`, `zonelist_composite`, `space_to_zone`, `mirrored_shading`, `aggregate`, `ideal_loads_suffix`, `ems_key`, `substring` |
+| `confidence` | `"exact" \| "typed" \| "convention" \| "weak"` | `substring` is always `weak` (FR-005). `ems_key` is always `convention` |
 | `via` | `tuple[ObjectKey, ...]` | A zone-list composite links to both the zone and the load object |
 
 ### ResultFact
@@ -232,127 +298,31 @@ blocks one.
 | `evidence` | `list[ResultFact \| str]` | At least one |
 | `verify` | `str` | The next request that confirms it or rules it out |
 | `weight_basis` | `str` | The catalogue rule and graph distance that produced the rank |
+| `family` | `str` | The cause family of the rule, for example `capacity` or `availability` |
+| `evidence_strength` | `"strong" \| "moderate" \| "weak"` | `strong`: a linked value past the rule's threshold, or a connection finding. `moderate`: a linked value within it, or a typed or convention link. `weak`: free text only (research R-16) |
 
 Symptoms: `unmet_heating`, `unmet_cooling`, `peak_outlier`, `sizing_zero`, `message:<kind>`.
 
+### Diagnosis
+
+Returned by `diagnose(...)`. Fields in this order, so the statement is read first (FR-027).
+
+| Field | Type | Rule |
+|---|---|---|
+| `statement` | `str \| None` | Set when `no_strong_candidate`, for example "No candidate has strong evidence; the causes below are possibilities only" |
+| `no_strong_candidate` | `bool` | True when no candidate is `strong` |
+| `symptom` / `target` | `str` / `ObjectKey \| None` | |
+| `candidates` | `list[CandidateCause]` | Bounded, ranked |
+| `families_covered` | `list[str]` | The cause families the rules examine for this symptom. A cause outside them was not examined |
+| `shared_upstream` | `list[ObjectKey]` | Objects common to every affected object |
+| `coverage` | `Coverage` | |
+| `results_state` | `"fresh" \| "stale"` | |
+
 ---
 
-## Layer 3: Standards knowledge (`idfkit.standards`)
+## Layer 3: Standards knowledge (deferred)
 
-Three topics: `envelope`, `lighting` (90.1, space-by-space method) and `ventilation` (62.1). See research R-26
-to R-29.
-
-### StandardsContext
-
-A public frozen dataclass in idfkit (R-29). idfkit-mcp holds one per session and persists it (R-15).
-
-| Field | Type | Rule |
-|---|---|---|
-| `standard` | `"ASHRAE 90.1"` | The only value in this feature |
-| `edition` | `str \| None` | The 90.1 edition: one of the editions present in the data (`2004` … `2025`) |
-| `ventilation_edition` | `str \| None` | The 62.1 edition: one of `1999` … `2022` |
-| `climate_zone` | `str \| None` | `0`–`8` with an optional `A`, `B` or `C` subtype |
-| `building_category` | `"Nonresidential" \| "Residential" \| "Semiheated" \| None` | |
-| `*_source` | `"asserted" \| "weather_station" \| None` | One per field. Editions and category are always asserted |
-
-Validation: the fields a topic requires must be non-null when that topic is requested (FR-032):
-
-| Topic | Required |
-|---|---|
-| `envelope` | `edition`, `climate_zone`, `building_category` |
-| `lighting` | `edition` |
-| `ventilation` | `ventilation_edition` |
-
-### ObjectRole
-
-| Field | Type | Rule |
-|---|---|---|
-| `object` | `ObjectKey` | |
-| `role` | `"surface_class" \| "conditioned_status" \| "assembly_class" \| "space_type" \| "lighting_space_type" \| "ventilation_space_type"` | The three space-type roles apply to zones only |
-| `value` | `str` | From the data source's vocabularies (`ExteriorWall`, `Mass`, `IEAD`, `office`, `office_open_plan_lighting`, …) or `unknown` |
-| `origin` | `"computed" \| "asserted" \| "unconfirmed"` | The space-type roles are never `computed` (R-27) |
-| `evidence` | `str` | For example "heat capacity 210 kJ/m²K ≥ 143", "asserted 2026-11-11T10:02Z", or "suggested from zone name 'Office_Open'" |
-
-Vocabularies:
-- `space_type`: the 61 level-1 names
-- `lighting_space_type`: the 119 lighting space-type names
-- `ventilation_space_type`: the 98 ventilation space-type names
-
-All of them are read from the data at run time. An assertion outside the vocabulary is refused, and the error lists
-the closest values. For a topic, the topic-specific role wins over `space_type`.
-
-**State transitions.**
-
-```
-computed ──assert──▶ asserted          (assertion always wins)
-unknown  ──assert──▶ asserted
-unconfirmed ─confirm (= assert)─▶ asserted
-asserted ──session ends──▶ (gone; computed or unknown applies again)
-```
-
-Asserted roles are re-keyed when the object is renamed (FR-037). Only `computed` and `asserted` values may feed a
-verdict (FR-036).
-
-### Requirement
-
-| Field | Type | Rule |
-|---|---|---|
-| `topic` | `"envelope" \| "lighting" \| "ventilation"` | |
-| `edition` | `str` | The 90.1 edition, or the 62.1 edition for ventilation |
-| `climate_zone_set` | `str \| None` | Envelope only, as in the data (`3`, `3A`, …). Subtype rows win (FR-033) |
-| `surface_class` / `assembly_class` / `building_category` | `str \| None` | Envelope only |
-| `space_type_row` | `tuple[str, str] \| None` | Lighting and ventilation: the row's primary and secondary space type, verbatim |
-| `method` | `"SS" \| "CS" \| None` | Lighting only |
-| `metric` | `"u_factor" \| "c_factor" \| "f_factor" \| "shgc" \| "r_value" \| "lpd" \| "oa_per_person" \| "oa_per_area"` | |
-| `limit_ip` / `units_ip` | `float` / `str` | Verbatim from the row |
-| `limit_si` / `units_si` | `float` / `str` | Converted (R-08, R-26) |
-| `wwr_band` | `tuple[float \| None, float \| None]` | Fenestration rows |
-| `includes_films` | `tuple[bool, bool]` | Envelope: interior, exterior |
-| `citation` | `str` | The row's `annotation`, or idfkit's reviewed 62.1 citation table (R-26) |
-| `citation_source` | `"data" \| "idfkit"` | |
-
-A ventilation requirement is a pair of rows `(oa_per_person, oa_per_area)` taken from one data row. Both are
-returned.
-
-### Zone measures
-
-These are model-side, typed results of `zone_lighting(doc)` and `zone_outdoor_air(doc)`. They need no extra
-(R-28).
-
-| Entity | Fields |
-|---|---|
-| `ZoneLighting` | `zone: ObjectKey`, `floor_area_m2`, `installed_w`, `lpd_w_m2 \| None`, `multiplier`, `sources: list[ObjectKey]` (the `Lights` objects), `reason: str \| None` when no value |
-| `ZoneOutdoorAir` | `zone: ObjectKey`, `method: str \| None`, `design_people`, `floor_area_m2`, `per_person_l_s \| None`, `per_area_l_s_m2 \| None`, `breathing_zone_l_s \| None`, `multiplier`, `source: ObjectKey \| None` (the outdoor-air specification), `reason: str \| None` |
-
-### ScreeningVerdict
-
-| Field | Type | Rule |
-|---|---|---|
-| `object` | `ObjectKey` | A construction or fenestration type (envelope), or a zone (lighting, ventilation) |
-| `topic` | `"envelope" \| "lighting" \| "ventilation"` | |
-| `check` | `str` | For example `roof u_factor`, `lighting lpd` or `ventilation breathing_zone_oa` |
-| `verdict` | `"meets" \| "does_not_meet" \| "cannot_tell"` | |
-| `value_si` | `float \| None` | Ventilation: the model's breathing-zone outdoor air in L/s |
-| `requirement` | `Requirement \| None` | `None` only for `cannot_tell` |
-| `required_si` | `float \| None` | Ventilation: Vbz = Rp·Pz + Ra·Az in L/s. Otherwise equal to `requirement.limit_si` |
-| `margin_si` | `float \| None` | `limit − value` for maxima (envelope, lighting). `value − required` for minima (ventilation) |
-| `area_m2` | `float` | Exterior area using the construction, or the zone floor area |
-| `assumptions` | `list[str]` | Each role used with its origin, and the space-type resolution path (R-27) |
-| `reason` / `resolve` | `str \| None` | Required when `cannot_tell` |
-
-### ScreeningReport
-
-| Field | Type |
-|---|---|
-| `basis` | `str` (standards, editions, "prescriptive screening — not a compliance determination") |
-| `data_source` | `str` (package name and version) |
-| `context` | `StandardsContext` |
-| `topics` | `list[str]` (topics evaluated) |
-| `not_evaluated` | `dict[str, str]` (topic to the missing context items, when `topics=None`) |
-| `summary` | counts per topic and verdict |
-| `verdicts` | bounded list of `ScreeningVerdict`, worst margin first |
-| `not_checked` | `list[str]` (per topic: mandatory provisions, exceptions, trade-off paths, RCR and additional lighting allowances, lighting controls, Ez, Vot, DCV, IAQP; R-26) |
-| `coverage` | `Coverage` |
+Deferred to a future spec. See [deferred-standards.md](deferred-standards.md).
 
 ---
 
@@ -368,14 +338,16 @@ Spec: *Model graph view* (FR-055 to FR-058). It is a read-only adapter over the 
 | node kind `object` | `model` |
 | node kind `node` | `topology` |
 | node kinds `result_fact`, `message` | `results` |
-| node kind `verdict` | `standards` |
 | edge kind `reference` | `model` |
 | edge kinds `flow`, `control`, `membership` | `topology` |
 | edge kind `result_link` | `results` |
-| edge kind `verdict` | `standards` |
 
-`Layer = Literal["model", "topology", "results", "standards"]`. Adding a kind is an additive change. Removing or
-redefining one is breaking (FR-053).
+`Layer = Literal["model", "topology", "results"]`. The sets are closed within a release. **Adding** a kind or a
+layer is a minor change, never a breaking one, and code that reads kinds must ignore members it does not know
+(FR-056, research R-23). That is how a later feature adds, for example, a `standards` layer with `verdict` kinds.
+Removing or redefining a kind is breaking (FR-053).
+
+EMS sensor and actuator uses (rule `ems_key`) appear as `control` edges, with `confidence: "convention"` (R-35).
 
 ### GraphNode
 
@@ -384,10 +356,10 @@ redefining one is breaking (FR-053).
 | `id` | `str` | Stable composite id (research R-24). Upper-cased names, so equal ids mean equal identity |
 | `kind` | `NodeKind` | |
 | `layer` | `Layer` | Fixed by `kind` |
-| `key` | `ObjectKey \| None` | Set for `object`, and for the owner of a `result_fact` or `verdict` |
+| `key` | `ObjectKey \| None` | Set for `object`, and for the owner of a `result_fact` |
 | `node` | `str \| None` | Set for `node`, with the model's spelling |
 | `label` | `str` | Short display text, for example `Zone "SPACE1-1"` or `unmet_heating_hours = 312 h` |
-| `attrs` | `Mapping[str, str \| int \| float \| bool \| None]` | Kind-specific scalars only, for example `fluid`, `metric`, `value`, `units`, `severity`, `verdict`, `stale` |
+| `attrs` | `Mapping[str, str \| int \| float \| bool \| None]` | Kind-specific scalars only, for example `category` (object nodes, R-36), `fluid`, `metric`, `value`, `units`, `severity`, `stale` |
 
 ### GraphEdge
 
@@ -397,7 +369,7 @@ redefining one is breaking (FR-053).
 | `kind` | `EdgeKind` | |
 | `layer` | `Layer` | Fixed by `kind` |
 | `key` | `str` | Unique among edges with the same endpoints, for example `reference:zone_name` or `flow:air_outlet_node_name` |
-| `attrs` | `Mapping[str, str \| int \| float \| bool \| None]` | `field`, `connection_type`, `fluid`, `side`, `branch`, `position`, `confidence`, `provenance` (FR-010a), as applicable |
+| `attrs` | `Mapping[str, str \| int \| float \| bool \| None]` | `field`, `connection_type`, `fluid`, `side`, `branch`, `position`, `rule`, `confidence`, `provenance` (FR-010a), as applicable |
 
 ### Subgraph
 
@@ -409,7 +381,7 @@ Returned by `ModelGraph.neighbourhood`.
 | `nodes` / `edges` | `list[GraphNode]` / `list[GraphEdge]` | Breadth-first order from `start` |
 | `layers` | `list[Layer]` | Layers present in the view |
 | `unavailable` | `dict[Layer, str]` | Each missing layer and why (FR-056) |
-| `partial` | `dict[Layer, str]` | Each present layer that covers only part of its scope, and what is missing. Today only `standards`, for topics without a complete context (R-29) |
+| `coverage` | `Coverage` | What the walk could not see: templates, EMS programs, unclassified types, unlinked results (R-35) |
 | `truncated` | `bool` | True when a hop or node bound cut the walk |
 | `omitted_nodes` | `int` | Nodes reached but not returned. A lower bound, since the walk stops at the cut |
 | `frontier` | `list[str]` | Returned node ids whose neighbours were not expanded |
@@ -418,11 +390,10 @@ Returned by `ModelGraph.neighbourhood`.
 **State: which layers are present.** It is decided per call, not stored:
 - `model` and `topology`: always present.
 - `results`: present when a `ResultIndex` was given, whether fresh or stale. Stale facts are marked, not dropped.
-- `standards`: present when a `StandardsContext` completing at least one topic's required items (R-29) was given
-  **and** the standards data is importable. Its verdicts cover only those topics. A partial context is not an
-  error; the topics left out are named in the `standards` entry of a separate `partial` map, for example
-  `{"standards": "lighting, ventilation: set edition, ventilation_edition"}`. Otherwise the layer is listed in
-  `unavailable` with the reason.
+  Otherwise it is listed in `unavailable` with the reason.
+
+**Category filter.** `neighbourhood(..., categories=...)` keeps object nodes whose `category` is in the set, plus the
+start and any non-object node that lies on a kept path. The filter applies before the node bound.
 
 ### Node-link document
 
@@ -435,24 +406,128 @@ This is the export, a JSON object. Its normative definition is in
 
 ## Evaluation (idfkit-mcp `eval/`, not shipped)
 
+Research R-13, R-14 and R-31 to R-33, R-37.
+
 ### FaultType
 
-`id`, `layer` (`topology`, `results` or `standards`), `description`, `inject(doc) -> InjectedFault`,
-`verify(doc, result | None) -> bool`, `needs_energyplus: bool`.
+| Field | Type | Rule |
+|---|---|---|
+| `id` | `str` | Stable |
+| `layer` | `"topology" \| "results"` | |
+| `description` | `str` | For maintainers. Never shown to the agent |
+| `held_out` | `bool` | True for faults under `eval/faults/held_out/` (FR-040a) |
+| `defined_in_commit` | `str` | The commit that first added the fault file. Checked against the first check commit (R-33) |
+| `applies_to` | `list[str]` | Reference-model tags the fault can be injected into |
+| `scope` | `list[ObjectKey]` | Filled by `inject`. Changes outside it count as unwanted |
+| `intended_tools` | `list[str]` | The new tools the fault was built for, for SC-010a. Empty for held-out faults |
+| `prompt_template` | `str` | Symptom-only (FR-042b). Linted for object names, field names and banned words |
+| `needs_energyplus` | `bool` | |
+| `inject(doc) -> InjectedFault` / `verify(doc, result \| None) -> bool` | | |
+
+`held_out_invalid` is a derived status: a held-out fault whose `defined_in_commit` is later than the first
+connection-check commit. It is reported and counted with the designed faults.
 
 ### EvaluationTask
 
-`fault_id`, `model_file`, `prompt`, `condition` (`baseline` or `treatment`).
+| Field | Type | Rule |
+|---|---|---|
+| `id` | `str` | |
+| `kind` | `"fault" \| "control" \| "authoring" \| "question"` | FR-040b |
+| `fault_id` | `str \| None` | For `fault` tasks |
+| `model_file` | `str` | A reference model |
+| `prompt` | `str` | Rendered from a template. Never names the injected object, field or fault |
+| `answer_key` | `str \| None` | For `question` tasks, computed by idfkit from the unmodified model and committed |
+| `success` | `str` | How success is decided: fault fixed and verified, no change (control), connection check clean and simulates (authoring), answer matches the key (question) |
+| `intended_tools` | `list[str]` | Copied from the fault type, or set per authoring and question task |
+
+### TaskSpec
+
+The definition of a non-fault task (`control`, `authoring`, `question`), one per module or table entry under
+`eval/tasks/`. Fault tasks are defined by `FaultType`.
+
+| Field | Type | Rule |
+|---|---|---|
+| `id` | `str` | Stable |
+| `kind` | `"control" \| "authoring" \| "question"` | FR-040b |
+| `layer` | `"topology" \| "results"` | |
+| `applies_to` | `list[str]` | Reference-model tags |
+| `prompt_template` | `str` | Symptom- or goal-only, linted like fault prompts (FR-042b) |
+| `intended_tools` | `list[str]` | Empty for controls |
+| `needs_energyplus` | `bool` | True for authoring tasks, which must simulate |
+| `verify(doc, result \| None) -> bool` | | Authoring: no error finding and the model simulates. Question: the answer matches `answer_key(doc)`, computed by idfkit from the unmodified model and committed |
 
 ### TaskOutcome
 
-`fixed: bool`, `verified_by` (`check`, `simulation` or `skipped`), `skip_reason: str | None`, `tool_calls: int`,
-`response_tokens: int`, `unwanted_changes: int` (objects changed outside the fault's scope), `transcript_path`.
+One per task, condition and repeat.
+
+| Field | Type | Rule |
+|---|---|---|
+| `task_id` / `condition` / `repeat` | `str` / `"baseline" \| "treatment" \| "ablation"` / `int` | `repeat` is 0-based |
+| `fixed` | `bool` | Success under the task's rule |
+| `verified_by` | `"check" \| "simulation" \| "answer_key" \| "skipped"` | |
+| `skip_reason` | `str \| None` | Required when skipped (FR-043) |
+| `tool_calls` / `response_tokens` | `int` | |
+| `unwanted_changes` | `int` | Objects changed outside the fault's scope |
+| `false_fix` | `bool` | Control tasks: any model change or any reported fault |
+| `tools_used` | `list[str]` | New tools called, in order |
+| `intended_tool_used` | `bool \| None` | Treatment runs only (SC-010a) |
+| `top_candidate_edited` / `top_candidate_correct` | `bool \| None` | Set when `diagnose_symptom` was called: whether the first model change targeted rank 1, and whether rank 1 was the injected object (SC-009a) |
+| `transcript_path` | `str` | |
 
 ### EvaluationRun
 
-`run_id`, `started_at`, `runner_command`, `model_identifier`, `baseline_version`, `treatment_revision`,
-`outcomes: list[TaskOutcome]`, and summary metrics per fault type and overall (SC-008, SC-009).
+| Field | Type | Rule |
+|---|---|---|
+| `run_id` / `started_at` | `str` | |
+| `runner_command` / `model_identifier` | `str` | Recorded so runs are comparable |
+| `baseline_kind` | `"pre_feature" \| "other"` | `other` runs never decide SC-009 (FR-042c) |
+| `baseline_sha` / `baseline_idfkit` | `str` | The idfkit-mcp commit and idfkit level of the baseline |
+| `treatment_revision` | `str` | |
+| `disallowed_tools` | `list[str]` | Non-empty only for ablation runs (R-31) |
+| `repeats` | `int` | At least 3 (FR-042a) |
+| `bootstrap_seed` / `bootstrap_resamples` | `int` | For the confidence intervals (R-32) |
+| `outcomes` | `list[TaskOutcome]` | |
+
+### Comparison
+
+One per metric and scope, computed from paired task means (R-32).
+
+| Field | Type | Rule |
+|---|---|---|
+| `scope` | `str` | `overall`, a layer, a fault type, `held_out` or `control` |
+| `metric` | `"fix_rate" \| "tool_calls" \| "response_tokens" \| "unwanted_changes" \| "false_fix_rate" \| "wrong_top_candidate_rate"` | |
+| `tasks` | `int` | Paired tasks in the scope |
+| `baseline` / `treatment` / `difference` | `float` | Means over tasks |
+| `ci_low` / `ci_high` | `float` | 95% percentile bootstrap |
+| `descriptive_only` | `bool` | True when the interval includes zero for a fault-type scope |
+
+### GateVerdict
+
+The SC-009 decision in `summary.md`.
+
+| Field | Type | Rule |
+|---|---|---|
+| `effect` | `"fix_rate" \| "tool_calls" \| None` | The clause that passed, if any |
+| `ci_excludes_zero` | `bool` | |
+| `held_out_direction` | `bool` | The gain holds in direction on held-out faults |
+| `no_more_unwanted_changes` / `no_more_false_fixes` | `bool` | |
+| `wrong_top_candidate_ok` | `bool \| None` | SC-009a, when diagnosis tasks ran |
+| `valid` | `bool` | False when `baseline_kind` is `other` or the run is an ablation |
+| `passes` | `bool` | All clauses true and `valid` |
+
+---
+
+## Session state (idfkit-mcp)
+
+The session file moves from version 1 to version 2 (research R-15). It adds two fields and nothing else.
+
+| Field | Type | Rule |
+|---|---|---|
+| `simulation_model_hash` | `str \| None` | SHA-256 of the IDF text written for the session's last run (R-06) |
+| `simulation_run_dir` | `str \| None` | The run directory, so linking can resume after a restart |
+
+Version-1 files load with both fields `None`, which means no simulation recorded. Nothing is written into model
+files.
 
 ---
 
@@ -493,15 +568,3 @@ is_parent, accepts_nodelist, predicate or None)`.
 | `series` | `dict[tuple[str, str], list[int]]` (indexes into the report dictionary, never values) |
 | `messages` | `list[tuple[int, str, str, tuple[int, ...], int, str \| None]]` |
 | `unresolved` | `list[tuple[str, str]]` |
-
-### Standards cache (process-wide, read-only)
-
-| Structure | Type |
-|---|---|
-| `envelope_90_1` | `dict[tuple[str, str, str, str], tuple[tuple[...], ...]]` (edition, climate zone set, surface type, building category) to projected rows |
-| `lighting_90_1` | `dict[str, tuple[tuple[...], ...]]` (edition to its `SS` and `CS` rows, by 1-based row id) |
-| `ventilation_62_1` | `dict[str, tuple[tuple[...], ...]]` (edition to its rows, by 1-based row id) |
-| `space_types` | level 1 to level 2 names, and level 2 name to `(table, row id)` per edition (R-27) |
-| `data_version` | `str` |
-
-Loaded on first use under a lock and shared by every session. The parsed JSON is discarded after projection.

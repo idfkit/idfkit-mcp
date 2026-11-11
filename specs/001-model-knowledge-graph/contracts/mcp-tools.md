@@ -4,6 +4,10 @@ These are the agent-facing interfaces this feature adds or changes. Tool names, 
 fields are public API (Constitution Principle II). Response types are the Pydantic mirrors of
 [`../data-model.md`](../data-model.md).
 
+The feature adds **six tools** (research R-31): `trace_hvac`, `get_hvac_topology`, `rename_node`,
+`get_object_results`, `diagnose_symptom` and `get_object_neighbourhood`. The standards tools of earlier drafts were
+deferred with the standards layer ([deferred-standards.md](../deferred-standards.md)).
+
 Annotation shorthands follow the existing modules:
 - `_READ_ONLY` = read-only, non-destructive, idempotent, closed-world
 - `_MUTATE` = not read-only, non-destructive, not idempotent, closed-world
@@ -13,49 +17,43 @@ Every mutating tool calls `state.record_change(...)`.
 Errors use the existing `ToolError` mapping (`errors.py`). Each error names its cause and remedy, and none returns a
 default (Principle III). The error conditions listed below are the ones each tool must raise.
 
+**Coverage.** Every response that answers from the graph carries `coverage` in the shared shape of research R-35:
+`{partial, uncovered: [{kind, count, examples, reason}], resolved, unresolved}`, with `uncovered` kinds
+`hvac_template`, `ems_program`, `unclassified_type` and `unlinked_result` (FR-004, FR-004a).
+
+**Categories.** `categories` parameters take values from the closed `ComponentCategory` vocabulary of research
+R-36 (`heating_coil`, `cooling_coil`, `fan`, `pump`, `terminal_unit`, … `other`). An unknown value is an error that
+lists the vocabulary.
+
 ---
 
 ## Layer 1: HVAC topology
 
-### `trace_node` (`_READ_ONLY`)
+### `trace_hvac` (`_READ_ONLY`)
+
+Replaces `trace_node` and `trace_component` from earlier drafts. Conditional: see
+[Conditional tools](#conditional-tools-fr-059).
 
 | Param | Type | Default | Notes |
 |---|---|---|---|
-| `node` | `str` | required | Matched case-insensitively |
+| `object_type` | `str` | required | `"Node"` to start from a node, otherwise a component type |
+| `name` | `str` | required | Matched case-insensitively |
 | `hops` | `int` | 2 | 0–10. Components to walk upstream and downstream |
+| `categories` | `list[ComponentCategory] \| None` | `None` | Keeps only components of these categories in the upstream and downstream walks |
 
-Returns `NodeTrace`:
-- `node`, `fluid`
-- `uses: list[NodeUse]` (bounded)
-- `producers` and `consumers: list[ObjectKey]`
-- `controls: list[NodeUse]` (sensor, setpoint and actuator uses)
+Returns `HVACTrace`:
+- `start`: the node, or the component as `ObjectKey` with its `category`
+- `fluid` (node start), or `ports: list[NodeUse]` grouped by stream (component start)
+- `producers` and `consumers: list[ObjectKey]` (node start)
+- `controls: list[NodeUse]` (sensor, setpoint and actuator uses, EMS sensors and actuators included)
 - `memberships: list[LoopMembership]`
+- `parent: ObjectKey | None` and `children: list[ObjectKey]` (component start)
 - `upstream` and `downstream: list[FlowEdge]`
-- `findings: list[TopologyFinding]` (only those touching this node)
+- `findings: list[TopologyFinding]` (only those touching the start)
 - `coverage`
 
-Errors: no model loaded; node not used by any object. The error lists the closest node names and never picks
-one.
-
-### `trace_component` (`_READ_ONLY`)
-
-| Param | Type | Default |
-|---|---|---|
-| `object_type` | `str` | required |
-| `name` | `str` | required |
-| `hops` | `int` | 2 |
-
-Returns `ComponentTrace`:
-- `object`
-- `ports: list[NodeUse]`, grouped by stream
-- `memberships`
-- `parent: ObjectKey | None` and `children: list[ObjectKey]`
-- `upstream` and `downstream`
-- `findings`
-- `coverage`
-
-Errors: object not found; object has no node fields. The second error says so and suggests
-`idfkit://model/references/{name}`.
+Errors: no model loaded; node not used by any object, or object not found (each lists the closest names and never
+picks one); object has no node fields (the error says so and suggests `get_object_neighbourhood`).
 
 ### `get_hvac_topology` (`_READ_ONLY`)
 
@@ -89,7 +87,8 @@ nodes implicitly.
 
 Adds the check group `hvac_topology`. Each `TopologyFinding` maps onto the existing `IntegrityIssue` with
 `category="hvac_topology"`, `object_type`/`object_name` taken from the first object, and the code prefixed to the
-message (`[T010] …`). Findings beyond 50 are grouped by code with counts. **No existing field changes.**
+message (`[T010] …`). Severities respect the per-version caps of research R-34. Findings beyond 50 are grouped by
+code with counts. **No existing field changes.**
 
 ### Resource `idfkit://model/hvac/{loop}`
 
@@ -104,6 +103,8 @@ with "No simulation run in this session; run `run_simulation` first." Every resp
 `results_state: "fresh" | "stale"` (FR-026).
 
 ### `get_object_results` (`_READ_ONLY`)
+
+Conditional: see [Conditional tools](#conditional-tools-fr-059).
 
 | Param | Type | Default |
 |---|---|---|
@@ -122,15 +123,21 @@ Returns `ObjectResults`:
 
 ### `diagnose_symptom` (`_READ_ONLY`)
 
+Built only if the SC-009 gate passes (slice 6).
+
 | Param | Type | Default | Notes |
 |---|---|---|---|
 | `symptom` | `str` | required | `unmet_heating`, `unmet_cooling`, `peak_outlier`, `sizing_zero`, `message:<kind>` |
 | `object_type` / `name` | `str \| None` | `None` | Target object. Required for zone symptoms |
 | `limit` | `int` | 5 | |
 
-Returns `Diagnosis`:
+Returns `Diagnosis`, with fields in this order (research R-16, R-37):
+- `statement`: present when `no_strong_candidate` is true, saying that no candidate has strong evidence
+- `no_strong_candidate: bool`
 - `symptom`, `target`
-- `candidates: list[CandidateCause]`, ranked
+- `candidates: list[CandidateCause]`, ranked. Each has `evidence`, `evidence_strength` (`strong`, `moderate` or
+  `weak`), `reason` and `verify`. A `weak` candidate is never ranked first
+- `families_covered: list[str]`, the rule families examined for this symptom
 - `shared_upstream: list[ObjectKey]`, objects common to every affected object (FR-027, US6-AS2)
 - `coverage`, `results_state`
 
@@ -154,122 +161,30 @@ Same content as `get_object_results`.
 
 ---
 
-## Layer 3: Standards knowledge
-
-Every tool in this layer fails with an actionable "unavailable" error when the standards data is not installed or
-the Python version is 3.14 or later (research R-08).
-
-### `get_standards_context` (`_READ_ONLY`)
-
-No params. Returns `StandardsContext` with a source for each field, plus `missing: list[str]` and a one-line hint
-per missing item. It also returns `topics_ready: list[str]`, the topics whose required items are all set (research
-R-29).
-
-### `set_standards_context` (`_MUTATE` on session state, not on the model)
-
-| Param | Type | Notes |
-|---|---|---|
-| `edition` | `str \| None` | The 90.1 edition. Validated against the editions in the data. The error lists them |
-| `ventilation_edition` | `str \| None` | The 62.1 edition. Validated the same way |
-| `climate_zone` | `str \| None` | `0`–`8` with an optional `A`, `B` or `C`. Records the source as `asserted` |
-| `building_category` | `"Nonresidential" \| "Residential" \| "Semiheated" \| None` | |
-
-Omitted params leave the current value unchanged. Returns the updated `StandardsContext`. Records the change and
-persists it to the session file.
-
-### `lookup_standard` (`_READ_ONLY`)
-
-| Param | Type | Notes |
-|---|---|---|
-| `topic` | `"envelope" \| "lighting" \| "ventilation"` | Required |
-| `surface_class` | `str \| None` | Required for `envelope`. One of the nine PNNL surface types |
-| `assembly_class` | `str \| None` | `envelope` only |
-| `space_type` | `str \| None` | Required for `lighting` and `ventilation`. A level-1 name or a topic-specific space-type name. The error lists the closest names |
-| `edition`, `ventilation_edition`, `climate_zone`, `building_category` | `str \| None` | Default to the session context. Fail if an item the topic needs is still missing |
-
-Returns `RequirementLookup`: `requirements: list[Requirement]` (SI and IP, citation and `citation_source`),
-`data_source`. For lighting and ventilation, each requirement shows the resolved row and the mapping path
-(research R-27). A space type whose mapping is under review is refused with the reason.
-
-### `screen_standards` (`_READ_ONLY`)
-
-This replaces `screen_envelope` from earlier drafts, which was never released (research R-29).
-
-| Param | Type | Default | Notes |
-|---|---|---|---|
-| `topics` | `list["envelope" \| "lighting" \| "ventilation"] \| None` | `None` | `None` screens every topic whose context items are set |
-| `limit` | `int` | 20 | Verdicts returned, worst margin first, across topics |
-
-Uses the session `StandardsContext` and asserted roles. Returns `ScreeningReport` with `summary` counts per topic and
-verdict, and `not_evaluated` for topics left out with `topics=None`.
-
-Errors (FR-032):
-- a named topic with missing context items: the error names each item
-- `topics=None` with no topic ready: the error names the items each topic needs
-
-Zones without an asserted space type get `cannot_tell` lighting and ventilation verdicts. The `resolve` hint names
-`assign_object_role` and, where available, an unconfirmed suggestion.
-
-### `get_object_roles` (`_READ_ONLY`)
-
-| Param | Type | Default |
-|---|---|---|
-| `object_type` | `str \| None` | `None` |
-| `role` | `str \| None` | `None` |
-| `unknown_only` | `bool` | `False` |
-| `limit` | `int` | 50 |
-
-Returns a bounded list of `ObjectRole`, with `origin` and `evidence`.
-
-### `assign_object_role` (`_MUTATE` on session state)
-
-| Param | Type |
-|---|---|
-| `object_type` | `str` |
-| `name` | `str` |
-| `role` | `"conditioned_status" \| "assembly_class" \| "space_type" \| "lighting_space_type" \| "ventilation_space_type"` |
-| `value` | `str` |
-
-The value must be in the role's vocabulary; the error lists the closest allowed values. The three space-type roles
-apply to `Zone` objects only, and their vocabularies come from the data, so they need the extra. Returns the resulting
-`ObjectRole` with `origin="asserted"`. Records the change and persists it (FR-037).
-
-### `search_weather_stations` (changed)
-
-- New optional parameter `climate_zone: str | None`, an exact match such as `5A`. A bare `5` matches all subtypes.
-- `WeatherStationModel` gains `ashrae_climate_zone: str | None`, which is `None` when the index marks the zone as
-  undetermined.
-
-### Resource `idfkit://standards/context`
-
-Same content as `get_standards_context`.
-
----
-
 ## Combined view
 
 ### `get_object_neighbourhood` (`_READ_ONLY`)
 
 This is the cross-layer neighbourhood of one object or node (FR-058, research R-25). It is built from
-`idfkit.graph.ModelGraph` with the session's document, its `ResultIndex` if this session ran a simulation, and its
-standards context and asserted roles if the context makes at least one topic ready.
+`idfkit.graph.ModelGraph` with the session's document and, if this session ran a simulation, its `ResultIndex`.
 
 | Param | Type | Default | Notes |
 |---|---|---|---|
 | `object_type` | `str` | required | Use `"Node"` to start from a node |
 | `name` | `str` | required | Matched case-insensitively |
 | `hops` | `int` | 1 | 1–3 |
-| `node_kinds` | `list[NodeKind] \| None` | `None` | From `object`, `node`, `result_fact`, `message`, `verdict` |
-| `edge_kinds` | `list[EdgeKind] \| None` | `None` | From `reference`, `flow`, `control`, `membership`, `result_link`, `verdict` |
+| `node_kinds` | `list[NodeKind] \| None` | `None` | From `object`, `node`, `result_fact`, `message` |
+| `edge_kinds` | `list[EdgeKind] \| None` | `None` | From `reference`, `flow`, `control`, `membership`, `result_link` |
+| `categories` | `list[ComponentCategory] \| None` | `None` | Keeps object nodes of these categories, and always the start |
 | `max_nodes` | `int` | 40 | 1–100 |
 
 Returns `ObjectNeighbourhood`, the Pydantic mirror of `Subgraph`:
 - `start`
-- `nodes` and `edges`
-- `layers` and `unavailable`, each layer with its reason, for example "results: no simulation run in this session"
-- `partial`, for example the standards topics left out because the context is incomplete
+- `nodes` and `edges`; object nodes carry `category`
+- `layers` and `unavailable`, each missing layer with its reason, for example "results: no simulation run in this
+  session"
 - `truncated`, `omitted_nodes`, `frontier`
-- `results_state`
+- `results_state`, `coverage`
 
 When the serialised response would exceed 8 KB, the tool lowers the node count until it fits and sets
 `truncated`. It never returns a partial node or edge.
@@ -278,11 +193,36 @@ Errors:
 - no model loaded
 - object or node not found: the error lists the closest names and never picks one
 - `hops` or `max_nodes` out of range: the error states the range
-- an unknown kind: the error lists the vocabulary
+- an unknown kind or category: the error lists the vocabulary
 
 A missing layer is never an error. It is reported in `unavailable`.
 
 There is **no** export tool and no graph resource (FR-058).
+
+---
+
+## Conditional tools (FR-059)
+
+`trace_hvac` and `get_object_results` answer questions that `get_object_neighbourhood` can also reach, already
+interpreted. They ship in their slices on a condition (research R-31):
+
+- In slice 4, when `get_object_neighbourhood` lands, the evaluation runs an ablation with both tools disallowed
+  ([eval-harness.md](eval-harness.md#runner-configuration-evalrunnerstoml)).
+- A tool stays only if removing it costs at least 20% more tool calls or response tokens at no lower fix rate.
+- A tool that fails the condition is removed before the release that would first publish it, so no deprecation is
+  needed.
+
+**Nearest neighbour in every description.** Each new tool's description says which other tool is closest and when to
+use it instead:
+
+| Tool | Nearest neighbour | Use this one when |
+|---|---|---|
+| `trace_hvac` | `get_object_neighbourhood` | you need loop, side, branch, position and controls of one node or component |
+| `get_hvac_topology` | `trace_hvac` | you need a whole loop, or every loop, in flow order |
+| `rename_node` | `rename_object` | the name is a node name, not an object name |
+| `get_object_results` | `get_object_neighbourhood` | you need every result and message for one object, with counts |
+| `diagnose_symptom` | `get_object_results` | you have a symptom and want ranked candidate causes |
+| `get_object_neighbourhood` | `trace_hvac`, `get_object_results` | you need to cross layers, or the object has no node fields |
 
 ---
 
@@ -293,15 +233,23 @@ as measured by the `perf` protocol tests in idfkit-mcp (spec SC-011 to SC-013, r
 
 | Call | Server time | Default response |
 |---|---|---|
-| `trace_node`, `trace_component`, `get_hvac_topology` (one loop), `rename_node` | ≤ 50 ms the first time after load or an edit; ≤ 10 ms when cached | ≤ 8 KB |
+| `trace_hvac`, `get_hvac_topology` (one loop), `rename_node` | ≤ 50 ms the first time after load or an edit; ≤ 10 ms when cached | ≤ 8 KB |
 | `get_hvac_topology` (all loops, summary) | same | ≤ 8 KB, paged |
 | `check_model_integrity` with the `hvac_topology` group | ≤ 60 ms (existing checks plus topology) | ≤ 8 KB, grouped |
 | `get_object_results`, `diagnose_symptom` | ≤ 250 ms the first time after a run; ≤ 10 ms afterwards | ≤ 8 KB |
-| `get_standards_context`, `get_object_roles`, `assign_object_role`, `set_standards_context` | ≤ 10 ms (the first space-type assertion in a process loads the vocabularies, within the 500 ms first-call budget) | ≤ 8 KB |
-| `lookup_standard`, `screen_standards` | ≤ 500 ms the first time in a process for each topic; ≤ 50 ms afterwards | ≤ 8 KB |
-| `get_object_neighbourhood` | ≤ 50 ms when the topology and results views are cached. The first call after a load, edit or run pays that view's build, within the budgets above. The first walk into `verdict` nodes pays the screening | ≤ 8 KB, enforced |
+| `get_object_neighbourhood` | ≤ 50 ms when the topology and results views are cached. The first call after a load, edit or run pays that view's build, within the budgets above | ≤ 8 KB, enforced |
 
 ## Token budget
 
-Every tool and resource above is measured with `scripts/token_audit.py` in the change that adds it. The total
-growth of the tool listing must stay at or below 15% of the listing at the base revision (SC-010).
+The cost is the whole `tools/list` response as an agent receives it, **output schemas included**, measured with
+`scripts/token_audit.py` at 4 characters per token (research R-12).
+
+| Figure | Value |
+|---|---|
+| Base, at `81d3cd6` (before the feature) | 39 tools, about 15,300 tokens, about 390 per tool |
+| Cap on growth (SC-010) | 15%, about 2,300 tokens for all new tools plus the growth of changed tools |
+| Average allowed per new tool | about 380 tokens across six tools |
+
+Response models share one set of sub-models (`ObjectKey`, `Coverage`, `NodeUse`, `FlowEdge`) so each appears once
+in `$defs`. Each change that adds a tool states the listing before and after. If slice 4's measurement exceeds the
+cap, the two conditional tools are the first cut.

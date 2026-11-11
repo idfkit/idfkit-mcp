@@ -2,7 +2,12 @@
 
 This is the file format written by `idfkit.graph.write_node_link` and `save_node_link` (spec FR-057, research
 R-24). It is a public, versioned format. A change follows FR-053: removing or renaming a key, or changing the
-meaning of a kind, needs a new `format_version` and a deprecation period. Adding an optional attribute does not.
+meaning of a kind, needs a new `format_version` and a deprecation period. Adding an optional attribute, a node
+kind, an edge kind or a layer does not: `format_version` stays `1`.
+
+**Readers must ignore what they do not know.** A reader of format version 1 must skip node and edge kinds, layers
+and attributes it does not recognise, rather than fail. That is what lets a later feature add, for example, a
+`standards` layer with `verdict` kinds without a new version (spec FR-056).
 
 The server never produces this format (FR-058).
 
@@ -24,10 +29,10 @@ The server never produces this format (FR-058).
 | `format_version` | `int` | `1` |
 | `idfkit_version` | `str` | `idfkit.__version__` |
 | `energyplus_version` | `str` | The model's version, `X.Y.Z` |
-| `layers` | `list[str]` | Layers included, from `model`, `topology`, `results`, `standards` |
+| `layers` | `list[str]` | Layers included, today from `model`, `topology`, `results` |
 | `unavailable` | `dict[str, str]` | Each layer asked for but absent, with the reason |
-| `partial` | `dict[str, str]` | Each included layer that covers only part of its scope, and what is missing (for example standards topics without a complete context) |
-| `scope` | object | `start`, `hops`, `node_kinds`, `edge_kinds` as given, `null` when unrestricted |
+| `coverage` | object | The `Coverage` of the view: `partial`, and `uncovered` as a list of `{kind, count, examples, reason}` (research R-35) |
+| `scope` | object | `start`, `hops`, `node_kinds`, `edge_kinds`, `categories` as given, `null` when unrestricted |
 | `results_state` | `"fresh" \| "stale" \| null` | `null` when `results` is not included |
 
 ## Node object
@@ -36,11 +41,10 @@ Required keys: `id`, `kind`, `layer`, `label`. These are optional by kind:
 
 | Kind | Further keys |
 |---|---|
-| `object` | `object_type`, `name` (model spelling) |
+| `object` | `object_type`, `name` (model spelling), `category` (research R-36) |
 | `node` | `name`, `fluid` |
 | `result_fact` | `object_type`, `name` (owner), `metric`, `value`, `units`, `source`, `where`, `multiplier`, `stale` |
 | `message` | `severity`, `message_kind`, `text`, `occurrences`, `first_seen`, `stale` |
-| `verdict` | `object_type`, `name` (construction or zone), `topic`, `check`, `verdict`, `value_si`, `limit_si`, `limit_ip`, `units_si`, `units_ip`, `citation`, `citation_source`; plus `surface_class` (envelope) or `space_type_row` as a two-item array (lighting, ventilation) |
 
 `id` is unique within the file. It is formed from the kind and the upper-cased identity, so the same model gives the
 same ids on every export.
@@ -54,10 +58,9 @@ are optional by kind:
 |---|---|
 | `reference` | `field` |
 | `flow` | `field`, `connection_type`, `fluid`, `provenance` |
-| `control` | `field`, `connection_type`, `provenance` |
+| `control` | `field`, `connection_type`, `provenance`; for EMS sensors and actuators, `rule: "ems_key"` and `confidence: "convention"` |
 | `membership` | `side`, `branch`, `position`, `loop_kind` |
 | `result_link` | `confidence`, `rule` |
-| `verdict` | none |
 
 ## Compatibility guarantees, tested
 
