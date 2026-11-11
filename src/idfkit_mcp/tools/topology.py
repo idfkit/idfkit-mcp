@@ -39,6 +39,9 @@ _CATEGORIES: dict[str, ComponentCategory] = {c.value: c for c in ComponentCatego
 _FLUIDS: dict[str, Fluid] = {f.value.lower(): f for f in Fluid if f is not Fluid.UNKNOWN}
 _ZONE_TYPES = ("Zone", "Space")
 _CLOSEST = 5
+RESPONSE_BYTES = 8 * 1024
+"""Every response fits in 8 KB (SC-012); get_hvac_topology returns fewer whole loops rather than more."""
+_ENVELOPE_BYTES = 64
 _TIMES = "\u00d7"  # the multiplication sign of a collapsed count (spec FR-016)
 
 FluidName = Literal["Air", "Water", "Steam", "Refrigerant"]
@@ -424,10 +427,14 @@ def _loop_summary(topo: HVACTopology, loop: IDFObject, detail: str, findings: li
     members.add((loop.obj_type.upper(), loop.name.upper()))
     setpoints: dict[str, None] = {}
     air = kind == "air"
-    for obj in [loop, *(o for path in (*supply, *demand) for o in path)]:
+    seen: set[str] = set()
+    for obj in dict.fromkeys([loop, *(o for path in (*supply, *demand) for o in path)]):
         for port in topo.ports(obj):
             if (port.fluid is Fluid.AIR) != air and port.fluid is not Fluid.UNKNOWN:
                 continue  # a coil's other stream belongs to the other loop
+            if port.node in seen:
+                continue
+            seen.add(port.node)
             for use in topo.controls(port.node):
                 if use.connection is ConnectionType.SETPOINT:
                     setpoints[use.node] = None
@@ -447,6 +454,22 @@ def _loop_summary(topo: HVACTopology, loop: IDFObject, detail: str, findings: li
     )
 
 
+_MEMO: list[tuple[HVACTopology, dict[tuple[str, str, str], m.LoopSummary]]] = []
+"""Loop summaries per topology view. A view is rebuilt after any edit to its document, so a memo
+keyed by the view object is never stale; the few most recent views are kept (one per session)."""
+_MEMO_VIEWS = 8
+
+
+def _memo_for(topo: HVACTopology) -> dict[tuple[str, str, str], m.LoopSummary]:
+    for view, memo in _MEMO:
+        if view is topo:
+            return memo
+    memo: dict[tuple[str, str, str], m.LoopSummary] = {}
+    _MEMO.insert(0, (topo, memo))
+    del _MEMO[_MEMO_VIEWS:]
+    return memo
+
+
 def build_topology_summary(loop: str | None, detail: str, limit: int) -> m.HVACTopologySummary:
     """The ``get_hvac_topology`` response; also serves the ``idfkit://model/hvac/{loop}`` resource."""
     doc = get_state().require_model()
@@ -461,13 +484,20 @@ def build_topology_summary(loop: str | None, detail: str, limit: int) -> m.HVACT
             raise ToolError(msg)
         loops = chosen
     findings = topo.check()
-    shown = loops[:limit]
-    return m.HVACTopologySummary(
-        loops=[_loop_summary(topo, lp, detail, findings) for lp in shown],
-        total=len(loops),
-        omitted=len(loops) - len(shown),
-        coverage=coverage_model(topo.coverage),
-    )
+    coverage = coverage_model(topo.coverage)
+    budget = RESPONSE_BYTES - len(coverage.model_dump_json()) - _ENVELOPE_BYTES
+    shown: list[m.LoopSummary] = []
+    memo = _memo_for(topo)
+    for lp in loops[:limit]:
+        summary = memo.get((lp.obj_type, lp.name, detail))
+        if summary is None:
+            summary = memo[(lp.obj_type, lp.name, detail)] = _loop_summary(topo, lp, detail, findings)
+        size = len(summary.model_dump_json().encode())
+        if shown and size > budget:
+            break  # whole loops only: the rest are counted in `omitted`
+        shown.append(summary)
+        budget -= size + 1
+    return m.HVACTopologySummary(loops=shown, total=len(loops), omitted=len(loops) - len(shown), coverage=coverage)
 
 
 @tool(annotations=_READ_ONLY, output_schema=compact_output_schema(m.HVACTopologySummary))
@@ -479,7 +509,9 @@ def get_hvac_topology(
             description='"summary": counts per side. "chain": each side in flow order, repeated paths collapsed to a count.'
         ),
     ] = "summary",
-    limit: Annotated[int, Field(ge=1, le=100, description="Loops per response.")] = 20,
+    limit: Annotated[
+        int, Field(ge=1, le=100, description="Most loops per response; fewer when they would pass 8 KB.")
+    ] = 20,
 ) -> m.HVACTopologySummary:
     """Summarise HVAC loops: kind, fluid, supply and demand sides, zones served, setpoint nodes and
     connection findings per code.
