@@ -52,6 +52,13 @@ the domain knowledge (topology rules, result linking, standards lookups and scre
 idfkit-mcp exposes it. This spec is written here because this is where agents meet the feature. Its requirements
 therefore bind both repositories. The work in idfkit is a dependency that must land first (see Dependencies).
 
+## Clarifications
+
+### Session 2026-11-11
+
+- Q: Should the three layers and the evaluation stay in one spec, or be split into separate specs? → A: Keep one
+  umbrella spec. One plan covers all layers, and stories are delivered in priority order.
+
 ## User Scenarios & Testing *(mandatory)*
 
 The primary actor throughout is an **agent**: an LLM working on an EnergyPlus model through idfkit-mcp on behalf of
@@ -470,8 +477,8 @@ value as evidence.
 
 - **One umbrella feature, delivered in slices.** The three layers and the evaluation are specified together because
   they share entities, identity rules (type and name) and the evaluation. Each user story is independently
-  deliverable. User Stories 1 and 2 form the first slice. User Story 6 waits for the decision gate in SC-009. If
-  separate specs per layer are preferred, `/speckit-clarify` is the place to split them.
+  deliverable. User Stories 1 and 2 form the first slice. User Story 6 waits for the decision gate in SC-009.
+  Keeping one spec was confirmed in Clarifications (2026-11-11), so one plan covers all layers.
 - **Envelope only for standards in this feature.** Lighting power, ventilation, HVAC efficiency, other codes (IECC,
   NECB) and typical-value benchmarks are later work. They reuse the standards context, roles and verdict shape
   defined here.
