@@ -5,6 +5,11 @@
 **Input**: Feature specification from `specs/001-model-knowledge-graph/spec.md`, plus the planning direction
 *"a pure Python stack as much as possible; no external dependencies except for the PNNL standards library."*
 
+> **Out of date since 2026-11-11.** The spec was revised after this plan was written: the evaluation was
+> strengthened, and the standards layer (User Story 5, `idfkit.standards`, the standards tools, slices 5a and 5b,
+> research R-08 to R-11 and R-26 to R-30) was deferred to a future spec
+> ([deferred-standards.md](deferred-standards.md)). Re-run `/speckit-plan` before `/speckit-tasks`.
+
 ## Summary
 
 This feature adds three layers to idfkit's model graph and exposes them to agents through idfkit-mcp:

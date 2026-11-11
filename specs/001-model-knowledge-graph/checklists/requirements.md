@@ -13,8 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain (one open since the 2026-11-11 review: FR-038a, standards data on
-  Python 3.14 and later)
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -66,3 +65,11 @@ FR-038a carries a [NEEDS CLARIFICATION] marker for `/speckit-clarify`. Downstrea
 review do not yet reflect it, notably research R-13 (baseline is the previous release, one run per task), R-14
 (no held-out, control, authoring or open-question tasks), R-16 (diagnosis states no strong candidate) and the
 tool list in contracts/mcp-tools.md (FR-059). Re-run `/speckit-plan` or amend them before `/speckit-tasks`.
+
+Validation pass 3 (2026-11-11, scope cut). The standards layer is deferred to a future spec: User Story 5, FR-030
+to FR-038a, SC-006 and SC-007 move verbatim to `deferred-standards.md`, and their numbers are retired. FR-002,
+FR-006, FR-008, FR-040, FR-054 to FR-056 and SC-013 lose their standards clauses. FR-056 gains an extensibility
+clause so a later feature can add verdict kinds. The deferral removes FR-038a's [NEEDS CLARIFICATION] marker, so all
+items pass again. The plan, research, data model, contracts and quickstart still describe the standards layer
+(slices 5a and 5b, `idfkit.standards`, the standards tools, R-08 to R-11 and R-26 to R-30). Re-run `/speckit-plan`
+before `/speckit-tasks`.

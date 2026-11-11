@@ -29,11 +29,11 @@ wrong:
 2. **Simulation results.** Results are reported as free text and table rows that are not tied to model objects.
    An agent sees "300 unmet hours in zone X" and has to rebuild by hand the path to the equipment, schedules and
    constructions that might cause it.
-3. **Domain expectations.** Nothing tells the agent what a value *should* be. Agents recite standards tables from
-   memory, and the guidance shipped to them today contains a unit error that makes roof targets about 5.7 times too
-   strict.
+A third gap, **domain expectations** (nothing tells the agent what a value *should* be under an energy standard),
+was part of this feature until 2026-11-11 and is now deferred to a future spec. Its requirements are kept in
+[deferred-standards.md](deferred-standards.md).
 
-This feature adds those three layers to the model graph and exposes them through idfkit-mcp as targeted questions
+This feature adds the first two layers to the model graph and exposes them through idfkit-mcp as targeted questions
 an agent can ask. It also adds a fourth element that makes the rest accountable: **an evaluation that measures
 whether these capabilities actually improve an agent's ability to find and fix faults.** No published study has
 measured this (see [background/00-literature-scan.md](background/00-literature-scan.md)).
@@ -48,7 +48,7 @@ measured this (see [background/00-literature-scan.md](background/00-literature-s
 The design sketches in those reports are inputs to `/speckit-plan`, not decisions taken here.
 
 **Where the work lands.** Under this repository's constitution (Principle I, *The Server Exposes, idfkit Knows*),
-the domain knowledge (topology rules, result linking, standards lookups and screening) is built in **idfkit**.
+the domain knowledge (topology rules, result linking and diagnosis) is built in **idfkit**.
 idfkit-mcp exposes it. This spec is written here because this is where agents meet the feature. Its requirements
 therefore bind both repositories. The work in idfkit is a dependency that must land first (see Dependencies).
 
@@ -58,13 +58,11 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 
 - Q: Should the three layers and the evaluation stay in one spec, or be split into separate specs? → A: Keep one
   umbrella spec. One plan covers all layers, and stories are delivered in priority order.
-- Q: When a modeller or agent asserts an object's role, where should that assertion be saved? → A: In the session
-  only. It survives server restarts but not the end of the session, and nothing is written to model files.
-- Q: Which ASHRAE 90.1 editions should the first envelope screening support? → A: Every 90.1 edition the standards
-  data source covers (currently 2004 through 2025). *Correction during planning:* the original wording also
-  required limits given as heating-degree-day formulas. In the data source those rows belong only to 90-1975, not
-  to any 90.1 edition from 2004 to 2025, so that requirement was replaced by the climate-zone subtype rule
-  (FR-033, SC-006). See research.md, R-08.
+- Q: Is the scope too large, and should the standards layer stay in this feature? → A: Defer it. The standards
+  layer (User Story 5, FR-030 to FR-038a, SC-006, SC-007) moves to a future spec, and this feature covers the
+  topology and results layers, the combined graph view and the evaluation. The deferred text is kept verbatim in
+  [deferred-standards.md](deferred-standards.md), with the standards clarifications from this session. This also
+  removes the open question about the standards data on Python 3.14 and later.
 - Q: Which EnergyPlus versions' example models should make up the reference corpus that decides when a connection
   check can report errors? → A: The latest supported version only (26.2).
 - Q: Should result linking and diagnosis also work on simulation outputs the agent did not produce, such as an
@@ -88,14 +86,6 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 - Q: Should agents also get MCP tools to walk the combined graph and export it, or should the combined view and
   export be available only to Python developers? → A: One bounded MCP tool returns the cross-layer neighbourhood of
   an object. Export stays Python-only.
-- Q: Which standards topics should this feature link to model objects in the knowledge graph? → A: The envelope
-  (U, C and F factors and SHGC), lighting power and 62.1 ventilation. A zone space-type role is added, which can be
-  asserted, and name-based suggestions are labelled unconfirmed. HVAC minimum efficiency, economizer and system
-  requirements, IECC and 189.1 are later work, because they depend on the topology and results layers being
-  finished.
-- Q: Which ASHRAE 90.1 lighting method should the lighting check use: per space type, or one allowance for the whole
-  building? → A: The space-by-space method only. Each zone gets one lighting verdict from its asserted space type,
-  the same role ventilation uses. The building area method is later work.
 
 ### Review revisions, 2026-11-11
 
@@ -120,7 +110,8 @@ them reverses a clarification above.
   free text are listed as not covered (edge cases, FR-004a).
 - **Components carry a category** (heating coil, fan, pump and so on), so agents can ask questions across object
   types (FR-016a).
-- **Standards availability on current Python is an open decision**, marked for `/speckit-clarify` (FR-038a).
+- **The standards layer was deferred** after these revisions, which also closes the open question on standards
+  availability on Python 3.14 and later (see Clarifications).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -273,47 +264,11 @@ new name and the connection check still passes.
 
 ---
 
-### User Story 5 - Screen the model against a chosen energy standard (Priority: P2)
+### User Story 5 - Screen the model against a chosen energy standard (deferred)
 
-A modeller asks "does this envelope meet ASHRAE 90.1-2019 in Chicago?". The agent establishes the climate zone and
-where it came from, and confirms the standard edition. It then requests a screening. Each opaque construction and
-window type gets a verdict (meets, does not meet, or cannot tell), with the computed value and the requirement in
-both SI and inch-pound units. Each verdict cites the standard's table, lists the assumptions it rests on, and lists
-what was not checked. The screening is labelled as a screening, not a compliance determination.
-
-The same screening covers lighting power and outdoor-air ventilation for each zone. Each of those needs the zone's
-space type, which the model does not record. The agent can propose space types, for example from zone names, but a
-proposal stays unconfirmed until the modeller or the agent asserts it. Until then those zones are "cannot tell".
-
-**Why this priority**: Agents do this from memory today, and the guidance shipped to them is wrong. The roof
-targets in the plugin's envelope agent are inch-pound values labelled as SI. An openly licensed (BSD-2),
-maintained, machine-readable source of the requirement tables exists. idfkit already computes most of the model
-side. What nobody provides is the step that matches each model value to the right table row. That matching is this
-story.
-
-**Independent Test**: For a model with a known roof construction and a weather location in climate zone 5A, run the
-screening against 90.1-2019. The roof verdict reports a U-factor computed with the film appropriate to a roof, the
-requirement from the cited table in both unit systems, and a verdict matching a hand calculation.
-
-**Acceptance Scenarios**:
-
-1. **Given** a model with a weather location, **When** the agent asks for the standards context, **Then** the response
-   gives the climate zone and its source, or states that it is unknown and how to supply it.
-2. **Given** no standard edition has been chosen, **When** the agent requests a screening, **Then** the request fails
-   and asks for the edition. It does not assume one.
-3. **Given** a construction whose assembly class (mass, steel-framed, wood-framed and so on) cannot be determined from
-   its layers, **When** the screening runs, **Then** that construction is reported as "cannot tell" with the reason
-   and how to resolve it. It is not given a guessed verdict.
-4. **Given** the agent or modeller asserts an assembly class, **When** the screening runs again, **Then** the verdict
-   uses the asserted value and records it as asserted, not inferred.
-5. **Given** any screening response, **When** it is returned, **Then** it states the standard, the edition, the data
-   source and its version, and the provisions it did not evaluate.
-6. **Given** a zone with no asserted space type, **When** the screening runs, **Then** its lighting and ventilation
-   checks are "cannot tell", with any name-based suggestion labelled unconfirmed and the request that would assert
-   it.
-7. **Given** a zone whose space type has been asserted, **When** the screening runs, **Then** its lighting power and
-   its outdoor-air rates are compared with the allowance and minimum for that space type, in both unit systems,
-   each with the cited table.
+Deferred to a future spec on 2026-11-11 (Clarifications). Its full text is kept in
+[deferred-standards.md](deferred-standards.md). The number is kept so that references to User Stories 6 and 7 stay
+valid.
 
 ---
 
@@ -347,7 +302,7 @@ value as evidence.
 
 A developer writing their own tool in Python, for example a pre-submission QA script for their firm's models, loads
 a model with idfkit and uses the same graph the agent uses. They walk air and water connections, list connection
-findings, read the results attached to an object after a simulation, and screen constructions against a standard.
+findings, and read the results attached to an object after a simulation.
 The API is documented with runnable examples, fully typed, and stable across minor releases. Nothing in it assumes
 an MCP server or an AI agent.
 
@@ -357,7 +312,7 @@ consumer would produce an API that has to be broken later. It is P2 because User
 first, measurable value; this story makes sure each later layer lands in a form developers can use.
 
 **Independent Test**: In a plain Python script with no MCP server, load a reference model, list the connection
-findings, trace one node, and screen the envelope (with the standards extra installed). Do it using only the public
+findings, trace one node, and walk the neighbourhood of one component across layers. Do it using only the public
 API and the documented examples. The script passes strict type checking, and repeating it against the next minor
 release needs no change.
 
@@ -397,11 +352,6 @@ release needs no change.
 - **Large models**: Responses for models with thousands of nodes or hundreds of warnings stay within a fixed budget
   by summarising, counting and paging.
 - **Stale results**: Edits after a simulation make the results stale, and every response that uses them says so.
-- **No space type**: Lighting and ventilation requirements depend on a space type the model does not record. A
-  zone without an asserted space type is "cannot tell" for those checks, never matched by name.
-- **No weather location**: Without a weather location the climate zone is unknown, and the screening says so rather
-  than guessing.
-- **Standards gaps**: A requirement the data source does not cover is reported as not evaluated, not as a pass.
 - **Version spread**: Models from every EnergyPlus version idfkit supports (currently 8.9 to 26.2) are handled.
   Only version 26.2's schema marks node fields explicitly, so earlier versions must reach the same result by
   other means. Most models agents receive are older than the latest release, so false findings on older versions
@@ -420,8 +370,8 @@ release needs no change.
 **Cross-cutting**
 
 - **FR-001**: Every capability in this feature MUST compute its domain answers in idfkit. idfkit-mcp exposes them and
-  holds no topology rules, result-linking rules or standards data of its own (Constitution, Principle I).
-- **FR-002**: Every finding, flag, link and verdict MUST name the model object, node or report row it concerns, by
+  holds no topology rules or result-linking rules of its own (Constitution, Principle I).
+- **FR-002**: Every finding, flag and link MUST name the model object, node or report row it concerns, by
   type and name, in a form the agent can pass directly to existing model requests.
 - **FR-003**: Every response MUST stay within a bounded size by summarising, deduplicating, counting and paging. It
   MUST report the totals that the bounded view leaves out.
@@ -433,11 +383,11 @@ release needs no change.
 - **FR-005**: The system MUST NOT present an inferred or pattern-matched value as a fact. Each inferred value MUST
   carry how it was obtained. Links made through EnergyPlus naming conventions MUST carry the convention used.
   Matches based only on free text MUST be labelled weak.
-- **FR-006**: Capabilities that read only the model (topology, standards lookup, screening) MUST work with no
+- **FR-006**: Capabilities that read only the model (topology and connection checks) MUST work with no
   EnergyPlus installation and no network access.
 - **FR-007**: The capabilities MUST support every EnergyPlus version that idfkit supports.
-- **FR-008**: No response may describe a connection check or a screening as proof that a model will simulate or
-  complies with a code (Constitution, Principle IV).
+- **FR-008**: No response may describe a connection check, a result link or a diagnosis as proof that a model will
+  simulate or is correct (Constitution, Principle IV).
 - **FR-009**: Performance is a requirement, not a goal. Every capability in this feature MUST meet the time and size
   budgets in SC-011 to SC-013 on the largest reference model. Each budget MUST be checked by an automated benchmark
   that fails the build on a regression. Analysis MUST cost a small fraction of loading the model. It MUST NOT
@@ -533,64 +483,14 @@ release needs no change.
   list. Every response MUST name the cause families the diagnosis rules cover for that symptom, so that a cause
   outside them is visibly unexamined, not implicitly ruled out.
 
-**Layer 3: Standards knowledge**
+**Layer 3: Standards knowledge (deferred)**
 
-- **FR-030**: An agent MUST be able to obtain the model's climate zone together with its source (weather station
-  record, weather file, or user assertion). Weather station search MUST report the climate zone and allow filtering
-  by it.
-- **FR-031**: An agent MUST be able to obtain, for each construction used on the building's exterior, its thermal
-  transmittance. Fenestration also gets solar heat gain coefficient. Surface films MUST be the ones appropriate to
-  the surface's orientation (wall, roof, floor). For each zone, the agent MUST also be able to obtain its installed
-  lighting power per floor area and its design outdoor-air rates per person and per floor area, each computed from
-  the model with zone multipliers carried.
-- **FR-032**: An agent or modeller MUST be able to set the standard, edition, climate zone and building category for
-  a session, and the ASHRAE 62.1 edition used for ventilation. A screening MUST fail with an actionable message when any required item is missing, rather than
-  assuming a default.
-- **FR-033**: An agent MUST be able to look up requirement values for envelope assemblies by standard, edition,
-  climate zone and assembly class. Results come back in SI and inch-pound units with the standard's table cited.
-  A lookup without the filters needed to keep it bounded MUST be refused with guidance. Lookups and screenings MUST
-  support every ASHRAE 90.1 edition the data source covers (currently 2004 through 2025). Where a limit is given
-  for a whole climate zone and also for its moist, dry or marine subtype (for example "3" and "3A"), the subtype
-  row MUST be used. A requested edition the data source does not cover MUST be refused, with the covered editions
-  named. The agent MUST also be able to look up lighting power allowances by 90.1 edition and space type, using the
-  space-by-space method only (the building area method is not part of this feature), and
-  outdoor-air minimums by 62.1 edition and space type, for every edition the data source covers (currently 90.1
-  2004 through 2025 and 62.1 1999 through 2022), in both unit systems with the table cited.
-- **FR-034**: An agent MUST be able to request a screening covering three topics: the envelope, lighting power and
-  ventilation. Each opaque construction and fenestration type receives an envelope verdict. Each zone receives a
-  lighting verdict and a ventilation verdict. A verdict is one of meets, does not meet or cannot tell. The agent MUST
-  be able to limit a screening to one topic. Each verdict comes with:
-  - the computed value
-  - the requirement in both unit systems
-  - the margin
-  - the area concerned (exterior area for constructions, floor area for zones)
-  - the cited table
-  - the assumptions used
-- **FR-035**: Every screening response MUST state the data source and its version. It MUST list the provisions it does
-  not evaluate (mandatory provisions, exceptions, trade-off paths), and MUST call itself a screening, not a
-  compliance determination.
-- **FR-036**: Object roles that a screening depends on MUST be derived only from model physics and structure, or
-  asserted by the agent or modeller. These roles are surface class, conditioned status, assembly class and zone
-  space type. Space type is never computed: it is asserted, or reported as unknown with any name-based suggestion
-  labelled unconfirmed. Space types use the data source's own vocabulary. A role
-  that cannot be determined MUST be reported as unknown. Any suggestion based on names MUST be labelled unconfirmed
-  and MUST NOT be used in a verdict until it is confirmed.
-- **FR-037**: An asserted role MUST be recorded in the session change log and kept in the session's persisted state.
-  It MUST survive object renames and server restarts within the same session. It MUST NOT be written into the model
-  file or any file beside it. When the session ends, or the model is loaded in a new session, asserted roles are
-  gone, and screenings report the affected objects as "cannot tell" until roles are asserted again.
-- **FR-038**: Requirement data MUST come from an openly licensed, maintained third-party source. Neither idfkit nor
-  idfkit-mcp may copy standards text, exceptions or footnotes, or reproduce requirement tables of their own.
-- **FR-038a**: The standards capabilities MUST state, on every Python version idfkit supports, whether they are
-  available. The data source currently declares support only below Python 3.14, while idfkit supports 3.10 and
-  later and 3.14 is a current release. [NEEDS CLARIFICATION: Is it acceptable to release the standards layer
-  unavailable on Python 3.14 and later, or must it be available on every supported Python before release (for
-  example through an upstream fix by the data source, or by shipping an unmodified, licensed copy of its data
-  files, which FR-038 would then need to allow)?]
+FR-030 to FR-038a are deferred to a future spec (Clarifications, 2026-11-11). Their text is kept in
+[deferred-standards.md](deferred-standards.md). The numbers are retired, not reused.
 
 **Evaluation**
 
-- **FR-040**: The project MUST provide a fault catalogue of at least 10 fault types covering all three layers. Each
+- **FR-040**: The project MUST provide a fault catalogue of at least 10 fault types covering both layers. Each
   fault type has a known correct fix and a way to inject it into a model automatically.
 - **FR-040a**: At least a third of the fault types MUST be held out: defined and committed before the checks that
   might detect them are written, by someone not writing those checks, and preferably taken from failures recorded
@@ -645,20 +545,19 @@ release needs no change.
 - **FR-053**: The public API MUST follow idfkit's versioning: no breaking change within a major release, and
   deprecations announced at least one minor release before removal. Its names MUST be recorded in the naming
   register and its subpackages in the parity ledger (as Python-only until idfkit-js implements them).
-- **FR-054**: The public API MUST make no assumptions about agents, sessions or servers. Session concepts (asserted
-  roles, standards context) are passed in by the caller, not read from global state.
-- **FR-055**: Each layer MUST be usable on its own through its own API: references (existing), topology, results
-  and standards. On top of them, idfkit MUST offer a combined graph view of a model that:
-  - presents objects, nodes, results and verdicts as typed graph nodes
-  - presents references, flow connections, control connections, loop membership, result links and screening
-    verdicts as typed edges
+- **FR-054**: The public API MUST make no assumptions about agents, sessions or servers. Session concepts (such as
+  the session's simulation results) are passed in by the caller, not read from global state.
+- **FR-055**: Each layer MUST be usable on its own through its own API: references (existing), topology and
+  results. On top of them, idfkit MUST offer a combined graph view of a model that:
+  - presents objects, nodes, result facts and messages as typed graph nodes
+  - presents references, flow connections, control connections, loop membership and result links as typed edges
   - uses one documented vocabulary of node and edge kinds
   - lets a developer walk across layers from any starting object with a hop limit and optional filters on node and
     edge kinds
 - **FR-056**: The combined view MUST be derived from the layer APIs and never duplicate their data. It MUST cost
   nothing until it is first used. It MUST include only the layers that are available: results only after a
-  simulation, and verdicts only with the standards data installed and a standards context supplied. It MUST say
-  which layers it includes.
+  simulation. It MUST say which layers it includes. Its vocabulary MUST be extensible under FR-053, so that a later
+  feature can add kinds (for example standards verdicts) without breaking existing code or exports.
 - **FR-057**: A developer MUST be able to export the combined view, or a bounded part of it (selected layers, node
   and edge kinds, or the neighbourhood of a starting object within a hop limit), as node-link JSON. Each node and
   edge carries its kind, its layer and its identity. The output MUST load unchanged into networkx's node-link reader
@@ -690,18 +589,8 @@ release needs no change.
   units, source and severity where relevant.
 - **Linked message**: An error or warning with its kind, linked objects, occurrence count and first occurrence.
 - **Candidate cause**: An object proposed as the cause of a symptom, with evidence, a reason and a verification step.
-- **Standards context**: The standard, edition, climate zone and building category in force for a session, each
-  with its source.
-- **Requirement**: One requirement value with its units, its applicability (climate zone, assembly class, building
-  category) and its citation.
-- **Object role**: A classification of an object (surface class, conditioned status, assembly class, space type)
-  with its origin: computed, asserted or unconfirmed suggestion. Asserted roles belong to the session, not to
-  the model.
-- **Screening verdict**: Meets, does not meet or cannot tell, for one construction (envelope) or one zone (lighting,
-  ventilation) against one requirement, with value, margin, area, citation and assumptions.
 - **Model graph view**: The combined, read-only view across layers (FR-055). Its node kinds are object, node,
-  result fact, message and verdict. Its edge kinds are reference, flow, control, membership, result link and
-  verdict. Each node and edge carries its kind, its layer and the identity (object type and name, or node name) a
+  result fact and message. Its edge kinds are reference, flow, control, membership and result link. Each node and edge carries its kind, its layer and the identity (object type and name, or node name) a
   developer can pass back to the layer APIs.
 - **Component category**: A coarse class of HVAC component (heating coil, fan, pump and so on), derived from the
   object type, used to filter questions across object types (FR-016a).
@@ -730,13 +619,6 @@ release needs no change.
   The rest are listed as unresolved, and a hand-checked sample of 100 links contains no wrong link labelled exact.
 - **SC-005**: After any simulation, every quality flag and warning class names its affected objects. An agent can get
   all results for one object in one request, compared with three to ten requests today.
-- **SC-006**: For every screening verdict in a hand-checked sample of at least 30, the requirement and its units match
-  the cited table, and the computed value matches a hand calculation within 2%. The sample includes at least three
-  verdicts from every supported 90.1 edition, and at least one climate zone whose limits differ by subtype
-  (3A, 3B or 3C). The sample also includes at least five lighting verdicts and at least five ventilation verdicts,
-  checked the same way against an asserted space type.
-- **SC-007**: No screening verdict rests on a role inferred from a name. Every verdict cites its source and lists its
-  assumptions.
 - **SC-008**: The evaluation runs repeatably on the full catalogue and reference set. Repeated runs under the same
   configuration agree on overall success rate within 5 percentage points, measured over the repeats required by
   FR-042a.
@@ -763,8 +645,7 @@ release needs no change.
   - Every subsequent topology question is answered in under 0.05 s of server time.
 - **SC-012**: After a simulation, the first results question is answered in under 0.25 s of server time, and every
   later one in under 0.05 s, whatever the size of the timeseries output.
-- **SC-013**: The first standards question in a server process is answered in under 0.5 s, and every later one in
-  under 0.05 s. A default response from any capability in this feature is under 8 KB.
+- **SC-013**: A default response from any capability in this feature is under 8 KB.
 
 - **SC-014**: Every public name this feature adds to idfkit appears in the reference documentation with at least one
   runnable example. Every example runs in the test suite and passes strict type checking. A developer can complete
@@ -772,21 +653,10 @@ release needs no change.
 
 ## Assumptions
 
-- **One umbrella feature, delivered in slices.** The three layers and the evaluation are specified together because
+- **One umbrella feature, delivered in slices.** The two layers and the evaluation are specified together because
   they share entities, identity rules (type and name) and the evaluation. Each user story is independently
   deliverable. User Stories 1 and 2 form the first slice. User Story 6 waits for the decision gate in SC-009.
   Keeping one spec was confirmed in Clarifications (2026-11-11), so one plan covers all layers.
-- **Standards topics in this feature: envelope, lighting power and 62.1 ventilation** (confirmed in Clarifications,
-  2026-11-11). Lighting uses the space-by-space method. The building area method, HVAC minimum efficiency,
-  economizer and system requirements, other codes (IECC, 189.1, NECB) and
-  typical-value benchmarks are later work. HVAC efficiency and system requirements wait for the topology and results
-  layers they depend on. All of them reuse the
-  standards context, roles and verdict shape defined here.
-- **The standards source is PNNL's building-energy-standards-data.** It is BSD-2 licensed, has no dependencies,
-  covers ASHRAE 90.1 2004–2025, 62.1, IECC and 189.1, and cites the source table on every row. It is added as an
-  optional dependency, so the core of idfkit keeps zero third-party dependencies. Version 0.3.3 was checked.
-- **Climate zone comes from the existing weather station index.** It is already curated in idfkit and currently
-  dropped by idfkit-mcp.
 - **The reference corpus is the example file set of the latest supported EnergyPlus version**, currently 26.2
   (confirmed in Clarifications, 2026-11-11). The research measured the 24.1 set (735 files, 575 with branches);
   the 26.2 set is expected to be of similar size. The reference model set for the evaluation (FR-041), fault
@@ -817,8 +687,6 @@ release needs no change.
   - connection checks and node rename
   - readers for the sizing and error tables in EnergyPlus's SQL output
   - the results-to-model linking and message catalogue
-  - surface-appropriate films in thermal calculations
-  - object roles and the standards lookup and screening, behind an optional dependency
 
   idfkit-mcp then adopts the new idfkit level through its pinned dependency and the bump procedure
   (Constitution, Principle VI).
@@ -837,13 +705,16 @@ release needs no change.
 ## Out of Scope
 
 - Exporting models to semantic ontologies (Brick, ASHRAE 223P, BOT). 223P is still in public review, no IDF
-  translator exists, and energy models lack the sensor points those ontologies centre on. The object roles defined
-  here are designed so that an export can be added later.
+  translator exists, and energy models lack the sensor points those ontologies centre on. The node and edge vocabulary
+  defined here is designed so that an export can be added later.
 - Performance-path compliance (ASHRAE 229 ruleset description and PNNL's ruleset checking tool). Both are
   unpublished and self-described as unstable.
 - Building or rewiring HVAC systems automatically. This feature reads, checks and renames. It does not construct
   loops.
 - A visual schematic of HVAC systems.
+- Standards knowledge: climate zone, envelope, lighting and ventilation screening against ASHRAE 90.1 and 62.1,
+  object roles and their assertion. Deferred to a future spec (Clarifications, 2026-11-11), with its requirements
+  kept in [deferred-standards.md](deferred-standards.md).
 - A developer API for registering custom connection rules, message patterns or role vocabularies (Clarifications,
   2026-11-11). Coverage gaps are closed by regenerating idfkit's rules.
 - Graph export through the MCP server; export is a Python developer capability (FR-057, FR-058).
@@ -868,13 +739,10 @@ Full reports: [background/](background/README.md). Highlights that shaped the re
 | 44% of example models reuse a name across object types | Report 03, §2.3 | FR-002, FR-020 |
 | 38% of example models request node outputs, which cannot be linked without nodes in the graph | Report 03, §2.3 | FR-020, ordering of stories |
 | idfkit-mcp joins results to the model in one place, by string. idfkit's SQL reader ignores the sizing and error tables | Report 03, §1; checked independently | FR-023, FR-024 |
-| Agents recite standards from memory. Shipped guidance has a 5.7× unit error | Report 02, §1.3; checked independently | FR-033–FR-036 |
-| An openly licensed, dependency-free, maintained source of requirement tables exists (PNNL, BSD-2) | Report 02, §2.2 | FR-038, Assumptions |
-| idfkit's U-value calculation uses one interior film for all surfaces | Report 02, §1.1 | FR-031 |
 | Brick and 223P exports are low value now. 229 and its ruleset checking tool are unstable | Report 02, §§2.1, 3 | Out of Scope |
 | No published work joins agent, MCP and a live model graph. Graph retrieval helped LLMs by 20–40% on Brick data, and pasting the whole ontology did not help | Literature scan | FR-003, FR-015, FR-016, User Story 2 |
 | No study measures the benefit to an agent | All reports | User Story 2, SC-008, SC-009 |
 | A catalogue written by the authors of the checks measures whether agents call the checks, not whether they diagnose better | Review, 2026-11-11 | FR-040a, FR-042b, SC-009 |
 | Around 20 tasks per fault type, run once, gives a ±11-point uncertainty on each fix rate, wider than the effects the gate looks for | Review, 2026-11-11 | FR-042a, SC-008, SC-009 |
 | The current tool listing is 39 tools and about 15,300 tokens, so the 15% cap leaves about 175 tokens per planned new tool | Review, 2026-11-11, measured | FR-059, SC-010 |
-| A planned node-graph build takes 5.2 ms against 228 ms to load the largest example model. The results index takes 1.8 ms on a 32.5 MB SQL file. The standards table takes 43 ms to load once. An existing unbounded tool response is 110 KB | Performance measurements | FR-009, SC-011–SC-013 |
+| A planned node-graph build takes 5.2 ms against 228 ms to load the largest example model. The results index takes 1.8 ms on a 32.5 MB SQL file. An existing unbounded tool response is 110 KB | Performance measurements | FR-009, SC-011–SC-013 |
