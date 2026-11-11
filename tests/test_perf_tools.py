@@ -177,3 +177,47 @@ async def test_trace_hvac_cached(hospital: Client[FastMCPTransport], start: dict
 async def test_check_model_integrity_with_topology(hospital: Client[FastMCPTransport]) -> None:
     """The existing checks plus the hvac_topology group, first call after load."""
     await assert_call_within_budget(hospital, "check_model_integrity", max_seconds=0.06)
+
+
+TOPOLOGY_QUERIES = [
+    {"loop": "CondenserLoop", "detail": "chain"},
+    {},
+    {"detail": "chain"},
+]
+"""One loop in chain detail (the PlantLoop ``CondenserLoop``, the reference model's loop with the most branches:
+4 supply, 259 demand), then every loop in summary and in chain detail at the default limit of 20."""
+
+
+def _topology_id(arguments: dict[str, Any]) -> str:
+    return f"{arguments.get('loop', 'all')}-{arguments.get('detail', 'summary')}"
+
+
+@pytest.mark.parametrize("arguments", TOPOLOGY_QUERIES, ids=_topology_id)
+async def test_get_hvac_topology_first_call_after_load(
+    hospital: Client[FastMCPTransport], arguments: dict[str, Any]
+) -> None:
+    """The first summary after load builds the topology view and runs the checks."""
+    await assert_call_within_budget(hospital, "get_hvac_topology", arguments, max_seconds=0.05)
+
+
+@pytest.mark.parametrize("arguments", TOPOLOGY_QUERIES, ids=_topology_id)
+async def test_get_hvac_topology_cached(hospital: Client[FastMCPTransport], arguments: dict[str, Any]) -> None:
+    """With the view cached, every summary answers within 10 ms and 8 KB."""
+    await hospital.call_tool("get_hvac_topology", arguments)
+    await assert_call_within_budget(hospital, "get_hvac_topology", arguments, max_seconds=0.01, repeat=5)
+
+
+RENAMED_NODE = "DOAS6 Supply Equipment Outlet Node"
+"""The reference model's most-used node: 18 uses across the DOAS6 supply equipment, setpoint managers and lists."""
+
+
+async def test_rename_node(hospital: Client[FastMCPTransport]) -> None:
+    """A rename rewrites every use and rebuilds the view; so does the rename back."""
+    there = await assert_call_within_budget(
+        hospital, "rename_node", {"old": RENAMED_NODE, "new": "DOAS6 Renamed Outlet Node"}, max_seconds=0.05
+    )
+    assert there.result.structured_content["fields_updated"] > 1
+    back = await assert_call_within_budget(
+        hospital, "rename_node", {"old": "DOAS6 Renamed Outlet Node", "new": RENAMED_NODE}, max_seconds=0.05
+    )
+    assert back.result.structured_content["fields_updated"] == there.result.structured_content["fields_updated"]

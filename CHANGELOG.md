@@ -12,11 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The site and the README adopt the idfkit visual identity at `identity-2026.5`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag.
 
 - `trace_hvac` traces one HVAC node, `NodeList`, zone or component: the node uses with the role
-  EnergyPlus gives each field, producers and consumers, controls, the containing equipment and what it
-  contains, flow edges up and downstream with a component-category filter and a fluid filter, the
-  connection findings touching it, and what the view could not cover. Errors list the closest names and
-  never pick one. Its output schema lists the top-level fields only, which keeps it to about 580 tokens of
+  EnergyPlus gives each field, producers and consumers, controls, the loops it sits on (kind, side,
+  branch and 0-based position, so a water coil reports its air loop and its plant loop), the containing
+  equipment and what it contains, flow edges up and downstream with a component-category filter and a
+  fluid filter, the connection findings touching it, and what the view could not cover. Errors list the
+  closest names and never pick one. Its output schema lists the top-level fields only, which keeps it to about 580 tokens of
   `tools/list`; the full shape is in `docs/tools/hvac-topology.md`. Requires idfkit's `idfkit.hvac`.
+- `get_hvac_topology` summarises every air, plant and condenser loop, or one: kind, fluid, supply and
+  demand sides, zones served, setpoint nodes and connection findings per code. In `detail="chain"` each
+  side is one flow-order string with parallel paths in braces; single-component parallel branches of one
+  type collapse to a count (`7× Coil:Heating:Water`), and longer paths collapse only when they start at
+  the same component, so a dual-duct system's two decks stay separate. A response stays within 8 KB by
+  returning fewer whole loops and counting the rest in `omitted`. An unknown loop name is an error
+  listing the closest loop names.
+- `rename_node` renames a node in every field and `NodeList` entry that uses it, which `rename_object`
+  cannot do because node names are not references. It returns the fields rewritten and the objects
+  changed, refuses a new name that is already a node rather than merging two nodes, and is recorded in
+  the change log.
+- The `idfkit://model/hvac/{loop}` resource returns one loop in flow order, the same content as
+  `get_hvac_topology(loop=..., detail="chain")`.
 
 ### Changed
 

@@ -1,4 +1,4 @@
-"""Protocol tests for the HVAC topology tools (trace_hvac), through FastMCP."""
+"""Protocol tests for the HVAC topology tools (trace_hvac, get_hvac_topology, rename_node), through FastMCP."""
 
 from __future__ import annotations
 
@@ -11,22 +11,42 @@ from fastmcp import Client
 from fastmcp.client.transports import FastMCPTransport
 from fastmcp.exceptions import ToolError
 from idfkit import new_document
+from mcp.types import TextResourceContents
 
-from idfkit_mcp.models import HVACTrace
+from idfkit_mcp.models import (
+    GetChangeLogResult,
+    HVACTopologySummary,
+    HVACTrace,
+    LoopSummary,
+    ModelIntegrityResult,
+    NodeRenameResult,
+)
 from idfkit_mcp.state import get_state
 from tests.conftest import call_tool
 
-FIVE_ZONE_GZ = Path(__file__).parent / "fixtures" / "5ZoneAirCooled.idf.gz"
+FIXTURES = Path(__file__).parent / "fixtures"
+FIVE_ZONE_GZ = FIXTURES / "5ZoneAirCooled.idf.gz"
+DUAL_DUCT_GZ = FIXTURES / "DOASDualDuctSchool.idf.gz"
+TIMES = "\u00d7"  # the multiplication sign of a collapsed count (FR-016)
 COIL = {"object_type": "Coil:Cooling:Water", "name": "Main Cooling Coil 1"}
+
+
+async def load_gz(client: Client[FastMCPTransport], gz: Path, tmp_path: Path) -> Client[FastMCPTransport]:
+    target = tmp_path / gz.stem
+    with gzip.open(gz, "rb") as src, target.open("wb") as dst:
+        shutil.copyfileobj(src, dst)
+    await client.call_tool("load_model", {"file_path": str(target)})
+    return client
 
 
 @pytest.fixture()
 async def five_zone(client: Client[FastMCPTransport], tmp_path: Path) -> Client[FastMCPTransport]:
-    target = tmp_path / "5ZoneAirCooled.idf"
-    with gzip.open(FIVE_ZONE_GZ, "rb") as src, target.open("wb") as dst:
-        shutil.copyfileobj(src, dst)
-    await client.call_tool("load_model", {"file_path": str(target)})
-    return client
+    return await load_gz(client, FIVE_ZONE_GZ, tmp_path)
+
+
+@pytest.fixture()
+async def dual_duct(client: Client[FastMCPTransport], tmp_path: Path) -> Client[FastMCPTransport]:
+    return await load_gz(client, DUAL_DUCT_GZ, tmp_path)
 
 
 async def trace(client: Client[FastMCPTransport], **arguments: object) -> HVACTrace:
@@ -53,7 +73,10 @@ class TestComponentStart:
         assert [u.stream for u in result.ports] == sorted(u.stream for u in result.ports)
         assert {e.target.name for e in result.downstream} == {"Main Heating Coil 1", "CW Demand Mixer"}
         assert result.findings == []
-        assert result.memberships == []
+        assert [(ms.loop.name, ms.kind, ms.side, ms.stream) for ms in result.memberships] == [
+            ("VAV Sys 1", "air", "supply", 1),
+            ("Chilled Water Loop", "plant", "demand", 2),
+        ]
         assert result.producers == result.consumers == []
 
     async def test_a_reheat_coil_names_its_terminal_as_parent(self, five_zone: Client[FastMCPTransport]) -> None:
@@ -150,3 +173,168 @@ class TestErrors:
     async def test_hops_out_of_range(self, five_zone: Client[FastMCPTransport]) -> None:
         with pytest.raises(ToolError):
             await five_zone.call_tool("trace_hvac", {**COIL, "hops": 11})
+
+
+# ----------------------------------------------------------------------------------------------- #
+# get_hvac_topology
+# ----------------------------------------------------------------------------------------------- #
+
+
+async def topology(client: Client[FastMCPTransport], **arguments: object) -> HVACTopologySummary:
+    result = await call_tool(client, "get_hvac_topology", dict(arguments), model=HVACTopologySummary)
+    assert isinstance(result, HVACTopologySummary)
+    return result
+
+
+def by_name(summary: HVACTopologySummary) -> dict[str, LoopSummary]:
+    return {lp.loop.name: lp for lp in summary.loops}
+
+
+class TestTopologyChain:
+    async def test_one_compact_record_per_loop(self, five_zone: Client[FastMCPTransport]) -> None:
+        result = await topology(five_zone, detail="chain")
+        assert [lp.loop.name for lp in result.loops] == ["VAV Sys 1", "Hot Water Loop", "Chilled Water Loop"]
+        assert (result.total, result.omitted) == (3, 0)
+        for lp in result.loops:
+            # SC-003: a loop record is at most about 200 tokens. Proxy: four characters of the serialised
+            # record per token, so len(json) / 4 <= 200.
+            assert len(lp.model_dump_json()) / 4 <= 200, lp.loop.name
+
+    async def test_the_air_demand_side_collapses_the_zone_paths(self, five_zone: Client[FastMCPTransport]) -> None:
+        air = by_name(await topology(five_zone, detail="chain"))["VAV Sys 1"]
+        assert air.kind == "air" and air.fluid == "Air"
+        to_zones, returns = air.demand.split("; ")
+        assert to_zones.startswith(f"5{TIMES} AirLoopHVAC:ZoneSplitter 'Zone Supply Air Splitter 1'")
+        assert "AirTerminal:SingleDuct:VAV:Reheat" in to_zones and to_zones.endswith("Coil:Heating:Water")
+        assert returns == "AirLoopHVAC:ReturnPlenum 'Return-Plenum-1'"
+        assert air.zones_served == 5
+
+    async def test_the_hot_water_demand_collapses_the_coils(self, five_zone: Client[FastMCPTransport]) -> None:
+        hot = by_name(await topology(five_zone, detail="chain"))["Hot Water Loop"]
+        assert (hot.kind, hot.zones_served) == ("plant", 0)
+        assert f"7{TIMES} Coil:Heating:Water" in hot.demand
+
+    async def test_chilled_water_setpoints_are_water_side_only(self, five_zone: Client[FastMCPTransport]) -> None:
+        chilled = by_name(await topology(five_zone, detail="chain"))["Chilled Water Loop"]
+        assert chilled.setpoint_nodes == ["CW Supply Outlet Node", "Central Chiller Outlet Node"]
+
+    async def test_dual_duct_decks_stay_separate(self, dual_duct: Client[FastMCPTransport]) -> None:
+        result = await topology(dual_duct, loop="DUALDUCT_OTHER", detail="chain")
+        (loop,) = result.loops
+        decks = [entry for entry in loop.demand.split("; ") if entry.startswith(f"6{TIMES} ")]
+        assert len(decks) == 2
+        splitters = {entry.split("'")[1] for entry in decks}
+        assert splitters == {"DUALDUCT_OTHER RC Supply Air Splitter", "DUALDUCT_OTHER Supply Air Splitter"}
+
+
+class TestTopologySummary:
+    async def test_summary_is_the_default(self, five_zone: Client[FastMCPTransport]) -> None:
+        default = await topology(five_zone)
+        explicit = await topology(five_zone, detail="summary")
+        assert default == explicit
+        air = by_name(default)["VAV Sys 1"]
+        assert air.supply == "1 branch, 4 components"
+        assert "\u2192" not in air.demand and TIMES not in air.demand
+
+    async def test_a_loop_is_selected_case_insensitively(self, five_zone: Client[FastMCPTransport]) -> None:
+        result = await topology(five_zone, loop="hot water loop")
+        assert [lp.loop.name for lp in result.loops] == ["Hot Water Loop"]
+        assert (result.total, result.omitted) == (1, 0)
+
+    async def test_an_unknown_loop_lists_the_closest(self, five_zone: Client[FastMCPTransport]) -> None:
+        with pytest.raises(ToolError) as excinfo:
+            await five_zone.call_tool("get_hvac_topology", {"loop": "VAV Sys"})
+        assert "Closest: 'VAV Sys 1'" in str(excinfo.value)
+
+    async def test_limit_reports_the_omitted_loops(self, five_zone: Client[FastMCPTransport]) -> None:
+        result = await topology(five_zone, limit=1)
+        assert (result.total, result.omitted, len(result.loops)) == (3, 2, 1)
+
+
+class TestMemberships:
+    async def test_a_reheat_coil_sits_on_both_loops(self, five_zone: Client[FastMCPTransport]) -> None:
+        result = await trace(five_zone, object_type="Coil:Heating:Water", name="SPACE1-1 Zone Coil", hops=1)
+        assert [(ms.loop.name, ms.kind, ms.side) for ms in result.memberships] == [
+            ("VAV Sys 1", "air", "demand"),
+            ("Hot Water Loop", "plant", "demand"),
+        ]
+        plant = result.memberships[1]
+        assert plant.branch is not None and plant.branch.name == "SPACE1-1 Reheat Branch"
+        assert plant.position == 0
+
+    async def test_a_node_start_has_memberships(self, five_zone: Client[FastMCPTransport]) -> None:
+        result = await trace(five_zone, object_type="Node", name="SPACE3-1 In Node", hops=1)
+        assert [(ms.loop.name, ms.side) for ms in result.memberships] == [
+            ("VAV Sys 1", "demand"),
+            ("Hot Water Loop", "demand"),
+        ]
+
+
+# ----------------------------------------------------------------------------------------------- #
+# rename_node
+# ----------------------------------------------------------------------------------------------- #
+
+
+async def topology_issues(client: Client[FastMCPTransport]) -> list[tuple[str | None, str | None, str]]:
+    result = await call_tool(client, "check_model_integrity", {}, model=ModelIntegrityResult)
+    assert isinstance(result, ModelIntegrityResult)
+    return [(i.object_type, i.object_name, i.message) for i in result.issues if i.category == "hvac_topology"]
+
+
+async def rename_error(client: Client[FastMCPTransport], old: str, new: str) -> str:
+    with pytest.raises(ToolError) as excinfo:
+        await client.call_tool("rename_node", {"old": old, "new": new})
+    return str(excinfo.value)
+
+
+class TestRenameNode:
+    async def test_end_to_end(self, five_zone: Client[FastMCPTransport]) -> None:
+        before = await topology_issues(five_zone)
+        result = await call_tool(
+            five_zone, "rename_node", {"old": "mixed air node 1", "new": "AHU-1 Mixed Air"}, model=NodeRenameResult
+        )
+        assert isinstance(result, NodeRenameResult)
+        assert (result.old, result.new, result.fields_updated) == ("Mixed Air Node 1", "AHU-1 Mixed Air", 6)
+        assert {(k.object_type, k.name) for k in result.objects} == {
+            ("Branch", "VAV Sys 1 Main Branch"),
+            ("Coil:Cooling:Water", "Main Cooling Coil 1"),
+            ("Controller:OutdoorAir", "OA Controller 1"),
+            ("OutdoorAir:Mixer", "OA Mixing Box 1"),
+            ("NodeList", "Main Branch SetPoint Node List"),
+        }
+
+        after = await topology_issues(five_zone)
+        assert [issue for issue in after if issue not in before] == []
+
+        log = await call_tool(five_zone, "get_change_log", {}, model=GetChangeLogResult)
+        assert isinstance(log, GetChangeLogResult)
+        assert any(e.tool == "rename_node" for e in log.entries)
+
+        traced = await trace(five_zone, object_type="Node", name="AHU-1 Mixed Air", hops=1)
+        assert traced.start.name == "AHU-1 Mixed Air"
+        assert [p.name for p in traced.producers] == ["OA Mixing Box 1"]
+
+    async def test_an_unknown_old_name_lists_the_closest(self, five_zone: Client[FastMCPTransport]) -> None:
+        message = await rename_error(five_zone, "Mixed Air Nod 1", "x")
+        assert "Closest:" in message and "'Mixed Air Node 1'" in message
+
+    async def test_an_empty_new_name(self, five_zone: Client[FastMCPTransport]) -> None:
+        assert "empty" in await rename_error(five_zone, "Mixed Air Node 1", "")
+
+    async def test_the_same_name(self, five_zone: Client[FastMCPTransport]) -> None:
+        assert "old one" in await rename_error(five_zone, "Mixed Air Node 1", "Mixed Air Node 1")
+
+    async def test_a_new_name_that_is_already_a_node(self, five_zone: Client[FastMCPTransport]) -> None:
+        message = await rename_error(five_zone, "Mixed Air Node 1", "Main Cooling Coil 1 Outlet Node")
+        assert "already a node" in message
+
+
+class TestHvacResource:
+    async def test_the_loop_resource_is_the_chain_record(self, five_zone: Client[FastMCPTransport]) -> None:
+        contents = await five_zone.read_resource("idfkit://model/hvac/VAV Sys 1")
+        assert isinstance(contents[0], TextResourceContents)
+        resource = HVACTopologySummary.model_validate_json(contents[0].text)
+        tool = await topology(five_zone, loop="VAV Sys 1", detail="chain")
+        assert resource == tool
+        assert [lp.loop.name for lp in resource.loops] == ["VAV Sys 1"]
+        assert resource.loops[0].demand.startswith(f"5{TIMES} ")

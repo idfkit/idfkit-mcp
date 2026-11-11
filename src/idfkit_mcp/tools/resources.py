@@ -162,3 +162,17 @@ def migration_report() -> ResourceResult:
     if state.migration_report is None:
         raise ValueError("No migration has run in this session. Call migrate_model first.")
     return _to_resource_json(serialize_report_for_resource(state.migration_report))
+
+
+@resource(
+    "idfkit://model/hvac/{loop}",
+    name="hvac_loop",
+    title="HVAC Loop",
+    description="One air, plant or condenser loop in flow order; same as get_hvac_topology(loop, detail='chain').",
+    mime_type="application/json",
+)
+def hvac_loop(loop: str) -> ResourceResult:
+    """One loop's chain summary as JSON."""
+    from idfkit_mcp.tools.topology import build_topology_summary
+
+    return _to_resource_json(build_topology_summary(loop, "chain", 1))

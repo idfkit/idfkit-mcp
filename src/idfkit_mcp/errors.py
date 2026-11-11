@@ -22,6 +22,7 @@ _MUTATION_TOOLS: frozenset[str] = frozenset({
     "update_object",
     "remove_object",
     "rename_object",
+    "rename_node",
     "duplicate_object",
     "new_model",
     "load_model",
@@ -97,6 +98,8 @@ def _mutation_summary(tool_name: str, result: object) -> str | None:
         return None
     fields = cast(Mapping[str, Any], structured)
     # Prefer named fields that identify what changed
+    if tool_name == "rename_node" and fields.get("old") and fields.get("new"):
+        return f"rename_node: {fields['old']} -> {fields['new']} ({fields.get('fields_updated')} fields)"
     for key in ("name", "new_name", "file_path", "version", "status"):
         val = fields.get(key)
         if val:

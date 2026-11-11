@@ -193,6 +193,7 @@ graph TB
         C3[batch_add_objects]
         C4[update_object]
         C5[remove_object]
+        C10[remove_objects]
         C6[rename_object]
         C7[duplicate_object]
         C8[save_model]
@@ -202,6 +203,12 @@ graph TB
     subgraph Validation
         D1[validate_model]
         D2[check_model_integrity]
+    end
+
+    subgraph HVAC["HVAC Topology"]
+        J1[get_hvac_topology]
+        J2[trace_hvac]
+        J3[rename_node]
     end
 
     subgraph Simulation
@@ -231,6 +238,15 @@ graph TB
     subgraph Documentation
         G1[search_docs]
         G2[get_doc_section]
+    end
+
+    subgraph Migration
+        K1[migrate_model]
+    end
+
+    subgraph Uploads
+        L1[file_manager]
+        L2[list_files]
     end
 ```
 
