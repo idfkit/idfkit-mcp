@@ -49,12 +49,12 @@ internal records are tuples (R-21, decision 2); identity is `ObjectKey(object_ty
 
 **Purpose**: Branches, markers and packaging switches that every later task assumes.
 
-- [ ] T001 Create the idfkit feature branch from `main` and run `uv sync` in `idfkit/`; confirm `make check && make test` pass before any change (record the timing of `make test` in the PR description for comparison)
-- [ ] T002 [P] Register pytest markers `perf` ("performance budget gate, R-21") and `nodelink` ("networkx loads the node-link export; run with `uv run --with \"networkx>=3.6\"`") in `[tool.pytest.ini_options].markers` of `idfkit/pyproject.toml`, and deselect both in the default `addopts` (`-m "not integration and not perf and not nodelink"` or the existing equivalent)
-- [ ] T003 [P] Register the pytest marker `perf` in `idfkit-mcp/pyproject.toml` and deselect it from the default run, mirroring T002
-- [ ] T004 [P] Exclude `eval/` from the wheel and sdist in the hatch build configuration of `idfkit-mcp/pyproject.toml` (`[tool.hatch.build.targets.wheel]` / `sdist` `exclude`), and add `eval` to ruff and pyright `include` paths so the harness is linted and type-checked under strict mode
-- [ ] T005 [P] Add `eval/runs/*/transcripts/` and `eval/runs/*/outcomes.jsonl` to `idfkit-mcp/.gitignore` (run summaries `run.json` and `summary.md`, and everything under `eval/decisions/`, stay committable)
-- [ ] T006 [P] Add an `--corpus VERSION=PATH` repeatable pytest option (stored as `dict[str, Path]`, no environment variable) in `idfkit/tests/conftest.py`, used later by `tests/test_hvac_corpus.py` (R-34)
+- [X] T001 Create the idfkit feature branch from `main` and run `uv sync` in `idfkit/`; confirm `make check && make test` pass before any change (record the timing of `make test` in the PR description for comparison)
+- [X] T002 [P] Register pytest markers `perf` ("performance budget gate, R-21") and `nodelink` ("networkx loads the node-link export; run with `uv run --with \"networkx>=3.6\"`") in `[tool.pytest.ini_options].markers` of `idfkit/pyproject.toml`, and deselect both in the default `addopts` (`-m "not integration and not perf and not nodelink"` or the existing equivalent)
+- [X] T003 [P] Register the pytest marker `perf` in `idfkit-mcp/pyproject.toml` and deselect it from the default run, mirroring T002
+- [X] T004 [P] Exclude `eval/` from the wheel and sdist in the hatch build configuration of `idfkit-mcp/pyproject.toml` (`[tool.hatch.build.targets.wheel]` / `sdist` `exclude`), and add `eval` to ruff and pyright `include` paths so the harness is linted and type-checked under strict mode
+- [X] T005 [P] Add `eval/runs/*/transcripts/` and `eval/runs/*/outcomes.jsonl` to `idfkit-mcp/.gitignore` (run summaries `run.json` and `summary.md`, and everything under `eval/decisions/`, stay committable)
+- [X] T006 [P] Add an `--corpus VERSION=PATH` repeatable pytest option (stored as `dict[str, Path]`, no environment variable) in `idfkit/tests/conftest.py`, used later by `tests/test_hvac_corpus.py` (R-34)
 
 ---
 
@@ -68,15 +68,15 @@ first commit that adds `idfkit/src/idfkit/hvac/checks.py`** (R-33); the held-out
 
 ### idfkit: document revision and derived-view cache (R-06, R-21)
 
-- [ ] T007 Add private slots `_revision: int` (starts at 0) and `_derived: dict[str, tuple[int, object]]` to `IDFDocument.__slots__`, and a public read-only `revision` property ("Monotonic; bumped by add, removeidfobject, field assignment, rename, rename_node") in `idfkit/src/idfkit/document.py`
-- [ ] T008 Increment `_revision` in `IDFDocument.add`, `IDFDocument.removeidfobject`, `notify_name_change` and `notify_reference_change` in `idfkit/src/idfkit/document.py`, and add a direct bump for assignments to non-reference fields in the field-setter path of `idfkit/src/idfkit/objects.py` (every mutation path must bump exactly once per mutation)
-- [ ] T009 Implement a private helper `get_or_build(doc, view_name: str, build: Callable[[], T]) -> T` that returns the cached view while its stored revision equals `doc.revision` and otherwise rebuilds and stores `(doc.revision, view)` in `doc._derived`, in `idfkit/src/idfkit/_derived.py` (no global registry; the cache dies with the document)
-- [ ] T010 [P] Write tests that every mutation path bumps `revision`, that reads do not, and that `get_or_build` rebuilds only after a revision change, in `idfkit/tests/test_document_revision.py`
+- [X] T007 Add private slots `_revision: int` (starts at 0) and `_derived: dict[str, tuple[int, object]]` to `IDFDocument.__slots__`, and a public read-only `revision` property ("Monotonic; bumped by add, removeidfobject, field assignment, rename, rename_node") in `idfkit/src/idfkit/document.py`
+- [X] T008 Increment `_revision` in `IDFDocument.add`, `IDFDocument.removeidfobject`, `notify_name_change` and `notify_reference_change` in `idfkit/src/idfkit/document.py`, and add a direct bump for assignments to non-reference fields in the field-setter path of `idfkit/src/idfkit/objects.py` (every mutation path must bump exactly once per mutation)
+- [X] T009 Implement a private helper `get_or_build(doc, view_name: str, build: Callable[[], T]) -> T` that returns the cached view while its stored revision equals `doc.revision` and otherwise rebuilds and stores `(doc.revision, view)` in `doc._derived`, in `idfkit/src/idfkit/_derived.py` (no global registry; the cache dies with the document)
+- [X] T010 [P] Write tests that every mutation path bumps `revision`, that reads do not, and that `get_or_build` rebuilds only after a revision change, in `idfkit/tests/test_document_revision.py`
 
 ### idfkit: shared identity and coverage types (data-model "Shared", R-35)
 
-- [ ] T011 Create `ObjectKey(object_type: str, name: str)` with `__eq__`/`__hash__` on `(object_type.upper(), name.upper())` and pseudo-types `"Node"`, `"Aggregate"`, `"Unresolved"`; `UncoveredPart(kind: Literal["hvac_template", "ems_program", "unclassified_type", "unlinked_result"], count: int, examples: tuple[ObjectKey, ...], reason: str)` with `examples` "At most 3"; and `Coverage(partial: bool, uncovered: tuple[UncoveredPart, ...], resolved: int | None, unresolved: int | None)` where `partial` is "True when `uncovered` is not empty", in `idfkit/src/idfkit/_graph_common.py` (private module; re-exported publicly by `idfkit.hvac` in T040 and `idfkit.simulation` in T083)
-- [ ] T012 [P] Write tests for `ObjectKey` case-insensitive equality and hashing, `Coverage.partial` consistency and the 3-example cap, in `idfkit/tests/test_graph_common.py`
+- [X] T011 Create `ObjectKey(object_type: str, name: str)` with `__eq__`/`__hash__` on `(object_type.upper(), name.upper())` and pseudo-types `"Node"`, `"Aggregate"`, `"Unresolved"`; `UncoveredPart(kind: Literal["hvac_template", "ems_program", "unclassified_type", "unlinked_result"], count: int, examples: tuple[ObjectKey, ...], reason: str)` with `examples` "At most 3"; and `Coverage(partial: bool, uncovered: tuple[UncoveredPart, ...], resolved: int | None, unresolved: int | None)` where `partial` is "True when `uncovered` is not empty", in `idfkit/src/idfkit/_graph_common.py` (private module; re-exported publicly by `idfkit.hvac` in T040 and `idfkit.simulation` in T083)
+- [X] T012 [P] Write tests for `ObjectKey` case-insensitive equality and hashing, `Coverage.partial` consistency and the 3-example cap, in `idfkit/tests/test_graph_common.py`
 
 ### idfkit: SQL readers and linking fixtures (R-07, R-19, FR-044)
 
@@ -87,10 +87,10 @@ first commit that adds `idfkit/src/idfkit/hvac/checks.py`** (R-33); the held-out
 
 ### idfkit: benchmark harness and perf gate (R-21, FR-009)
 
-- [ ] T017 [P] Vendor the reference model, gzip-compressed, as `idfkit/benchmarks/fixtures/HospitalLowEnergy.idf.gz` (from the 26.2 ExampleFiles)
-- [ ] T018 [P] Implement a stdlib timing helper (`best_of(fn, n) -> float` with `time.perf_counter`, plus a `tracemalloc` peak helper) and a loader for the vendored reference model in `idfkit/benchmarks/_timing.py`
-- [ ] T019 Create the `perf`-marked gate module asserting, with a 2× CI allowance, the `load_idf` baseline time of the reference model (later tasks append budgets to it), in `idfkit/tests/test_perf_budgets.py`
-- [ ] T020 Add CI jobs `perf` (Python 3.10 and 3.12, `uv run pytest -m perf`) and `nodelink` (`uv run --with "networkx>=3.6" pytest -m nodelink`; networkx is never declared in `pyproject.toml` or the lock file) to `idfkit/.github/workflows/main.yml`
+- [X] T017 [P] Vendor the reference model, gzip-compressed, as `idfkit/benchmarks/fixtures/HospitalLowEnergy.idf.gz` (from the 26.2 ExampleFiles)
+- [X] T018 [P] Implement a stdlib timing helper (`best_of(fn, n) -> float` with `time.perf_counter`, plus a `tracemalloc` peak helper) and a loader for the vendored reference model in `idfkit/benchmarks/_timing.py`
+- [X] T019 Create the `perf`-marked gate module asserting, with a 2× CI allowance, the `load_idf` baseline time of the reference model (later tasks append budgets to it), in `idfkit/tests/test_perf_budgets.py`
+- [X] T020 Add CI jobs `perf` (Python 3.10 and 3.12, `uv run pytest -m perf`) and `nodelink` (`uv run --with "networkx>=3.6" pytest -m nodelink`; networkx is never declared in `pyproject.toml` or the lock file) to `idfkit/.github/workflows/main.yml`
 
 ### idfkit-mcp: session v2, shared mirrors, consumer guards
 

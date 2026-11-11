@@ -209,3 +209,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Evaluation harness: raw transcripts and per-task outcomes stay local;
+# run.json, summary.md and eval/decisions/ are committed.
+eval/runs/*/transcripts/
+eval/runs/*/outcomes.jsonl
