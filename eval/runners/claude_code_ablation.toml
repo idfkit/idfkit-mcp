@@ -1,0 +1,28 @@
+# Ablation runner for slice 4 (task T126). Identical to claude_code.toml except that the agent may not call
+# the two conditional tools. The harness then compares the treatment server with and without them; a tool is
+# kept only if removing it costs at least 20% more tool calls or response tokens at no lower fix rate.
+# Run over the topology and results tasks; record the outcome in eval/decisions/slice-4-ablation.md.
+#
+# Runner configuration (contracts/eval-harness.md, "Runner configuration"). The harness writes
+# {mcp_config} per condition, pointing at the baseline or the treatment server, and substitutes
+# {prompt} with the rendered task prompt. No LLM SDK is imported.
+#
+# Beyond the contract's example: Claude Code needs --verbose for stream-json in print mode;
+# --strict-mcp-config keeps the user's own MCP servers out of the run; --allowedTools pre-approves
+# the server's tools, which print mode would otherwise deny. The server is named "idfkit" in the
+# generated config, so its tools arrive as mcp__idfkit__<tool>.
+name = "claude-code-headless-ablation"
+command = [
+    "claude", "-p", "{prompt}",
+    "--mcp-config", "{mcp_config}", "--strict-mcp-config",
+    "--allowedTools", "mcp__idfkit",
+    "--output-format", "stream-json", "--verbose",
+]
+model = "unset"                     # set to the agent model identifier before a run; recorded with the run
+max_turns = 40
+max_turns_flag = "--max-turns"      # appended with max_turns
+model_flag = "--model"              # appended with model unless model = "unset"
+timeout_seconds = 1800              # wall-clock limit per agent invocation
+parse = "claude_stream_json"        # parser that extracts tool calls and token counts
+disallowed_tools = ["trace_hvac", "get_object_results"]  # the two conditional tools (FR-047, R-35)
+disallowed_flag = "--disallowedTools"

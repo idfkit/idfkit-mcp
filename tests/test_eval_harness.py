@@ -394,6 +394,16 @@ def test_runner_config_matches_contract() -> None:
     assert not runner.ablation
 
 
+def test_ablation_runner_differs_only_in_the_two_conditional_tools() -> None:
+    plain = load_runner(EVAL_DIR / "runners" / "claude_code.toml")
+    ablation = load_runner(EVAL_DIR / "runners" / "claude_code_ablation.toml")
+    assert ablation.ablation
+    assert ablation.disallowed_tools == ["trace_hvac", "get_object_results"]
+    assert replace(ablation, name=plain.name, disallowed_tools=[]) == plain
+    argv = build_argv(ablation, prompt="p", mcp_config=Path("m.json"), disallowed_tools=ablation.disallowed_tools)
+    assert argv[-3:] == ["--disallowedTools", "mcp__idfkit__trace_hvac", "mcp__idfkit__get_object_results"]
+
+
 def test_reference_models_cover_the_required_systems() -> None:
     models = load_reference_models(EVAL_DIR / "reference_models.toml")
     assert len(models) >= 20
