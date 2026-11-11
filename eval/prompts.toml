@@ -1,0 +1,27 @@
+# Modeller-style prompt templates (FR-042b, research R-13). A prompt describes a symptom or a goal as
+# a modeller would. It never names the changed object, the field or the fault type, and never says the
+# model contains a fault; the prompt lint enforces this on every template and every rendered prompt.
+# Placeholders ({zone}, {air_loop}, {plant_loop}) are filled per model when the task is built.
+# Fault types, control tasks and authoring and question tasks copy their prompt_template from here.
+
+[symptom]
+simulation_fails = "The simulation of this model fails. Make it run."
+severe_error = "EnergyPlus stops with a severe error when I run this model. Get it to simulate."
+zone_too_cold = "Zone {zone} is too cold in winter. Find out why and fix it."
+zone_too_warm = "Zone {zone} overheats in summer. Find out why and fix it."
+unmet_heating = "This building has far too many unmet heating hours. Find the cause and correct the model."
+unmet_cooling = "This building has far too many unmet cooling hours. Find the cause and correct the model."
+air_loop_no_air = "Air loop {air_loop} does not seem to deliver air to its zones. Make it work."
+plant_loop_no_flow = "Nothing on plant loop {plant_loop} seems to get any water flow. Find out why and fix it."
+heating_energy_high = "Heating energy for this building looks far too high. Find out why and correct the model."
+review_hvac = "I am about to send this model to a client. Check that its HVAC system is set up correctly and correct it if it is not."
+
+[goal]
+add_reheat_coil = "Add a hot-water reheat coil to the terminal unit serving zone {zone} and connect it to the existing hot-water loop."
+add_parallel_chiller = "Add a second chiller in parallel with the existing one on the chilled-water loop."
+add_vav_zone = "Add a new zone served by a VAV terminal with reheat on air loop {air_loop}."
+cv_to_vav_fan = "Replace the constant-volume supply fan on air loop {air_loop} with a variable-volume fan."
+
+[question]
+plant_loop_of_reheat_coil = "Which plant loop serves the reheat coil of zone {zone}?"
+zones_with_unmet_heating = "Which zones served by air loop {air_loop} had more than 300 unmet heating hours?"

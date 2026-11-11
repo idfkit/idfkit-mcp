@@ -1,0 +1,10 @@
+# Runner configuration (contracts/eval-harness.md, "Runner configuration"). The harness writes
+# {mcp_config} per condition, pointing at the baseline or the treatment server, and substitutes
+# {prompt} with the rendered task prompt. No LLM SDK is imported.
+name = "claude-code-headless"
+command = ["claude", "-p", "{prompt}", "--mcp-config", "{mcp_config}", "--output-format", "stream-json"]
+model = "unset"                     # set to the agent model identifier before a run; recorded with the run
+max_turns = 40
+parse = "claude_stream_json"        # parser that extracts tool calls and token counts
+disallowed_tools = []               # ablation only: tools the agent may not call
+disallowed_flag = "--disallowedTools"

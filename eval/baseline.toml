@@ -1,0 +1,8 @@
+# The baseline condition (FR-042c, research R-13): idfkit-mcp at the revision just before the
+# feature's first change, run with the idfkit level that revision pins. The harness builds it from a
+# git worktree of idfkit_mcp_sha with `uv run --with <idfkit>`, so the two conditions differ only by
+# this feature. A run given `--baseline "<command>"` instead is recorded as baseline_kind = "other"
+# and never decides SC-009.
+kind = "pre_feature"
+idfkit_mcp_sha = "81d3cd6"     # idfkit-mcp revision before the feature
+idfkit = "idfkit==1.2.0"       # the level 81d3cd6 pins in pyproject.toml

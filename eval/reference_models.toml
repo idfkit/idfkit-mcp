@@ -1,0 +1,158 @@
+# Reference models (FR-041, research R-14): EnergyPlus ExampleFiles pinned by file name, resolved
+# under $ENERGYPLUS_DIR/ExampleFiles. Each fault type runs on every model sharing one of its
+# applies_to tags, in this order, capped at 8 models per type.
+#
+# Tags are taken from the object types each file contains (comments stripped):
+#   vav_reheat     AirTerminal:SingleDuct:VAV:Reheat
+#   chilled_water  a Chiller:* object
+#   hot_water      Boiler:HotWater
+#   water_coil     Coil:Heating:Water, Coil:Cooling:Water or Coil:Cooling:Water:DetailedGeometry
+#   packaged_unit  ZoneHVAC:PackagedTerminalAirConditioner/HeatPump, AirLoopHVAC:UnitarySystem,
+#                  AirLoopHVAC:UnitaryHeatCool, AirLoopHVAC:UnitaryHeatPump:AirToAir,
+#                  AirLoopHVAC:Unitary:Furnace:HeatCool/HeatOnly or AirLoopHVAC:UnitaryHeatOnly
+#   zone_list      ZoneList
+#   hvac_template  any HVACTemplate:* object (these files hold no expanded loops, so no loop tags)
+#   air_loop       AirLoopHVAC
+#   plant_loop     PlantLoop
+#   dx_cooling     a Coil:Cooling:DX* object
+#
+# File names were verified against the EnergyPlus 26.1 ExampleFiles; version is the 26.2 level the
+# evaluation targets (contracts/eval-harness.md).
+
+[[models]]
+id = "5ZoneAirCooled"
+file = "5ZoneAirCooled.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneAirCooledDemandLimiting"
+file = "5ZoneAirCooledDemandLimiting.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "zone_list", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneAirCooledWithSpacesHVAC"
+file = "5ZoneAirCooledWithSpacesHVAC.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "zone_list", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneVAV-Pri-SecLoop"
+file = "5ZoneVAV-Pri-SecLoop.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneBoilerOutsideAirReset"
+file = "5ZoneBoilerOutsideAirReset.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneWarmestVFD"
+file = "5ZoneWarmestVFD.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneReturnFan"
+file = "5ZoneReturnFan.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneSupRetPlenRAB"
+file = "5ZoneSupRetPlenRAB.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneCAVtoVAVWarmestTempFlow"
+file = "5ZoneCAVtoVAVWarmestTempFlow.idf"
+version = "26.2"
+tags = ["chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "5ZoneAutoDXVAV"
+file = "5ZoneAutoDXVAV.idf"
+version = "26.2"
+tags = ["vav_reheat", "air_loop", "dx_cooling"]
+
+[[models]]
+id = "ashrae901-OfficeLarge"
+file = "ASHRAE901_OfficeLarge_STD2019_Denver.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+
+[[models]]
+id = "ashrae901-SchoolSecondary"
+file = "ASHRAE901_SchoolSecondary_STD2019_Denver.idf"
+version = "26.2"
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "packaged_unit", "air_loop", "plant_loop", "dx_cooling"]
+
+[[models]]
+id = "ashrae901-ApartmentMidRise"
+file = "ASHRAE901_ApartmentMidRise_STD2019_Denver.idf"
+version = "26.2"
+tags = ["packaged_unit", "zone_list", "air_loop", "dx_cooling"]
+
+[[models]]
+id = "ashrae901-OfficeSmall"
+file = "ASHRAE901_OfficeSmall_STD2019_Denver.idf"
+version = "26.2"
+tags = ["packaged_unit", "air_loop", "plant_loop", "dx_cooling"]
+
+[[models]]
+id = "ashrae901-RetailStandalone"
+file = "ASHRAE901_RetailStandalone_STD2019_Denver.idf"
+version = "26.2"
+tags = ["packaged_unit", "air_loop", "dx_cooling"]
+
+[[models]]
+id = "5Zone-Unitary-HXAssistedCoil"
+file = "5Zone_Unitary_HXAssistedCoil.idf"
+version = "26.2"
+tags = ["vav_reheat", "packaged_unit", "air_loop", "dx_cooling"]
+
+[[models]]
+id = "FurnaceWithDXSystem"
+file = "FurnaceWithDXSystem.idf"
+version = "26.2"
+tags = ["packaged_unit", "air_loop", "dx_cooling"]
+
+[[models]]
+id = "DOAToPTAC"
+file = "DOAToPTAC.idf"
+version = "26.2"
+tags = ["packaged_unit", "air_loop", "dx_cooling"]
+
+[[models]]
+id = "HVACTemplate-5ZoneVAVWaterCooled"
+file = "HVACTemplate-5ZoneVAVWaterCooled.idf"
+version = "26.2"
+tags = ["hvac_template"]
+
+[[models]]
+id = "HVACTemplate-5ZonePTAC"
+file = "HVACTemplate-5ZonePTAC.idf"
+version = "26.2"
+tags = ["hvac_template"]
+
+[[models]]
+id = "HVACTemplate-5ZonePackagedVAV"
+file = "HVACTemplate-5ZonePackagedVAV.idf"
+version = "26.2"
+tags = ["hvac_template"]
+
+[[models]]
+id = "HVACTemplate-5ZoneConstantVolumeChillerBoiler"
+file = "HVACTemplate-5ZoneConstantVolumeChillerBoiler.idf"
+version = "26.2"
+tags = ["hvac_template"]
+
+[[models]]
+id = "HVACTemplate-5ZoneFurnaceDX"
+file = "HVACTemplate-5ZoneFurnaceDX.idf"
+version = "26.2"
+tags = ["hvac_template"]
