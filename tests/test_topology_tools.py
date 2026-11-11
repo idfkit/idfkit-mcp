@@ -53,7 +53,10 @@ class TestComponentStart:
         assert [u.stream for u in result.ports] == sorted(u.stream for u in result.ports)
         assert {e.target.name for e in result.downstream} == {"Main Heating Coil 1", "CW Demand Mixer"}
         assert result.findings == []
-        assert result.memberships == []
+        assert [(ms.loop.name, ms.kind, ms.side, ms.stream) for ms in result.memberships] == [
+            ("VAV Sys 1", "air", "supply", 1),
+            ("Chilled Water Loop", "plant", "demand", 2),
+        ]
         assert result.producers == result.consumers == []
 
     async def test_a_reheat_coil_names_its_terminal_as_parent(self, five_zone: Client[FastMCPTransport]) -> None:

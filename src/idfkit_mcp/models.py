@@ -896,6 +896,37 @@ class TraceStart(ObjectKey):
     category: str | None = None
 
 
+class LoopSummary(BaseModel):
+    """One loop of ``get_hvac_topology``: its sides in flow order, compactly."""
+
+    loop: ObjectKey
+    kind: Literal["air", "plant", "condenser"]
+    fluid: str
+    supply: str  # "summary": counts; "chain": flow-order string, repeated parallel paths collapsed (5x ...)
+    demand: str
+    zones_served: int
+    setpoint_nodes: list[str]
+    finding_counts: dict[str, int]
+
+
+class HVACTopologySummary(BaseModel):
+    """Response from ``get_hvac_topology``."""
+
+    loops: list[LoopSummary]
+    total: int
+    omitted: int
+    coverage: Coverage
+
+
+class NodeRenameResult(BaseModel):
+    """Response from ``rename_node``."""
+
+    old: str
+    new: str
+    fields_updated: int
+    objects: list[ObjectKey]
+
+
 class HVACTrace(BaseModel):
     """Response from ``trace_hvac``."""
 

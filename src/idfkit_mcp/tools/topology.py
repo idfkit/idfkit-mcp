@@ -4,13 +4,24 @@ from __future__ import annotations
 
 import difflib
 import logging
+from collections import Counter
 from collections.abc import Iterable
 from typing import Annotated, Any, Literal, cast
 
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import tool
 from idfkit import IDFDocument, IDFObject
-from idfkit.hvac import ComponentCategory, Coverage, FlowEdge, Fluid, HVACTopology, NodeUse, TopologyFinding
+from idfkit.hvac import (
+    ComponentCategory,
+    ConnectionType,
+    Coverage,
+    FlowEdge,
+    Fluid,
+    HVACTopology,
+    LoopMembership,
+    NodeUse,
+    TopologyFinding,
+)
 from idfkit.hvac import ObjectKey as HvacKey
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -22,11 +33,13 @@ from idfkit_mcp.state import get_state
 logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+_MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 
 _CATEGORIES: dict[str, ComponentCategory] = {c.value: c for c in ComponentCategory}
 _FLUIDS: dict[str, Fluid] = {f.value.lower(): f for f in Fluid if f is not Fluid.UNKNOWN}
 _ZONE_TYPES = ("Zone", "Space")
 _CLOSEST = 5
+_TIMES = "\u00d7"  # the multiplication sign of a collapsed count (spec FR-016)
 
 FluidName = Literal["Air", "Water", "Steam", "Refrigerant"]
 
@@ -54,6 +67,23 @@ def _use(use: NodeUse) -> m.NodeUse:
         rule=use.rule,
         provenance=use.provenance,
     )
+
+
+def _membership(ms: LoopMembership) -> m.LoopMembership:
+    return m.LoopMembership(
+        loop=_key(ms.loop),
+        kind=ms.kind,
+        side=ms.side,
+        branch=_key(ms.branch) if ms.branch is not None else None,
+        position=ms.position,
+        stream=ms.stream,
+    )
+
+
+def _memberships(topo: HVACTopology, objs: Iterable[IDFObject]) -> list[m.LoopMembership]:
+    """Every membership of *objs*, each loop and side once per stream."""
+    found = dict.fromkeys(ms for obj in objs for ms in topo.memberships(obj))
+    return [_membership(ms) for ms in found]
 
 
 def _edge(edge: FlowEdge) -> m.FlowEdge:
@@ -218,7 +248,7 @@ def _node_trace(doc: IDFDocument[Any], topo: HVACTopology, name: str, walk: dict
         producers=_unique(o for n in nodes for o in _keys(topo.producers(n))),
         consumers=_unique(o for n in nodes for o in _keys(topo.consumers(n))),
         controls=[_use(u) for n in nodes for u in topo.controls(n)],
-        memberships=[],
+        memberships=_memberships(topo, [o for n in nodes for o in (*topo.producers(n), *topo.consumers(n))]),
         upstream=[_edge(e) for e in topo.upstream(name, **walk)],
         downstream=[_edge(e) for e in topo.downstream(name, **walk)],
         findings=[_finding(f) for f in topo.check() if f.node is not None and f.node.upper() in wanted],
@@ -272,7 +302,7 @@ def _object_trace(
         start=m.TraceStart(object_type=obj.obj_type, name=obj.name, category=category),
         ports=[_use(u) for u in ports],
         controls=_unique_uses(u for n in port_nodes for u in topo.controls(n)),
-        memberships=[],
+        memberships=_memberships(topo, [obj]),
         parent=parent,
         children=children,
         upstream=[_edge(e) for e in upstream],
@@ -319,3 +349,176 @@ def trace_hvac(
         return _node_trace(doc, topo, name, walk)
     obj = find_object(doc, object_type, name)
     return _object_trace(topo, doc, obj, walk)
+
+
+# ----------------------------------------------------------------------------------------------- #
+# get_hvac_topology: loop summaries
+# ----------------------------------------------------------------------------------------------- #
+
+_LOOP_KINDS: dict[str, Literal["air", "plant", "condenser"]] = {
+    "AIRLOOPHVAC": "air",
+    "PLANTLOOP": "plant",
+    "CONDENSERLOOP": "condenser",
+}
+
+
+def _label(obj: IDFObject) -> str:
+    return f"{obj.obj_type} '{obj.name}'"
+
+
+def _render_paths(paths: list[list[IDFObject]]) -> list[str]:
+    """Each distinct path once, in first-seen order, a path seen once with every name.
+
+    Single-component paths (parallel plant branches) of one type collapse to a count. Longer paths
+    collapse only when they also start at the same component, whose name is kept: a dual-duct
+    system's two decks share their types but not their splitter, so they stay two entries.
+    """
+    groups: dict[tuple[int | None, tuple[str, ...]], list[list[IDFObject]]] = {}
+    for path in paths:
+        if path:
+            head = id(path[0]) if len(path) > 1 else None
+            groups.setdefault((head, tuple(o.obj_type for o in path)), []).append(path)
+    out: list[str] = []
+    for (head, types), members in groups.items():
+        if len(members) > 1:
+            shown = [_label(members[0][0]), *types[1:]] if head is not None else list(types)
+            out.append(f"{len(members)}{_TIMES} " + " → ".join(shown))
+        else:
+            out.append(" → ".join(_label(o) for o in members[0]))
+    return out
+
+
+def _render_side(paths: list[list[IDFObject]], *, parallel_outlet: bool) -> str:
+    """A side as one flow-order string.
+
+    Branch lists run inlet branch → {parallel branches} → outlet branch on plant and condenser
+    loops, and inlet branch → {decks} on an air loop's supply side. An air demand side lists its
+    paths to the zones, then its return paths, separated by semicolons.
+    """
+    if not paths:
+        return ""
+    if parallel_outlet and len(paths) >= 3:
+        middle = " | ".join(_render_paths(paths[1:-1]))
+        return " → ".join([*_render_paths([paths[0]]), "{" + middle + "}", *_render_paths([paths[-1]])])
+    if not parallel_outlet and len(paths) >= 2:
+        return " → ".join([*_render_paths([paths[0]]), "{" + " | ".join(_render_paths(paths[1:])) + "}"])
+    return " → ".join(_render_paths(paths))
+
+
+def _count_side(paths: list[list[IDFObject]], unit: str) -> str:
+    components = sum(len(p) for p in paths)
+    return f"{len(paths)} {unit}{'' if len(paths) == 1 else 'es' if unit == 'branch' else 's'}, {components} components"
+
+
+def _loop_summary(topo: HVACTopology, loop: IDFObject, detail: str, findings: list[TopologyFinding]) -> m.LoopSummary:
+    kind = _LOOP_KINDS[loop.obj_type.upper()]
+    supply = topo.chain(loop, "supply")
+    demand = topo.chain(loop, "demand")
+    if detail == "chain":
+        supply_text = _render_side(supply, parallel_outlet=kind != "air")
+        demand_text = "; ".join(_render_paths(demand)) if kind == "air" else _render_side(demand, parallel_outlet=True)
+    else:
+        supply_text = _count_side(supply, "branch")
+        demand_text = _count_side(demand, "path" if kind == "air" else "branch")
+    members = {(o.obj_type.upper(), o.name.upper()) for path in (*supply, *demand) for o in path}
+    members.add((loop.obj_type.upper(), loop.name.upper()))
+    setpoints: dict[str, None] = {}
+    air = kind == "air"
+    for obj in [loop, *(o for path in (*supply, *demand) for o in path)]:
+        for port in topo.ports(obj):
+            if (port.fluid is Fluid.AIR) != air and port.fluid is not Fluid.UNKNOWN:
+                continue  # a coil's other stream belongs to the other loop
+            for use in topo.controls(port.node):
+                if use.connection is ConnectionType.SETPOINT:
+                    setpoints[use.node] = None
+    counts = Counter(
+        f.code for f in findings if any((k.object_type.upper(), k.name.upper()) in members for k in f.objects)
+    )
+    fluid = "Air" if kind == "air" else str(loop.data.get("fluid_type") or "Water")
+    return m.LoopSummary(
+        loop=m.ObjectKey(object_type=loop.obj_type, name=loop.name),
+        kind=kind,
+        fluid=fluid,
+        supply=supply_text,
+        demand=demand_text,
+        zones_served=len(topo.zones_served(loop)) if kind == "air" else 0,
+        setpoint_nodes=list(setpoints),
+        finding_counts=dict(sorted(counts.items())),
+    )
+
+
+def build_topology_summary(loop: str | None, detail: str, limit: int) -> m.HVACTopologySummary:
+    """The ``get_hvac_topology`` response; also serves the ``idfkit://model/hvac/{loop}`` resource."""
+    doc = get_state().require_model()
+    topo = HVACTopology.from_document(doc)
+    loops = topo.loops()
+    if loop is not None:
+        chosen = [lp for lp in loops if lp.name.upper() == loop.strip().upper()]
+        if not chosen:
+            msg = (
+                f"No AirLoopHVAC, PlantLoop or CondenserLoop named {loop!r}.{_closest(loop, (lp.name for lp in loops))}"
+            )
+            raise ToolError(msg)
+        loops = chosen
+    findings = topo.check()
+    shown = loops[:limit]
+    return m.HVACTopologySummary(
+        loops=[_loop_summary(topo, lp, detail, findings) for lp in shown],
+        total=len(loops),
+        omitted=len(loops) - len(shown),
+        coverage=coverage_model(topo.coverage),
+    )
+
+
+@tool(annotations=_READ_ONLY, output_schema=compact_output_schema(m.HVACTopologySummary))
+def get_hvac_topology(
+    loop: Annotated[str | None, Field(description="Loop name (air, plant or condenser). Default: every loop.")] = None,
+    detail: Annotated[
+        Literal["summary", "chain"],
+        Field(
+            description='"summary": counts per side. "chain": each side in flow order, repeated paths collapsed to a count.'
+        ),
+    ] = "summary",
+    limit: Annotated[int, Field(ge=1, le=100, description="Loops per response.")] = 20,
+) -> m.HVACTopologySummary:
+    """Summarise HVAC loops: kind, fluid, supply and demand sides, zones served, setpoint nodes and
+    connection findings per code.
+
+    Nearest neighbour: trace_hvac, for one node or component (its loop, side, branch, position and
+    controls) rather than whole loops.
+
+    Preconditions: model loaded.
+    Side effects: none.
+    """
+    return build_topology_summary(loop, detail, limit)
+
+
+@tool(annotations=_MUTATE)
+def rename_node(
+    old: Annotated[str, Field(description="Current node name, matched case-insensitively.")],
+    new: Annotated[str, Field(description="New node name; must not already be a node.")],
+) -> m.NodeRenameResult:
+    """Rename a node in every field and NodeList entry that uses it, in one step.
+
+    Nearest neighbour: rename_object, for object names. Node names are not references, so
+    rename_object never reaches them.
+
+    Preconditions: model loaded.
+    Side effects: rewrites the node fields; recorded in the change log.
+    """
+    doc = get_state().require_model()
+    try:
+        result = doc.rename_node(old, new)
+    except KeyError:
+        topo = HVACTopology.from_document(doc)
+        msg = f"No field uses a node named {old!r}.{_closest(old, topo.nodes())}"
+        raise ToolError(msg) from None
+    except ValueError as e:
+        raise ToolError(f"{e}. Choose another name.") from None
+    logger.info("Renamed node %r -> %r (%d fields)", result.old, result.new, result.fields_updated)
+    return m.NodeRenameResult(
+        old=result.old,
+        new=result.new,
+        fields_updated=result.fields_updated,
+        objects=[_key(k) for k in result.objects],
+    )
