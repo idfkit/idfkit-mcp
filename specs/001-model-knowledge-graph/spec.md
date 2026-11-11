@@ -82,6 +82,9 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   EnergyPlus's own output plus a few hand-written ones, so that no extension API for developers is needed? → A: Yes.
   All node-bearing types in the latest supported schema are covered at first release (257 in 26.2: 254 by
   generation and field naming, 3 by hand). There is no developer extension API.
+- Q: Should agents also get MCP tools to walk the combined graph and export it, or should the combined view and
+  export be available only to Python developers? → A: One bounded MCP tool returns the cross-layer neighbourhood of
+  an object. Export stays Python-only.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -530,6 +533,11 @@ release needs no change.
   edge carries its kind, its layer and its identity. The output MUST load unchanged into networkx's node-link reader
   and MUST record the idfkit version, the model's EnergyPlus version and the layers included. The format MUST be
   versioned, and a change to it follows FR-053. No other export format is part of this feature.
+- **FR-058**: Agents MUST be able to request, through the server, the cross-layer neighbourhood of one object or
+  node. The response is bounded by a hop limit (at most 3), a maximum number of graph nodes, optional filters on
+  node and edge kinds, and the 8 KB response budget. It states what was cut off. It is built from the combined view
+  (FR-055) and uses the same node and edge vocabulary. The graph export (FR-057) MUST NOT be exposed through the
+  server.
 
 ### Key Entities
 
@@ -677,6 +685,7 @@ release needs no change.
 - A visual schematic of HVAC systems.
 - A developer API for registering custom connection rules, message patterns or role vocabularies (Clarifications,
   2026-11-11). Coverage gaps are closed by regenerating idfkit's rules.
+- Graph export through the MCP server; export is a Python developer capability (FR-057, FR-058).
 - Graph export formats other than node-link JSON (GraphML, RDF, database loaders). The node and edge vocabulary of
   FR-055 is designed so they can be added later.
 - Linking or diagnosing simulation outputs that were not produced by the server in the current session, such as a
