@@ -1,0 +1,15 @@
+{
+  "header": "Answer keys computed by answer_key(doc) from the unmodified reference models of the EnergyPlus 26.1.0 ExampleFiles. The evaluation targets 26.2; 26.2 was not installed when these keys were computed, so they come from 26.1.0. Regenerate with: uv run python -m eval.answer_keys",
+  "question": "hot_water_coil_count",
+  "energyplus": "26.1.0",
+  "keys": {
+    "5ZoneAirCooled": "7",
+    "5ZoneAirCooledDemandLimiting": "6",
+    "5ZoneAirCooledWithSpacesHVAC": "7",
+    "5ZoneVAV-Pri-SecLoop": "6",
+    "5ZoneBoilerOutsideAirReset": "6",
+    "5ZoneWarmestVFD": "6",
+    "5ZoneReturnFan": "6",
+    "5ZoneSupRetPlenRAB": "6"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "header": "Answer keys computed by answer_key(doc) from the unmodified reference models of the EnergyPlus 26.1.0 ExampleFiles. The evaluation targets 26.2; 26.2 was not installed when these keys were computed, so they come from 26.1.0. Regenerate with: uv run python -m eval.answer_keys",
+  "question": "plant_loop_of_cooling_coil",
+  "energyplus": "26.1.0",
+  "keys": {
+    "5ZoneAirCooled": "Chilled Water Loop",
+    "5ZoneAirCooledDemandLimiting": "Chilled Water Loop",
+    "5ZoneAirCooledWithSpacesHVAC": "Chilled Water Loop",
+    "5ZoneVAV-Pri-SecLoop": "Chilled Water Loop Primary Water Loop",
+    "5ZoneBoilerOutsideAirReset": "Chilled Water Loop",
+    "5ZoneWarmestVFD": "Chilled Water Loop",
+    "5ZoneReturnFan": "Chilled Water Loop",
+    "5ZoneSupRetPlenRAB": "Chilled Water Loop"
+  }
+}

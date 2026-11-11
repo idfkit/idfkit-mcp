@@ -15,6 +15,9 @@
 #   air_loop       AirLoopHVAC
 #   plant_loop     PlantLoop
 #   dx_cooling     a Coil:Cooling:DX* object
+#   hw_no_reheat   AirTerminal:SingleDuct:VAV:NoReheat or :ConstantVolume:NoReheat, and Boiler:HotWater
+#                  (a terminal a hot-water reheat coil can be added to; authoring task add_reheat_coil)
+#   cv_fan         a Fan:ConstantVolume on the branches of an AirLoopHVAC (authoring task cv_to_vav_fan)
 #
 # File names were verified against the EnergyPlus 26.1 ExampleFiles; version is the 26.2 level the
 # evaluation targets (contracts/eval-harness.md).
@@ -83,13 +86,13 @@ tags = ["vav_reheat", "air_loop", "dx_cooling"]
 id = "ashrae901-OfficeLarge"
 file = "ASHRAE901_OfficeLarge_STD2019_Denver.idf"
 version = "26.2"
-tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop"]
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop", "hw_no_reheat", "cv_fan"]
 
 [[models]]
 id = "ashrae901-SchoolSecondary"
 file = "ASHRAE901_SchoolSecondary_STD2019_Denver.idf"
 version = "26.2"
-tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "packaged_unit", "air_loop", "plant_loop", "dx_cooling"]
+tags = ["vav_reheat", "chilled_water", "hot_water", "water_coil", "packaged_unit", "air_loop", "plant_loop", "dx_cooling", "hw_no_reheat"]
 
 [[models]]
 id = "ashrae901-ApartmentMidRise"
@@ -156,3 +159,24 @@ id = "HVACTemplate-5ZoneFurnaceDX"
 file = "HVACTemplate-5ZoneFurnaceDX.idf"
 version = "26.2"
 tags = ["hvac_template"]
+
+# Added for the authoring task cv_to_vav_fan (tag cv_fan): constant-volume air loops with water coils. They come
+# last, so the first eight models of every earlier tag are unchanged.
+
+[[models]]
+id = "5ZoneCoolBeam"
+file = "5ZoneCoolBeam.idf"
+version = "26.2"
+tags = ["chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop", "cv_fan"]
+
+[[models]]
+id = "5ZoneFPIU"
+file = "5ZoneFPIU.idf"
+version = "26.2"
+tags = ["chilled_water", "hot_water", "water_coil", "air_loop", "plant_loop", "cv_fan"]
+
+[[models]]
+id = "CVRhMinHum"
+file = "CVRhMinHum.idf"
+version = "26.2"
+tags = ["chilled_water", "water_coil", "air_loop", "plant_loop", "cv_fan"]

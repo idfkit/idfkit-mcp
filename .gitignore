@@ -214,3 +214,4 @@ __marimo__/
 # run.json, summary.md and eval/decisions/ are committed.
 eval/runs/*/transcripts/
 eval/runs/*/outcomes.jsonl
+eval/runs/*/tasks.jsonl

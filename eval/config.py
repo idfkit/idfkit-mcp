@@ -18,6 +18,7 @@ from typing import cast
 from eval.model import BaselineKind
 
 REQUIRED_RUNNER_PLACEHOLDERS = ("{prompt}", "{mcp_config}")
+DEFAULT_TIMEOUT_SECONDS = 1800
 
 
 class ConfigError(Exception):
@@ -44,6 +45,13 @@ class RunnerConfig:
     parse: str
     disallowed_tools: list[str]
     disallowed_flag: str
+    max_turns_flag: str = ""
+    """The agent CLI's option that caps its turns (``--max-turns`` for Claude Code). When empty, ``max_turns`` is
+    recorded but only ``timeout_seconds`` bounds the agent."""
+    model_flag: str = ""
+    """The agent CLI's option that selects the model. When set and ``model`` is not ``"unset"``, it is passed."""
+    timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
+    """Wall-clock limit of one agent invocation; the process group is killed when it is exceeded."""
 
     @property
     def ablation(self) -> bool:
@@ -89,9 +97,8 @@ def load_runner(path: Path) -> RunnerConfig:
     for placeholder in REQUIRED_RUNNER_PLACEHOLDERS:
         if not any(placeholder in part for part in command):
             raise ConfigError(f"{path}: command must contain {placeholder}")
-    max_turns = data.get("max_turns")
-    if not isinstance(max_turns, int) or isinstance(max_turns, bool) or max_turns < 1:
-        raise ConfigError(f"{path}: max_turns must be a positive integer")
+    max_turns = _positive_int(data, "max_turns", path)
+    timeout = _positive_int(data, "timeout_seconds", path) if "timeout_seconds" in data else DEFAULT_TIMEOUT_SECONDS
     return RunnerConfig(
         name=_str(data, "name", path),
         command=command,
@@ -100,6 +107,9 @@ def load_runner(path: Path) -> RunnerConfig:
         parse=_str(data, "parse", path),
         disallowed_tools=_str_list(data, "disallowed_tools", path),
         disallowed_flag=_str(data, "disallowed_flag", path),
+        max_turns_flag=_optional_str(data, "max_turns_flag", path),
+        model_flag=_optional_str(data, "model_flag", path),
+        timeout_seconds=timeout,
     )
 
 
@@ -150,6 +160,20 @@ def _str(data: Mapping[str, object], key: str, path: Path) -> str:
     value = data.get(key)
     if not isinstance(value, str) or not value:
         raise ConfigError(f"{path}: {key} must be a non-empty string")
+    return value
+
+
+def _optional_str(data: Mapping[str, object], key: str, path: Path) -> str:
+    value = data.get(key, "")
+    if not isinstance(value, str):
+        raise ConfigError(f"{path}: {key} must be a string")
+    return value
+
+
+def _positive_int(data: Mapping[str, object], key: str, path: Path) -> int:
+    value = data.get(key)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ConfigError(f"{path}: {key} must be a positive integer")
     return value
 
 

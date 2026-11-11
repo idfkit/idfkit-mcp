@@ -1,0 +1,4 @@
+{"type": "system", "subtype": "init", "session_id": "s", "tools": ["mcp__idfkit__load_model"], "mcp_servers": [{"name": "idfkit", "status": "connected"}], "model": "test-model"}
+{"type": "assistant", "message": {"id": "m1", "role": "assistant", "model": "test-model", "content": [{"type": "tool_use", "id": "t1", "name": "mcp__idfkit__load_model", "input": {"file_path": "model.idf"}}], "usage": {"input_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 1000, "output_tokens": 50}}}
+{"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": [{"type": "text", "text": "{\"version\": \"26.2.0\"}"}], "is_error": true}]}}
+{"type": "result", "subtype": "error_max_turns", "is_error": true, "num_turns": 2, "result": "It is Store.", "usage": {"input_tokens": 10, "cache_creation_input_tokens": 100, "cache_read_input_tokens": 100, "output_tokens": 20}, "total_cost_usd": 0.01}

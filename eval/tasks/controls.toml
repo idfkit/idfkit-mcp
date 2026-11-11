@@ -1,0 +1,44 @@
+# Control tasks (FR-040b, research R-14): unmodified reference models given the same symptom prompts as the
+# fault tasks. Nothing is wrong with the model, so any model change, or any fault the agent reports, is a false
+# fix (decided by the harness from the diff; controls have no verifier and no intended tools).
+#
+# prompt_template is copied verbatim from eval/prompts.toml (TOML cannot reference another file); the test
+# tests/test_eval_definitions.py checks that every control template is one of them. Placeholders are filled from
+# the unmodified model (support.default_prompt_values).
+#
+# Count rule: at least one control task per five fault tasks, where a task is a fault type or control on one
+# applicable model, capped at 8 models per type (registry.applicable_models). With the 26-model reference set the
+# 10 designed fault types make 79 fault tasks (48 topology, 31 results) and these controls make 36 control tasks
+# (21 topology, 15 results): at least one per five overall and within each layer. The test recomputes this.
+
+[[tasks]]
+id = "control_simulation_fails"
+layer = "topology"
+applies_to = ["air_loop"]
+prompt_template = "The simulation of this model fails. Make it run."
+
+[[tasks]]
+id = "control_severe_error"
+layer = "topology"
+applies_to = ["hot_water"]
+prompt_template = "EnergyPlus stops with a severe error when I run this model. Get it to simulate."
+
+[[tasks]]
+id = "control_review_hvac_template"
+layer = "topology"
+applies_to = ["hvac_template"]
+prompt_template = "I am about to send this model to a client. Check that its HVAC system is set up correctly and correct it if it is not."
+
+[[tasks]]
+id = "control_zone_too_cold"
+layer = "results"
+applies_to = ["vav_reheat"]
+prompt_template = "Zone {zone} is too cold in winter. Find out why and fix it."
+needs_energyplus = true
+
+[[tasks]]
+id = "control_zone_too_warm"
+layer = "results"
+applies_to = ["packaged_unit"]
+prompt_template = "Zone {zone} overheats in summer. Find out why and fix it."
+needs_energyplus = true

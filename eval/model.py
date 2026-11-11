@@ -9,9 +9,17 @@ not define, it is added here and named in the docstring of the class that carrie
   needs to know which object it changed. ``TaskSpec.verify`` also receives the agent's final answer text, because
   question tasks compare it with the key.
 - ``TaskSpec.answer_key`` holds the function that computes a question's key from the unmodified model.
+- ``TaskSpec.prompt_values`` computes the values of the template's placeholders from the unmodified model, the
+  counterpart of ``InjectedFault.prompt_values`` for fault tasks. The registry sets it for control tasks
+  (``support.default_prompt_values``); ``None`` means the template has no placeholders.
 - ``EvaluationRun`` adds ``finished_at`` (the contract's run.json records "timestamps") and ``held_out_invalid``
   (the contract's rule: an invalid held-out fault "is recorded as ``held_out_invalid``"); ``ablation`` is derived
-  from ``disallowed_tools``.
+  from ``disallowed_tools``. It also records the server commands of both conditions (``baseline_command``,
+  ``treatment_command``), since a ``baseline_kind="other"`` run has no baseline SHA.
+- ``TaskOutcome.first_edit_correct`` is the baseline's side of SC-009a (research R-37): for fault tasks, whether
+  the agent's first model-changing tool call targeted an object in the fault's scope. The baseline never calls
+  ``diagnose_symptom``, so "changed a wrong object first" is what its "changed a wrong top candidate" is compared
+  with (``stats.metric_value``).
 
 Task ids follow one convention, set by ``make_task_id``: ``"<fault or task spec id>@<reference model id>"``.
 """
@@ -94,6 +102,7 @@ Injector: TypeAlias = "Callable[[IDFDocument], InjectedFault]"
 FaultVerifier: TypeAlias = "Callable[[IDFDocument, SimulationResult | None, InjectedFault], bool]"
 TaskVerifier: TypeAlias = "Callable[[IDFDocument, SimulationResult | None, str | None], bool]"
 AnswerKey: TypeAlias = "Callable[[IDFDocument], str]"
+PromptValues: TypeAlias = "Callable[[IDFDocument], dict[str, str]]"
 
 
 @dataclass(frozen=True)
@@ -137,6 +146,7 @@ class TaskSpec:
 
     ``verify`` is required for authoring and question tasks; control tasks are decided by the diff (any model change
     or any reported fault is a false fix), so theirs is ``None``. ``answer_key`` is required for question tasks.
+    ``prompt_values`` fills the template's placeholders from the unmodified model (``None``: no placeholders).
     """
 
     id: str
@@ -148,6 +158,7 @@ class TaskSpec:
     needs_energyplus: bool
     verify: TaskVerifier | None = None
     answer_key: AnswerKey | None = None
+    prompt_values: PromptValues | None = None
 
     def __post_init__(self) -> None:
         _check_literal(self.kind, SpecKind, "TaskSpec.kind")
@@ -198,6 +209,7 @@ class TaskOutcome:
     top_candidate_edited: bool | None
     top_candidate_correct: bool | None
     transcript_path: str
+    first_edit_correct: bool | None = None
 
     def __post_init__(self) -> None:
         _check_literal(self.condition, Condition, "TaskOutcome.condition")
@@ -232,6 +244,7 @@ class TaskOutcome:
             top_candidate_edited=_opt(data, "top_candidate_edited", bool),
             top_candidate_correct=_opt(data, "top_candidate_correct", bool),
             transcript_path=_req(data, "transcript_path", str),
+            first_edit_correct=_opt(data, "first_edit_correct", bool),
         )
 
 
@@ -254,6 +267,8 @@ class EvaluationRun:
     outcomes: list[TaskOutcome] = field(default_factory=list[TaskOutcome])
     finished_at: str | None = None
     held_out_invalid: list[str] = field(default_factory=list[str])
+    baseline_command: str | None = None
+    treatment_command: str | None = None
 
     def __post_init__(self) -> None:
         _check_literal(self.baseline_kind, BaselineKind, "EvaluationRun.baseline_kind")
@@ -290,6 +305,8 @@ class EvaluationRun:
             outcomes=list(outcomes),
             finished_at=_opt(data, "finished_at", str),
             held_out_invalid=_str_list(data, "held_out_invalid") if "held_out_invalid" in data else [],
+            baseline_command=_opt(data, "baseline_command", str),
+            treatment_command=_opt(data, "treatment_command", str),
         )
 
 

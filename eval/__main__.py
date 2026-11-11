@@ -9,14 +9,17 @@ uv run python -m eval list-faults [--check-held-out]
 Exit codes: 0 when the command completed (whatever the scores), 2 for bad configuration (including a prompt that
 fails the lint, and for ``list-faults --check-held-out`` an invalid held-out fault), 3 when no tasks were runnable.
 
-``run`` prepares a run: it loads and validates the configuration, discovers and selects the faults and tasks, runs
-the held-out check and the prompt lint, and plans the tasks over the reference models. Executing the plan (the
-agent runner, conditions, diff and report: tasks T064 to T074) plugs in at ``execute_run``; until then ``run``
-stops there with exit code 1 and says so.
+``run`` loads and validates the configuration, discovers and selects the faults and tasks, runs the held-out check
+(an invalid held-out fault is reported and counted with the designed faults), lints every template, plans the
+tasks over the reference models, then hands the plan to ``execute.execute_run``, which injects, renders and lints
+every prompt before any agent runs, runs both conditions and writes the run directory (``run.json``,
+``outcomes.jsonl``, ``tasks.jsonl``, ``transcripts/``, ``summary.md``). ``compare`` (re)writes ``summary.md`` of
+each run it reads; with two runs, the second one's summary gains the slice delta.
 
 Options beyond the contract, all optional: ``--baseline`` (named in the contract's Baseline section),
 ``--seed`` (the bootstrap seed recorded in run.json; random when omitted), ``--idfkit-repo`` / ``--idfkit-ref`` (the
-idfkit checkout and ref the held-out check reads), ``--energyplus-dir`` and ``--example-files``.
+idfkit checkout and ref the held-out check reads), ``--energyplus-dir``, ``--example-files`` and ``--weather`` (the
+weather file of the harness's verification simulations; design days only when omitted).
 """
 
 from __future__ import annotations
@@ -25,55 +28,29 @@ import argparse
 import random
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 
 from eval.config import (
     BaselineConfig,
     ConfigError,
-    ReferenceModel,
-    RunnerConfig,
     load_baseline,
     load_prompt_templates,
     load_reference_models,
     load_runner,
 )
+from eval.execute import RunConfig, execute_run
 from eval.held_out import GitError, HeldOutReport, check_held_out
 from eval.lint import PromptLintError, check_prompt
 from eval.model import MIN_REPEATS, BaselineKind, EvaluationRun, load_run
-from eval.registry import EVAL_DIR, PlannedTask, Registry, Selection, discover, plan_tasks, select, task_infos
-from eval.stats import DEFAULT_RESAMPLES, layer_gate, repeat_spread, scoped_comparisons
+from eval.registry import EVAL_DIR, Registry, discover, plan_tasks, select
+from eval.report import SUMMARY_FILE, render_summary
+from eval.stats import DEFAULT_RESAMPLES
+
+__all__ = ["RunConfig", "execute_run", "main"]
 
 EXIT_OK = 0
-EXIT_NOT_IMPLEMENTED = 1
 EXIT_CONFIG = 2
 EXIT_NOTHING_RUNNABLE = 3
-
-
-@dataclass(frozen=True)
-class RunConfig:
-    """Everything ``run`` resolved before executing: the input of ``execute_run``."""
-
-    registry: Registry
-    selection: Selection
-    models: list[ReferenceModel]
-    runner: RunnerConfig
-    baseline_kind: BaselineKind
-    baseline: BaselineConfig | None
-    baseline_command: str | None
-    treatment_command: str
-    repeats: int
-    out_dir: Path
-    bootstrap_seed: int
-    bootstrap_resamples: int
-    prompts: dict[str, str]
-    held_out: HeldOutReport | None
-    energyplus_dir: Path | None
-    example_files: Path | None
-
-    @property
-    def held_out_invalid(self) -> list[str]:
-        return [] if self.held_out is None else self.held_out.invalid
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -94,6 +71,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_held_out_args(run)
     run.add_argument("--energyplus-dir", type=Path, default=None, help="EnergyPlus install (default: discovered)")
     run.add_argument("--example-files", type=Path, default=None, help="default: <EnergyPlus install>/ExampleFiles")
+    run.add_argument(
+        "--weather", type=Path, default=None, help="EPW for verification simulations (default: design days)"
+    )
 
     compare = sub.add_parser("compare", help="tables and gate verdict for a run; slice delta for two runs")
     compare.add_argument("runs", type=Path, nargs="+", metavar="RUN_DIR")
@@ -140,11 +120,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not runnable:
         _err("no runnable tasks")
         return EXIT_NOTHING_RUNNABLE
-    try:
-        return execute_run(config, plan)
-    except NotImplementedError as exc:
-        _err(f"error: {exc}")
-        return EXIT_NOT_IMPLEMENTED
+    return execute_run(config, plan)
 
 
 def prepare_run(args: argparse.Namespace) -> RunConfig:
@@ -175,6 +151,9 @@ def prepare_run(args: argparse.Namespace) -> RunConfig:
     example_files: Path | None = args.example_files
     if example_files is None and energyplus_dir is not None:
         example_files = energyplus_dir / "ExampleFiles"
+    weather: Path | None = args.weather
+    if weather is not None and not weather.is_file():
+        raise ConfigError(f"--weather {weather}: not a file")
     seed: int = args.seed if args.seed is not None else random.SystemRandom().randrange(2**32)
     return RunConfig(
         registry=registry,
@@ -193,6 +172,7 @@ def prepare_run(args: argparse.Namespace) -> RunConfig:
         held_out=report,
         energyplus_dir=energyplus_dir,
         example_files=example_files,
+        weather=weather,
     )
 
 
@@ -230,78 +210,27 @@ def find_energyplus_dir(explicit: Path | None) -> Path | None:
         return None
 
 
-def execute_run(config: RunConfig, plan: Sequence[PlannedTask]) -> int:
-    """Execute a prepared run and write ``run.json``, ``outcomes.jsonl``, ``transcripts/`` and ``summary.md``.
-
-    The seam for tasks T064 to T074: build both conditions, inject each fault, render and lint each prompt, run
-    every task ``config.repeats`` times per condition in the same order, record a ``TaskOutcome`` each, and write
-    the run with ``model.save_run``. Returns ``EXIT_OK`` when the run completed.
-    """
-    raise NotImplementedError("the agent runner is not implemented yet (tasks T064 to T074)")
-
-
 # --- compare -----------------------------------------------------------------------------------------------------
 
 
 def cmd_compare(run_dirs: Sequence[Path]) -> int:
+    """Print each run's summary and (re)write its ``summary.md``; with two runs, the second gains the slice delta
+    (second minus first)."""
     if len(run_dirs) > 2:
         raise ConfigError("compare takes one or two run directories")
     registry = discover()
-    tables: list[dict[tuple[str, str], float]] = []
+    runs: list[EvaluationRun] = []
     for run_dir in run_dirs:
         try:
-            run = load_run(run_dir)
+            runs.append(load_run(run_dir))
         except (OSError, ValueError, TypeError, KeyError) as exc:
             raise ConfigError(f"{run_dir}: not a readable run directory ({exc!r})") from exc
-        tables.append(print_run(run, registry))
-    if len(tables) == 2:
-        first, second = tables
-        print(f"\nSlice delta ({run_dirs[1]} minus {run_dirs[0]}), difference of differences")
-        for key in sorted(first.keys() & second.keys()):
-            print(f"  {key[0]:<28} {key[1]:<26} {second[key] - first[key]:+.3f}")
+    for index, (run_dir, run) in enumerate(zip(run_dirs, runs, strict=True)):
+        previous = runs[0] if index == 1 else None
+        text = render_summary(run, registry, previous=previous, previous_label=str(run_dirs[0]))
+        (run_dir / SUMMARY_FILE).write_text(text, encoding="utf-8")
+        print(text)
     return EXIT_OK
-
-
-def print_run(run: EvaluationRun, registry: Registry) -> dict[tuple[str, str], float]:
-    """Print a run's comparisons, SC-008 spread and per-layer SC-009 clauses; return ``(scope, metric) -> diff``."""
-    base, treat = ("treatment", "ablation") if run.ablation else ("baseline", "treatment")
-    infos = task_infos(registry, {o.task_id for o in run.outcomes}, held_out_invalid=run.held_out_invalid)
-    comparisons = scoped_comparisons(
-        run.outcomes,
-        infos,
-        seed=run.bootstrap_seed,
-        resamples=run.bootstrap_resamples,
-        baseline_condition=base,
-        treatment_condition=treat,
-    )
-    print(f"Run {run.run_id} ({run.baseline_kind} baseline{', ablation' if run.ablation else ''})")
-    print(f"  {'scope':<28} {'metric':<26} {'n':>4} {treat + ' - ' + base:>22}   95% interval")
-    for c in comparisons:
-        mark = "  descriptive" if c.descriptive_only else ""
-        print(
-            f"  {c.scope:<28} {c.metric:<26} {c.tasks:>4} {c.difference:>+22.3f}   [{c.ci_low:+.3f}, {c.ci_high:+.3f}]{mark}"
-        )
-    for condition in (base, treat):
-        spread = repeat_spread(run.outcomes, condition=condition)
-        if spread is not None:
-            print(f"  SC-008 spread ({condition}): {spread:.3f}")
-    controls = [i.task_id for i in infos.values() if i.kind == "control"]
-    for layer in sorted({i.layer for i in infos.values() if i.kind == "fault"}):
-        faults = [i for i in infos.values() if i.kind == "fault" and i.layer == layer]
-        verdict = layer_gate(
-            run.outcomes,
-            layer=layer,
-            layer_task_ids=[i.task_id for i in faults],
-            held_out_task_ids=[i.task_id for i in faults if i.held_out],
-            control_task_ids=controls,
-            seed=run.bootstrap_seed,
-            resamples=run.bootstrap_resamples,
-            baseline_kind=run.baseline_kind,
-            ablation=run.ablation,
-        )
-        clauses = ", ".join(f"{k}={v}" for k, v in verdict.to_dict().items())
-        print(f"  SC-009 {layer}: {clauses}")
-    return {(c.scope, c.metric): c.difference for c in comparisons}
 
 
 # --- list-faults -------------------------------------------------------------------------------------------------

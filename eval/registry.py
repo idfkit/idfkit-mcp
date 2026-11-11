@@ -23,6 +23,7 @@ from eval.config import ConfigError, ReferenceModel, load_toml
 from eval.held_out import HeldOutReport
 from eval.model import LAYERS, FaultType, Layer, TaskKind, TaskSpec, make_task_id, split_task_id
 from eval.stats import TaskInfo
+from eval.support import default_prompt_values
 
 EVAL_DIR = Path(__file__).resolve().parent
 MAX_MODELS_PER_TYPE = 8
@@ -116,7 +117,8 @@ def load_task_modules(directory: Path, *, kind: str) -> list[TaskSpec]:
 
 def load_controls(path: Path) -> list[TaskSpec]:
     """Read control tasks from ``[[tasks]]`` entries with keys id, layer, applies_to, prompt_template and
-    needs_energyplus (default false). Controls have no intended tools and no verifier."""
+    needs_energyplus (default false). Controls have no intended tools and no verifier; their placeholders are filled
+    by ``support.default_prompt_values``."""
     if not path.is_file():
         return []
     raw = load_toml(path).get("tasks")
@@ -157,6 +159,7 @@ def _control_spec(entry: dict[str, object], path: Path) -> TaskSpec:
         prompt_template=template,
         intended_tools=[],
         needs_energyplus=needs_ep,
+        prompt_values=default_prompt_values,
     )
 
 

@@ -1,0 +1,15 @@
+{
+  "header": "Answer keys computed by answer_key(doc) from the unmodified reference models of the EnergyPlus 26.1.0 ExampleFiles. The evaluation targets 26.2; 26.2 was not installed when these keys were computed, so they come from 26.1.0. Regenerate with: uv run python -m eval.answer_keys",
+  "question": "boiler_design_capacity",
+  "energyplus": "26.1.0",
+  "keys": {
+    "5ZoneAirCooled": "27.0",
+    "5ZoneAirCooledDemandLimiting": "33.8",
+    "5ZoneAirCooledWithSpacesHVAC": "49.0",
+    "5ZoneVAV-Pri-SecLoop": "61.0",
+    "5ZoneBoilerOutsideAirReset": "34.0",
+    "5ZoneWarmestVFD": "66.0",
+    "5ZoneReturnFan": "34.0",
+    "5ZoneSupRetPlenRAB": "33.9"
+  }
+}

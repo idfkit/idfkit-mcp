@@ -40,9 +40,11 @@ TOOL_CALL_REDUCTION = 0.30
 def metric_value(outcome: TaskOutcome, metric: Metric) -> float | None:
     """The value one outcome contributes to ``metric``, or ``None`` when it does not contribute.
 
-    Skipped outcomes never contribute. ``wrong_top_candidate_rate`` counts only outcomes where both
+    Skipped outcomes never contribute. ``wrong_top_candidate_rate`` counts outcomes where both
     ``top_candidate_edited`` and ``top_candidate_correct`` are set: 1 when the agent edited a top candidate that
-    was not the injected object.
+    was not the injected object. A baseline outcome has neither (the baseline has no ``diagnose_symptom``), so it
+    contributes its analogue instead (SC-009a, research R-37): 1 when its first model change targeted an object
+    outside the fault's scope (``first_edit_correct`` is false), 0 when it targeted the scope.
     """
     if outcome.skipped:
         return None
@@ -57,6 +59,8 @@ def metric_value(outcome: TaskOutcome, metric: Metric) -> float | None:
     if metric == "false_fix_rate":
         return 1.0 if outcome.false_fix else 0.0
     if outcome.top_candidate_edited is None or outcome.top_candidate_correct is None:
+        if outcome.condition == "baseline" and outcome.first_edit_correct is not None:
+            return 0.0 if outcome.first_edit_correct else 1.0
         return None
     return 1.0 if outcome.top_candidate_edited and not outcome.top_candidate_correct else 0.0
 

@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import shutil
 import subprocess
+import sys
 import textwrap
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from eval import __main__ as cli
+from eval.conditions import build_conditions, parse_command
 from eval.config import (
+    BaselineConfig,
     ConfigError,
     ReferenceModel,
     load_baseline,
@@ -21,7 +27,9 @@ from eval.config import (
     load_reference_models,
     load_runner,
 )
-from eval.held_out import CHECKS_PATH, check_held_out, first_commit_adding
+from eval.diff import ModelDiff, diff, false_fix, first_edit_target, reported_fault, snapshot, unwanted_changes
+from eval.execute import MODEL_NOTE
+from eval.held_out import CHECKS_PATH, GitError, check_held_out, first_commit_adding
 from eval.lint import PromptLintError, check_prompt, lint_prompt, lint_template
 from eval.model import (
     BaselineKind,
@@ -40,6 +48,7 @@ from eval.model import (
     save_run,
     split_task_id,
 )
+from eval.parsers import ParsedTranscript, ToolCall, claude_stream_json, get_parser
 from eval.registry import (
     EVAL_DIR,
     PlannedTask,
@@ -50,12 +59,14 @@ from eval.registry import (
     select,
     task_infos,
 )
+from eval.runner import ServerCommand, build_argv, run_agent, write_mcp_config
 from eval.stats import (
     TaskInfo,
     bootstrap_interval,
     compare,
     gate_verdict,
     layer_gate,
+    metric_value,
     repeat_spread,
     scoped_comparisons,
 )
@@ -138,6 +149,12 @@ def _git(repo: Path, *args: str, date: str | None = None) -> None:
         env["GIT_COMMITTER_DATE"] = date
         env["GIT_AUTHOR_DATE"] = date
     subprocess.run([GIT, "-C", str(repo), *args], check=True, capture_output=True, env=env)  # noqa: S603
+
+
+def _git_out(repo: Path, *args: str) -> str:
+    assert GIT is not None
+    done = subprocess.run([GIT, "-C", str(repo), *args], check=True, capture_output=True, text=True)  # noqa: S603
+    return done.stdout.strip()
 
 
 def _commit_file(repo: Path, rel: str, content: str, date: str) -> None:
@@ -366,9 +383,11 @@ def test_runner_config_matches_contract() -> None:
     runner = load_runner(EVAL_DIR / "runners" / "claude_code.toml")
     assert runner.name == "claude-code-headless"
     assert runner.command == [
-        "claude", "-p", "{prompt}", "--mcp-config", "{mcp_config}", "--output-format", "stream-json"
+        "claude", "-p", "{prompt}", "--mcp-config", "{mcp_config}", "--strict-mcp-config",
+        "--allowedTools", "mcp__idfkit", "--output-format", "stream-json", "--verbose",
     ]  # fmt: skip
     assert runner.max_turns == 40
+    assert (runner.max_turns_flag, runner.model_flag, runner.timeout_seconds) == ("--max-turns", "--model", 1800)
     assert runner.parse == "claude_stream_json"
     assert runner.disallowed_tools == []
     assert runner.disallowed_flag == "--disallowedTools"
@@ -863,11 +882,16 @@ def test_cli_run_hands_the_plan_to_the_runner(tmp_path: Path, monkeypatch: pytes
     assert [p.task_id for p in plan] == ["typo_outlet@a", "undersized_coil@a", "control_review@a", "add_reheat_coil@a"]
 
 
-def test_cli_run_without_runner_exits_1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_run_with_a_missing_runner_exits_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     eval_dir = _make_eval_dir(tmp_path)
     monkeypatch.setattr(cli, "discover", lambda: discover(eval_dir))
+    runner = _runner_toml(tmp_path, command=["no-such-agent-binary", "{prompt}", "{mcp_config}"])
     models = str(_models_toml(tmp_path))
-    assert cli.main(_run_args(tmp_path, "--models", models, "--example-files", str(_example_files(tmp_path)))) == 1
+    args = _run_args(tmp_path, "--models", models, "--example-files", str(_example_files(tmp_path)))
+    assert cli.main([*args, "--runner", str(runner)]) == 2
+    assert "not found" in capsys.readouterr().err
 
 
 @needs_git
@@ -905,3 +929,488 @@ def test_cli_compare_one_and_two_runs(
     assert cli.main(["compare", str(tmp_path / "r1"), str(tmp_path / "r2")]) == 0
     assert "Slice delta" in capsys.readouterr().out
     assert cli.main(["compare", str(tmp_path / "missing")]) == 2
+
+
+# --- agent runner, parser, conditions and diff (T063 to T067) ---------------------------------------------------------
+
+FIXTURES = Path(__file__).parent / "fixtures" / "eval"
+FAKE_AGENT = FIXTURES / "fake_agent.py"
+
+ZONE_FAULT_MODULE = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    from eval.model import FaultType, InjectedFault, ObjectKey
+
+
+    def _inject(doc):
+        doc["Zone"]["Office"].multiplier = 10
+        return InjectedFault(
+            scope=[ObjectKey("Zone", "Office")], object_names=["Office"], field_names=["multiplier"]
+        )
+
+
+    def _verify(doc, result, injected):
+        return doc["Zone"]["Office"].data.get("multiplier") in (None, 1, 1.0)
+
+
+    FAULT = FaultType(
+        id="zone_multiplier",
+        layer="topology",
+        description="for tests",
+        held_out=False,
+        applies_to=["air_loop"],
+        intended_tools=["trace_hvac"],
+        prompt_template={template!r},
+        needs_energyplus=False,
+        inject=_inject,
+        verify=_verify,
+    )
+    """
+)
+
+QUESTION_MODULE = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    from eval.model import TaskSpec
+
+
+    def _key(doc):
+        return next(iter(doc["Zone"])).name
+
+
+    def _verify(doc, result, answer):
+        return answer is not None and _key(doc).casefold() in answer.casefold()
+
+
+    TASK = TaskSpec(
+        id="first_zone",
+        kind="question",
+        layer="topology",
+        applies_to=["air_loop"],
+        prompt_template="Which zone of this building is listed first?",
+        intended_tools=["get_object_neighbourhood"],
+        needs_energyplus=False,
+        verify=_verify,
+        answer_key=_key,
+    )
+    """
+)
+
+E2E_FAULT_PROMPT = "Zone loads look far too high. Find out why and correct the model."
+
+
+def _runner_toml(tmp_path: Path, *, command: Sequence[str] | None = None, disallowed: Sequence[str] = ()) -> Path:
+    argv = list(command) if command is not None else [sys.executable, str(FAKE_AGENT), "{prompt}", "{mcp_config}"]
+    path = tmp_path / "runner.toml"
+    path.write_text(
+        f'name = "fake"\ncommand = {json.dumps(argv)}\nmodel = "fake-model"\nmax_turns = 7\n'
+        'max_turns_flag = "--max-turns"\nmodel_flag = "--model"\ntimeout_seconds = 120\n'
+        f'parse = "claude_stream_json"\ndisallowed_tools = {json.dumps(list(disallowed))}\n'
+        'disallowed_flag = "--disallowedTools"\n',
+        encoding="utf-8",
+    )
+    return path
+
+
+def _reference_model(path: Path) -> Path:
+    from idfkit import new_document, save_idf
+
+    doc = new_document(version=(26, 2, 0))
+    doc.add("Zone", "Office", {"multiplier": 1})
+    doc.add("Zone", "Store", {"multiplier": 1})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    save_idf(doc, path)
+    return path
+
+
+def _e2e_eval_dir(root: Path, *, template: str = E2E_FAULT_PROMPT) -> Path:
+    eval_dir = root / "evaldefs"
+    (eval_dir / "faults").mkdir(parents=True)
+    (eval_dir / "faults" / "zone_multiplier.py").write_text(
+        ZONE_FAULT_MODULE.format(template=template), encoding="utf-8"
+    )
+    _write_fault(eval_dir, "undersized_coil", layer="results", needs_ep=True)
+    (eval_dir / "tasks" / "questions").mkdir(parents=True)
+    (eval_dir / "tasks" / "questions" / "first_zone.py").write_text(QUESTION_MODULE, encoding="utf-8")
+    (eval_dir / "tasks" / "controls.toml").write_text(CONTROLS, encoding="utf-8")
+    return eval_dir
+
+
+def _e2e_args(tmp_path: Path, out: Path, *extra: str) -> list[str]:
+    _reference_model(tmp_path / "ExampleFiles" / "a.idf")
+    models = tmp_path / "models.toml"
+    models.write_text('[[models]]\nid = "a"\nfile = "a.idf"\nversion = "26.2"\ntags = ["air_loop"]\n', encoding="utf-8")
+    return [
+        "run",
+        "--treatment", "fake-server treatment",
+        "--baseline", "fake-server baseline",
+        "--runner", str(_runner_toml(tmp_path)),
+        "--models", str(models),
+        "--example-files", str(tmp_path / "ExampleFiles"),
+        "--out", str(out),
+        "--seed", "3",
+        *extra,
+    ]  # fmt: skip
+
+
+E2E = tuple[int, Path, list[dict[str, object]]]
+
+
+def _e2e_run(root: Path, monkeypatch: pytest.MonkeyPatch, *, template: str = E2E_FAULT_PROMPT) -> E2E:
+    """Run ``eval run`` end to end with the fake agent; return the exit code, the run directory and the agent log."""
+    log = root / "agent-log.jsonl"
+    eval_dir = _e2e_eval_dir(root, template=template)
+    monkeypatch.setenv("FAKE_AGENT_LOG", str(log))
+    monkeypatch.setattr(cli, "find_energyplus_dir", lambda explicit: None)
+    monkeypatch.setattr(cli, "discover", lambda: discover(eval_dir))
+    out = root / "out"
+    code = cli.main(_e2e_args(root, out))
+    entries = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+    return code, out, entries
+
+
+@pytest.fixture(scope="module")
+def e2e(tmp_path_factory: pytest.TempPathFactory) -> E2E:
+    """One end-to-end run shared by the tests that read it (18 fake-agent invocations)."""
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        return _e2e_run(tmp_path_factory.mktemp("e2e"), monkeypatch)
+
+
+def test_e2e_run_records_every_task_condition_and_repeat(
+    e2e: E2E,
+) -> None:
+    code, out, log = e2e
+    assert code == 0
+    run = load_run(out)
+    assert run.baseline_kind == "other" and not run.ablation
+    assert run.model_identifier == "fake-model" and run.repeats == 3 and run.finished_at is not None
+    assert run.baseline_command == "fake-server baseline" and run.treatment_command == "fake-server treatment"
+    tasks = ["undersized_coil@a", "zone_multiplier@a", "control_review@a", "first_zone@a"]
+    # Same task list and order for both conditions, repeat passes outermost.
+    expected = [(t, c, r) for r in range(3) for c in ("baseline", "treatment") for t in tasks]
+    assert [(o.task_id, o.condition, o.repeat) for o in run.outcomes] == expected
+    # Three runnable tasks, six invocations each; the fake agent saw the same prompt in both conditions.
+    assert len(log) == 18
+    prompts: dict[str, set[str]] = {}
+    for entry in log:
+        prompts.setdefault(str(entry["condition"]), set()).add(str(entry["prompt"]))
+    assert prompts["baseline"] == prompts["treatment"] and len(prompts["baseline"]) == 3
+    for task_line in (out / "tasks.jsonl").read_text().splitlines():
+        task = json.loads(task_line)
+        assert task["skip_reason"] is not None or task["prompt"] in prompts["treatment"]
+
+
+def test_e2e_skips_energyplus_tasks_without_energyplus(
+    e2e: E2E,
+) -> None:
+    _, out, log = e2e
+    skipped = [o for o in load_run(out).outcomes if o.task_id == "undersized_coil@a"]
+    assert len(skipped) == 6
+    assert {(o.verified_by, o.skip_reason, o.fixed, o.transcript_path) for o in skipped} == {
+        ("skipped", "EnergyPlus not found", False, "")
+    }
+    assert all("undersized" not in str(e["prompt"]) for e in log)
+    assert "undersized_coil@a: EnergyPlus not found" in (out / "summary.md").read_text()
+
+
+def test_e2e_fault_outcomes_diff_attribution_and_anchoring(
+    e2e: E2E,
+) -> None:
+    _, out, _ = e2e
+    by = {(o.task_id, o.condition, o.repeat): o for o in load_run(out).outcomes}
+    treated = by[("zone_multiplier@a", "treatment", 1)]
+    assert (treated.fixed, treated.verified_by, treated.unwanted_changes) == (True, "check", 0)
+    assert (treated.tool_calls, treated.response_tokens) == (5, 60 + 900 + 240)
+    assert treated.tools_used == ["diagnose_symptom", "trace_hvac"]
+    assert treated.intended_tool_used is True
+    # rank 1 is "OFFICE": the agent's first edit targeted it, and it is the injected object (case-insensitive).
+    assert (treated.top_candidate_edited, treated.top_candidate_correct, treated.first_edit_correct) == (
+        True,
+        True,
+        True,
+    )
+    base = by[("zone_multiplier@a", "baseline", 1)]
+    assert (base.fixed, base.unwanted_changes, base.false_fix) == (False, 1, False)
+    assert base.intended_tool_used is None  # SC-010a is read on treatment runs only
+    assert (base.top_candidate_edited, base.first_edit_correct) == (None, False)
+    assert base.transcript_path == "transcripts/zone_multiplier@a.baseline.1.jsonl"
+    assert (out / base.transcript_path).read_text() == (FIXTURES / "baseline_wrong.jsonl").read_text()
+
+
+def test_e2e_controls_and_questions(e2e: E2E) -> None:
+    _, out, _ = e2e
+    by = {(o.task_id, o.condition): o for o in load_run(out).outcomes if o.repeat == 2}
+    clean, claims = by[("control_review@a", "treatment")], by[("control_review@a", "baseline")]
+    assert (clean.false_fix, clean.fixed, clean.unwanted_changes) == (False, True, 0)
+    assert (claims.false_fix, claims.fixed) == (True, False)  # no change, but a reported fault
+    right, wrong = by[("first_zone@a", "treatment")], by[("first_zone@a", "baseline")]
+    assert (right.fixed, right.verified_by, right.response_tokens) == (True, "answer_key", 2 * 160 + 95)
+    assert right.tools_used == ["get_object_neighbourhood"] and right.intended_tool_used is True
+    assert (wrong.fixed, wrong.verified_by) == (False, "answer_key")
+    assert json.loads((out / "tasks.jsonl").read_text().splitlines()[3])["answer_key"] == "Office"
+
+
+def test_e2e_invocations_are_isolated_and_bounded(
+    e2e: E2E,
+) -> None:
+    _, _, log = e2e
+    cwds = [str(e["cwd"]) for e in log]
+    assert len(set(cwds)) == len(cwds)  # a fresh working directory per invocation
+    for entry in log:
+        argv = [str(a) for a in cast(list[object], entry["argv"])]
+        assert argv[-4:] == ["--max-turns", "7", "--model", "fake-model"]
+        assert "--disallowedTools" not in argv
+        assert "zone_multiplier" not in str(entry["cwd"]) and "@" not in str(entry["cwd"])
+        server = cast(dict[str, object], entry["server"])
+        env = cast(dict[str, str], server["env"])
+        assert Path(env["IDFKIT_MCP_OUTPUT_DIRS"]).resolve() == Path(str(entry["cwd"])).resolve()
+        assert (server["command"], server["args"]) == ("fake-server", [entry["condition"]])
+        assert str(entry["prompt"]).endswith(MODEL_NOTE)
+
+
+def test_e2e_every_rendered_prompt_passes_the_lint(
+    e2e: E2E,
+) -> None:
+    _, _, log = e2e
+    for entry in log:
+        prompt = str(entry["prompt"])
+        assert (
+            lint_prompt(prompt, object_names=["Office"], field_names=["multiplier"], fault_id="zone_multiplier") == []
+        )
+
+
+def test_e2e_rendered_prompt_lint_failure_exits_2_before_any_agent_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The template passes the template lint, but {zone} renders to "Office", the injected object.
+    template = "Zone {zone} is far too warm. Find out why and correct the model."
+    code, out, log = _e2e_run(tmp_path, monkeypatch, template=template)
+    assert code == 2
+    assert log == []
+    assert not (out / "outcomes.jsonl").exists()
+    assert "object name 'Office'" in capsys.readouterr().err
+
+
+def test_e2e_summary_and_compare_two_runs(
+    e2e: E2E, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _, out, _ = e2e
+    summary = (out / "summary.md").read_text()
+    for heading in (
+        "Paired differences (treatment minus baseline)",
+        "Held-out fault types",
+        "Controls, authoring and questions",
+        "SC-008 repeatability",
+        "SC-009a diagnosis anchoring",
+        "SC-010a intended tool use",
+        "### SC-009 topology",
+        "This run cannot decide SC-009",
+    ):
+        assert heading in summary
+    assert "| control | false-fix rate | baseline | 1 | 3 | 1.000 | 0 |" in summary
+    assert "| trace_hvac | 1 | 1 | 1.000 |" in summary
+    monkeypatch.setattr(cli, "discover", lambda: discover(out.parent / "evaldefs"))
+    second = out.parent / "second"
+    shutil.copytree(out, second)
+    capsys.readouterr()
+    assert cli.main(["compare", str(out), str(second)]) == 0
+    printed = capsys.readouterr().out
+    assert "Slice delta against" in printed
+    assert "| zone_multiplier | fix_rate | +0.000 |" in (second / "summary.md").read_text()
+    assert "Slice delta" not in (out / "summary.md").read_text()
+
+
+def test_parser_reads_tool_calls_tokens_and_final_text() -> None:
+    parsed = claude_stream_json.parse((FIXTURES / "treatment_fix.jsonl").read_text())
+    assert parsed.tool_names == ["load_model", "diagnose_symptom", "trace_hvac", "update_object", "save_model"]
+    assert {c.server for c in parsed.tool_calls} == {"idfkit"}
+    assert parsed.tool_calls[3].input == {"object_type": "Zone", "name": "Office", "fields": {"multiplier": 1}}
+    assert parsed.tool_calls[0].result == '{"version": "26.2.0", "zones": 2}'
+    assert parsed.response_tokens == 60 + 900 + 240  # the result event's totals, cache reads left out
+    assert parsed.final_text is not None and parsed.final_text.startswith("The Office zone multiplier")
+    assert parsed.new_tools_used() == ["diagnose_symptom", "trace_hvac"]
+    assert [c.name for c in parsed.mutating_calls()] == ["update_object"]
+    assert (parsed.num_turns, parsed.is_error, parsed.unknown_events) == (6, False, 1)
+
+
+def test_parser_is_robust_to_unknown_events_and_truncated_sessions() -> None:
+    wrong = claude_stream_json.parse((FIXTURES / "baseline_wrong.jsonl").read_text())
+    assert (wrong.unknown_events, wrong.malformed_lines) == (2, 1)
+    truncated = claude_stream_json.parse((FIXTURES / "question_right.jsonl").read_text())
+    assert truncated.final_text == "The first zone is Office."  # no result event: the last assistant text
+    assert truncated.response_tokens == 2 * 160 + 95  # summed once per message id
+    failed = claude_stream_json.parse((FIXTURES / "question_wrong.jsonl").read_text())
+    assert failed.is_error and failed.tool_calls[0].is_error and failed.mutating_calls() == []
+    assert claude_stream_json.parse("").tool_calls == []
+    assert claude_stream_json.split_tool_name("mcp__plugin_x__trace_hvac") == ("plugin_x", "trace_hvac")
+    assert claude_stream_json.split_tool_name("Bash") == (None, "Bash")
+    with pytest.raises(ConfigError, match="unknown transcript parser"):
+        get_parser("nope")
+
+
+def test_build_argv_substitutes_and_appends(tmp_path: Path) -> None:
+    runner = load_runner(_runner_toml(tmp_path, command=["agent", "-p", "{prompt}", "--cfg={mcp_config}"]))
+    argv = build_argv(runner, prompt="Zone {x} {mcp_config}?", mcp_config=Path("/c.json"))
+    assert argv == [
+        "agent",
+        "-p",
+        "Zone {x} {mcp_config}?",
+        "--cfg=/c.json",
+        "--max-turns",
+        "7",
+        "--model",
+        "fake-model",
+    ]
+    ablation = build_argv(runner, prompt="p", mcp_config=Path("/c.json"), disallowed_tools=["trace_hvac", "Bash"])
+    assert ablation[-3:] == ["--disallowedTools", "mcp__idfkit__trace_hvac", "Bash"]
+    unset = replace(runner, model="unset", max_turns_flag="")
+    assert build_argv(unset, prompt="p", mcp_config=Path("/c.json")) == ["agent", "-p", "p", "--cfg=/c.json"]
+
+
+def test_mcp_config_points_at_the_condition_server(tmp_path: Path) -> None:
+    server = ServerCommand(argv=["uv", "run", "idfkit-mcp"], env={"ENERGYPLUS_DIR": "/ep"})
+    path = write_mcp_config(tmp_path / "mcp.json", server, workdir=tmp_path)
+    entry = json.loads(path.read_text())["mcpServers"]["idfkit"]
+    assert (entry["command"], entry["args"]) == ("uv", ["run", "idfkit-mcp"])
+    assert entry["env"] == {"IDFKIT_MCP_OUTPUT_DIRS": str(tmp_path), "ENERGYPLUS_DIR": "/ep"}
+
+
+def test_run_agent_captures_output_and_enforces_the_timeout(tmp_path: Path) -> None:
+    ok = run_agent(
+        [sys.executable, "-c", "print('{}')"], cwd=tmp_path, transcript=tmp_path / "t" / "a.jsonl", timeout_seconds=60
+    )
+    assert (ok.returncode, ok.timed_out, ok.read_transcript()) == (0, False, "{}\n")
+    assert json.loads((tmp_path / "t" / "a.meta.json").read_text())["returncode"] == 0
+    slow = run_agent(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        cwd=tmp_path,
+        transcript=tmp_path / "t" / "b.jsonl",
+        timeout_seconds=0.5,
+    )
+    assert slow.timed_out and slow.duration_seconds < 20
+
+
+def test_server_commands_are_anchored_to_the_checkout(tmp_path: Path) -> None:
+    assert parse_command("uv run idfkit-mcp", project=tmp_path).argv == [
+        "uv",
+        "run",
+        "--project",
+        str(tmp_path),
+        "idfkit-mcp",
+    ]
+    assert parse_command("uv run --project /x idfkit-mcp", project=tmp_path).argv == [
+        "uv",
+        "run",
+        "--project",
+        "/x",
+        "idfkit-mcp",
+    ]
+    assert parse_command("uvx 'idfkit-mcp==0.9'", project=tmp_path).argv == ["uvx", "idfkit-mcp==0.9"]
+    with pytest.raises(ConfigError):
+        parse_command("  ")
+
+
+@needs_git
+def test_pre_feature_baseline_runs_from_a_worktree_that_is_removed(tmp_path: Path) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    _commit_file(repo, "pyproject.toml", "[project]\nname = 'x'\n", "2026-01-01T00:00:00+00:00")
+    sha = _git_out(repo, "rev-parse", "HEAD")
+    baseline = BaselineConfig(kind="pre_feature", idfkit_mcp_sha=sha[:7], idfkit="idfkit==1.2.0")
+    with build_conditions(
+        treatment_command="uv run idfkit-mcp",
+        baseline=baseline,
+        baseline_command=None,
+        ablation=False,
+        repo=repo,
+        warm=False,
+    ) as conditions:
+        assert conditions.baseline is not None
+        argv = conditions.baseline.argv
+        worktree = Path(argv[argv.index("--project") + 1])
+        assert (worktree / "pyproject.toml").is_file()
+        assert argv[-3:] == ["--with", "idfkit==1.2.0", "idfkit-mcp"]
+        assert conditions.treatment.argv[:4] == ["uv", "run", "--project", str(repo)]
+        assert conditions.treatment_revision == sha[:7] or conditions.treatment_revision.startswith(sha[:7])
+    assert not worktree.exists()
+    assert len(_git_out(repo, "worktree", "list").splitlines()) == 1
+    bad = BaselineConfig(kind="pre_feature", idfkit_mcp_sha="0000000", idfkit="idfkit==1.2.0")
+    with (
+        pytest.raises(GitError),
+        build_conditions(
+            treatment_command="x", baseline=bad, baseline_command=None, ablation=False, repo=repo, warm=False
+        ),
+    ):
+        pass
+
+
+def test_ablation_conditions_have_no_baseline(tmp_path: Path) -> None:
+    with build_conditions(
+        treatment_command="srv", baseline=None, baseline_command=None, ablation=True, repo=tmp_path, warm=False
+    ) as conditions:
+        assert conditions.baseline is None and conditions.treatment.argv == ["srv"]
+
+
+def test_diff_finds_changes_outside_scope_case_insensitively() -> None:
+    from idfkit import new_document
+
+    start = new_document(version=(26, 2, 0))
+    start.add("Zone", "Office", {"multiplier": 1})
+    start.add("Zone", "Store")
+    start.add("Output:Variable", "", {"key_value": "*", "variable_name": "Zone Mean Air Temperature"})
+    final = new_document(version=(26, 2, 0))
+    final.add("Zone", "OFFICE", {"multiplier": "1"}, validate=False)  # same object: name case, number spelling
+    final.add("Zone", "Store", {"multiplier": 2})
+    final.add("Zone", "Lobby")
+    final.add("Output:Variable", "", {"key_value": "*", "variable_name": "Zone Air Temperature"})
+    changes = diff(snapshot(start), snapshot(final))
+    assert changes.added == [ObjectKey("Zone", "lobby"), ObjectKey("Output:Variable", "")]
+    assert changes.modified == [ObjectKey("zone", "store")]
+    assert changes.removed == [ObjectKey("Output:Variable", "")]
+    assert unwanted_changes(changes, [ObjectKey("Zone", "Store")]) == 3
+    assert unwanted_changes(changes, [ObjectKey("Zone", "Store"), ObjectKey("output:variable", "")]) == 1
+    assert diff(snapshot(start), snapshot(start)).changed == []
+
+
+@pytest.mark.parametrize(
+    ("text", "reported"),
+    [
+        ("I corrected the outlet node of the coil.", True),
+        ("The supply fan was misconfigured.", True),
+        ("No issues found. The HVAC system is set up correctly.", False),
+        ("There is nothing to fix.", False),
+        ("Validation reported 0 errors.", False),
+        ("Everything is correct.", False),
+        (None, False),
+    ],
+)
+def test_reported_fault_reads_the_final_message(text: str | None, reported: bool) -> None:
+    assert reported_fault(ParsedTranscript(tool_calls=[], response_tokens=0, final_text=text)) is reported
+
+
+def test_control_false_fix_on_change_or_mutating_call() -> None:
+    quiet = ParsedTranscript(tool_calls=[], response_tokens=0, final_text="All good.")
+    no_change = ModelDiff(added=[], removed=[], modified=[])
+    assert false_fix(no_change, quiet) is False
+    assert false_fix(ModelDiff(added=[], removed=[], modified=[ObjectKey("Zone", "A")]), quiet) is True
+    assert false_fix(None, quiet) is True  # the final model did not load
+    edit = ToolCall(id="1", name="update_object", server="idfkit", input={"object_type": "Zone", "name": "A"})
+    unsaved = ParsedTranscript(tool_calls=[edit], response_tokens=0, final_text="All good.")
+    assert false_fix(no_change, unsaved) is True
+    assert first_edit_target(unsaved) == ObjectKey("zone", "a")
+    failed = replace(edit, is_error=True)
+    assert first_edit_target(ParsedTranscript(tool_calls=[failed], response_tokens=0, final_text=None)) is None
+
+
+def test_baseline_wrong_first_edit_pairs_with_wrong_top_candidate() -> None:
+    outcomes = [
+        _outcome("f@a", "baseline", r, first_edit_correct=False) for r in range(3)
+    ] + [
+        _outcome("f@a", "treatment", r, top_candidate_edited=True, top_candidate_correct=r == 0) for r in range(3)
+    ]  # fmt: skip
+    comparison = compare(outcomes, scope="t", metric="wrong_top_candidate_rate", seed=1, resamples=50)
+    assert comparison is not None
+    assert (comparison.baseline, comparison.treatment) == (1.0, pytest.approx(2 / 3))
+    treated_first_edit = _outcome("f@a", "treatment", first_edit_correct=False)
+    assert metric_value(treated_first_edit, "wrong_top_candidate_rate") is None
