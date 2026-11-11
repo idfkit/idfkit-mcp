@@ -239,29 +239,47 @@ Symptoms: `unmet_heating`, `unmet_cooling`, `peak_outlier`, `sizing_zero`, `mess
 
 ## Layer 3: Standards knowledge (`idfkit.standards`)
 
+Three topics: `envelope`, `lighting` (90.1, space-by-space method) and `ventilation` (62.1). See research R-26
+to R-29.
+
 ### StandardsContext
 
-Lives in idfkit-mcp session state and is persisted (R-15).
+A public frozen dataclass in idfkit (R-29). idfkit-mcp holds one per session and persists it (R-15).
 
 | Field | Type | Rule |
 |---|---|---|
 | `standard` | `"ASHRAE 90.1"` | The only value in this feature |
-| `edition` | `str \| None` | One of the editions present in the data (`2004` … `2025`) |
+| `edition` | `str \| None` | The 90.1 edition: one of the editions present in the data (`2004` … `2025`) |
+| `ventilation_edition` | `str \| None` | The 62.1 edition: one of `1999` … `2022` |
 | `climate_zone` | `str \| None` | `0`–`8` with an optional `A`, `B` or `C` subtype |
 | `building_category` | `"Nonresidential" \| "Residential" \| "Semiheated" \| None` | |
-| `*_source` | `"asserted" \| "weather_station" \| None` | One per field. Edition and category are always asserted |
+| `*_source` | `"asserted" \| "weather_station" \| None` | One per field. Editions and category are always asserted |
 
-Validation: a screening requires every field to be non-null (FR-032).
+Validation: the fields a topic requires must be non-null when that topic is requested (FR-032):
+
+| Topic | Required |
+|---|---|
+| `envelope` | `edition`, `climate_zone`, `building_category` |
+| `lighting` | `edition` |
+| `ventilation` | `ventilation_edition` |
 
 ### ObjectRole
 
 | Field | Type | Rule |
 |---|---|---|
 | `object` | `ObjectKey` | |
-| `role` | `"surface_class" \| "conditioned_status" \| "assembly_class"` | `space_type` is reserved for later |
-| `value` | `str` | From PNNL vocabularies (`ExteriorWall`, `Mass`, `IEAD`, …) or `unknown` |
-| `origin` | `"computed" \| "asserted" \| "unconfirmed"` | |
-| `evidence` | `str` | For example "heat capacity 210 kJ/m²K ≥ 143", or "asserted 2026-11-11T10:02Z" |
+| `role` | `"surface_class" \| "conditioned_status" \| "assembly_class" \| "space_type" \| "lighting_space_type" \| "ventilation_space_type"` | The three space-type roles apply to zones only |
+| `value` | `str` | From the data source's vocabularies (`ExteriorWall`, `Mass`, `IEAD`, `office`, `office_open_plan_lighting`, …) or `unknown` |
+| `origin` | `"computed" \| "asserted" \| "unconfirmed"` | The space-type roles are never `computed` (R-27) |
+| `evidence` | `str` | For example "heat capacity 210 kJ/m²K ≥ 143", "asserted 2026-11-11T10:02Z", or "suggested from zone name 'Office_Open'" |
+
+Vocabularies:
+- `space_type`: the 61 level-1 names
+- `lighting_space_type`: the 119 lighting space-type names
+- `ventilation_space_type`: the 98 ventilation space-type names
+
+All of them are read from the data at run time. An assertion outside the vocabulary is refused, and the error lists
+the closest values. For a topic, the topic-specific role wins over `space_type`.
 
 **State transitions.**
 
@@ -279,40 +297,61 @@ verdict (FR-036).
 
 | Field | Type | Rule |
 |---|---|---|
-| `edition` | `str` | |
-| `climate_zone_set` | `str` | As in the data (`3`, `3A`, …). Subtype rows win (FR-033) |
-| `surface_class` / `assembly_class` / `building_category` | `str` | |
-| `metric` | `"u_factor" \| "c_factor" \| "f_factor" \| "shgc" \| "r_value"` | |
+| `topic` | `"envelope" \| "lighting" \| "ventilation"` | |
+| `edition` | `str` | The 90.1 edition, or the 62.1 edition for ventilation |
+| `climate_zone_set` | `str \| None` | Envelope only, as in the data (`3`, `3A`, …). Subtype rows win (FR-033) |
+| `surface_class` / `assembly_class` / `building_category` | `str \| None` | Envelope only |
+| `space_type_row` | `tuple[str, str] \| None` | Lighting and ventilation: the row's primary and secondary space type, verbatim |
+| `method` | `"SS" \| "CS" \| None` | Lighting only |
+| `metric` | `"u_factor" \| "c_factor" \| "f_factor" \| "shgc" \| "r_value" \| "lpd" \| "oa_per_person" \| "oa_per_area"` | |
 | `limit_ip` / `units_ip` | `float` / `str` | Verbatim from the row |
-| `limit_si` / `units_si` | `float` / `str` | Converted (R-08) |
+| `limit_si` / `units_si` | `float` / `str` | Converted (R-08, R-26) |
 | `wwr_band` | `tuple[float \| None, float \| None]` | Fenestration rows |
-| `includes_films` | `tuple[bool, bool]` | Interior, exterior |
-| `citation` | `str` | The row's `annotation` |
+| `includes_films` | `tuple[bool, bool]` | Envelope: interior, exterior |
+| `citation` | `str` | The row's `annotation`, or idfkit's reviewed 62.1 citation table (R-26) |
+| `citation_source` | `"data" \| "idfkit"` | |
+
+A ventilation requirement is a pair of rows `(oa_per_person, oa_per_area)` taken from one data row. Both are
+returned.
+
+### Zone measures
+
+These are model-side, typed results of `zone_lighting(doc)` and `zone_outdoor_air(doc)`. They need no extra
+(R-28).
+
+| Entity | Fields |
+|---|---|
+| `ZoneLighting` | `zone: ObjectKey`, `floor_area_m2`, `installed_w`, `lpd_w_m2 \| None`, `multiplier`, `sources: list[ObjectKey]` (the `Lights` objects), `reason: str \| None` when no value |
+| `ZoneOutdoorAir` | `zone: ObjectKey`, `method: str \| None`, `design_people`, `floor_area_m2`, `per_person_l_s \| None`, `per_area_l_s_m2 \| None`, `breathing_zone_l_s \| None`, `multiplier`, `source: ObjectKey \| None` (the outdoor-air specification), `reason: str \| None` |
 
 ### ScreeningVerdict
 
 | Field | Type | Rule |
 |---|---|---|
-| `object` | `ObjectKey` | A construction or fenestration type |
-| `check` | `str` | For example `roof u_factor` |
+| `object` | `ObjectKey` | A construction or fenestration type (envelope), or a zone (lighting, ventilation) |
+| `topic` | `"envelope" \| "lighting" \| "ventilation"` | |
+| `check` | `str` | For example `roof u_factor`, `lighting lpd` or `ventilation breathing_zone_oa` |
 | `verdict` | `"meets" \| "does_not_meet" \| "cannot_tell"` | |
-| `value_si` | `float \| None` | |
+| `value_si` | `float \| None` | Ventilation: the model's breathing-zone outdoor air in L/s |
 | `requirement` | `Requirement \| None` | `None` only for `cannot_tell` |
-| `margin_si` | `float \| None` | `limit − value` for maxima |
-| `area_m2` | `float` | Exterior area using this construction |
-| `assumptions` | `list[str]` | Each role used, with its origin |
+| `required_si` | `float \| None` | Ventilation: Vbz = Rp·Pz + Ra·Az in L/s. Otherwise equal to `requirement.limit_si` |
+| `margin_si` | `float \| None` | `limit − value` for maxima (envelope, lighting). `value − required` for minima (ventilation) |
+| `area_m2` | `float` | Exterior area using the construction, or the zone floor area |
+| `assumptions` | `list[str]` | Each role used with its origin, and the space-type resolution path (R-27) |
 | `reason` / `resolve` | `str \| None` | Required when `cannot_tell` |
 
 ### ScreeningReport
 
 | Field | Type |
 |---|---|
-| `basis` | `str` (standard, edition, "prescriptive screening — not a compliance determination") |
+| `basis` | `str` (standards, editions, "prescriptive screening — not a compliance determination") |
 | `data_source` | `str` (package name and version) |
 | `context` | `StandardsContext` |
-| `summary` | counts per verdict |
+| `topics` | `list[str]` (topics evaluated) |
+| `not_evaluated` | `dict[str, str]` (topic to the missing context items, when `topics=None`) |
+| `summary` | counts per topic and verdict |
 | `verdicts` | bounded list of `ScreeningVerdict`, worst margin first |
-| `not_checked` | `list[str]` (mandatory provisions, exceptions, trade-off paths, opaque doors if absent from data) |
+| `not_checked` | `list[str]` (per topic: mandatory provisions, exceptions, trade-off paths, RCR and additional lighting allowances, lighting controls, Ez, Vot, DCV, IAQP; R-26) |
 | `coverage` | `Coverage` |
 
 ---
@@ -370,6 +409,7 @@ Returned by `ModelGraph.neighbourhood`.
 | `nodes` / `edges` | `list[GraphNode]` / `list[GraphEdge]` | Breadth-first order from `start` |
 | `layers` | `list[Layer]` | Layers present in the view |
 | `unavailable` | `dict[Layer, str]` | Each missing layer and why (FR-056) |
+| `partial` | `dict[Layer, str]` | Each present layer that covers only part of its scope, and what is missing. Today only `standards`, for topics without a complete context (R-29) |
 | `truncated` | `bool` | True when a hop or node bound cut the walk |
 | `omitted_nodes` | `int` | Nodes reached but not returned. A lower bound, since the walk stops at the cut |
 | `frontier` | `list[str]` | Returned node ids whose neighbours were not expanded |
@@ -378,8 +418,11 @@ Returned by `ModelGraph.neighbourhood`.
 **State: which layers are present.** It is decided per call, not stored:
 - `model` and `topology`: always present.
 - `results`: present when a `ResultIndex` was given, whether fresh or stale. Stale facts are marked, not dropped.
-- `standards`: present when a `StandardsContext` with edition, climate zone and building category was given **and**
-  the standards data is importable. Otherwise the layer is listed in `unavailable` with the reason.
+- `standards`: present when a `StandardsContext` completing at least one topic's required items (R-29) was given
+  **and** the standards data is importable. Its verdicts cover only those topics. A partial context is not an
+  error; the topics left out are named in the `standards` entry of a separate `partial` map, for example
+  `{"standards": "lighting, ventilation: set edition, ventilation_edition"}`. Otherwise the layer is listed in
+  `unavailable` with the reason.
 
 ### Node-link document
 
@@ -456,6 +499,9 @@ is_parent, accepts_nodelist, predicate or None)`.
 | Structure | Type |
 |---|---|
 | `envelope_90_1` | `dict[tuple[str, str, str, str], tuple[tuple[...], ...]]` (edition, climate zone set, surface type, building category) to projected rows |
+| `lighting_90_1` | `dict[str, tuple[tuple[...], ...]]` (edition to its `SS` and `CS` rows, by 1-based row id) |
+| `ventilation_62_1` | `dict[str, tuple[tuple[...], ...]]` (edition to its rows, by 1-based row id) |
+| `space_types` | level 1 to level 2 names, and level 2 name to `(table, row id)` per edition (R-27) |
 | `data_version` | `str` |
 
 Loaded on first use under a lock and shared by every session. The parsed JSON is discarded after projection.

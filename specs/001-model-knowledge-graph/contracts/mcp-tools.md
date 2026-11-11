@@ -162,13 +162,15 @@ the Python version is 3.14 or later (research R-08).
 ### `get_standards_context` (`_READ_ONLY`)
 
 No params. Returns `StandardsContext` with a source for each field, plus `missing: list[str]` and a one-line hint
-per missing item.
+per missing item. It also returns `topics_ready: list[str]`, the topics whose required items are all set (research
+R-29).
 
 ### `set_standards_context` (`_MUTATE` on session state, not on the model)
 
 | Param | Type | Notes |
 |---|---|---|
-| `edition` | `str \| None` | Validated against the editions in the data. The error lists them |
+| `edition` | `str \| None` | The 90.1 edition. Validated against the editions in the data. The error lists them |
+| `ventilation_edition` | `str \| None` | The 62.1 edition. Validated the same way |
 | `climate_zone` | `str \| None` | `0`–`8` with an optional `A`, `B` or `C`. Records the source as `asserted` |
 | `building_category` | `"Nonresidential" \| "Residential" \| "Semiheated" \| None` | |
 
@@ -179,21 +181,34 @@ persists it to the session file.
 
 | Param | Type | Notes |
 |---|---|---|
-| `topic` | `"envelope"` | The only topic in this feature |
-| `surface_class` | `str` | Required. One of the nine PNNL surface types |
-| `assembly_class` | `str \| None` | |
-| `edition`, `climate_zone`, `building_category` | `str \| None` | Default to the session context. Fail if still missing |
+| `topic` | `"envelope" \| "lighting" \| "ventilation"` | Required |
+| `surface_class` | `str \| None` | Required for `envelope`. One of the nine PNNL surface types |
+| `assembly_class` | `str \| None` | `envelope` only |
+| `space_type` | `str \| None` | Required for `lighting` and `ventilation`. A level-1 name or a topic-specific space-type name. The error lists the closest names |
+| `edition`, `ventilation_edition`, `climate_zone`, `building_category` | `str \| None` | Default to the session context. Fail if an item the topic needs is still missing |
 
-Returns `RequirementLookup`: `requirements: list[Requirement]` (SI and IP, citation), `data_source`.
+Returns `RequirementLookup`: `requirements: list[Requirement]` (SI and IP, citation and `citation_source`),
+`data_source`. For lighting and ventilation, each requirement shows the resolved row and the mapping path
+(research R-27). A space type whose mapping is under review is refused with the reason.
 
-### `screen_envelope` (`_READ_ONLY`)
+### `screen_standards` (`_READ_ONLY`)
 
-| Param | Type | Default |
-|---|---|---|
-| `limit` | `int` | 20 |
+This replaces `screen_envelope` from earlier drafts, which was never released (research R-29).
 
-Uses the session `StandardsContext`. It fails, naming each missing item, unless edition, climate zone and building
-category are all set (FR-032). Returns `ScreeningReport`.
+| Param | Type | Default | Notes |
+|---|---|---|---|
+| `topics` | `list["envelope" \| "lighting" \| "ventilation"] \| None` | `None` | `None` screens every topic whose context items are set |
+| `limit` | `int` | 20 | Verdicts returned, worst margin first, across topics |
+
+Uses the session `StandardsContext` and asserted roles. Returns `ScreeningReport` with `summary` counts per topic and
+verdict, and `not_evaluated` for topics left out with `topics=None`.
+
+Errors (FR-032):
+- a named topic with missing context items: the error names each item
+- `topics=None` with no topic ready: the error names the items each topic needs
+
+Zones without an asserted space type get `cannot_tell` lighting and ventilation verdicts. The `resolve` hint names
+`assign_object_role` and, where available, an unconfirmed suggestion.
 
 ### `get_object_roles` (`_READ_ONLY`)
 
@@ -212,10 +227,11 @@ Returns a bounded list of `ObjectRole`, with `origin` and `evidence`.
 |---|---|
 | `object_type` | `str` |
 | `name` | `str` |
-| `role` | `"conditioned_status" \| "assembly_class"` |
+| `role` | `"conditioned_status" \| "assembly_class" \| "space_type" \| "lighting_space_type" \| "ventilation_space_type"` |
 | `value` | `str` |
 
-The value must be in the role's vocabulary; the error lists the allowed values. Returns the resulting
+The value must be in the role's vocabulary; the error lists the closest allowed values. The three space-type roles
+apply to `Zone` objects only, and their vocabularies come from the data, so they need the extra. Returns the resulting
 `ObjectRole` with `origin="asserted"`. Records the change and persists it (FR-037).
 
 ### `search_weather_stations` (changed)
@@ -236,7 +252,7 @@ Same content as `get_standards_context`.
 
 This is the cross-layer neighbourhood of one object or node (FR-058, research R-25). It is built from
 `idfkit.graph.ModelGraph` with the session's document, its `ResultIndex` if this session ran a simulation, and its
-standards context and asserted roles if the context is complete.
+standards context and asserted roles if the context makes at least one topic ready.
 
 | Param | Type | Default | Notes |
 |---|---|---|---|
@@ -251,6 +267,7 @@ Returns `ObjectNeighbourhood`, the Pydantic mirror of `Subgraph`:
 - `start`
 - `nodes` and `edges`
 - `layers` and `unavailable`, each layer with its reason, for example "results: no simulation run in this session"
+- `partial`, for example the standards topics left out because the context is incomplete
 - `truncated`, `omitted_nodes`, `frontier`
 - `results_state`
 
@@ -280,8 +297,8 @@ as measured by the `perf` protocol tests in idfkit-mcp (spec SC-011 to SC-013, r
 | `get_hvac_topology` (all loops, summary) | same | ≤ 8 KB, paged |
 | `check_model_integrity` with the `hvac_topology` group | ≤ 60 ms (existing checks plus topology) | ≤ 8 KB, grouped |
 | `get_object_results`, `diagnose_symptom` | ≤ 250 ms the first time after a run; ≤ 10 ms afterwards | ≤ 8 KB |
-| `get_standards_context`, `get_object_roles`, `assign_object_role`, `set_standards_context` | ≤ 10 ms | ≤ 8 KB |
-| `lookup_standard`, `screen_envelope` | ≤ 500 ms the first time in a process; ≤ 50 ms afterwards | ≤ 8 KB |
+| `get_standards_context`, `get_object_roles`, `assign_object_role`, `set_standards_context` | ≤ 10 ms (the first space-type assertion in a process loads the vocabularies, within the 500 ms first-call budget) | ≤ 8 KB |
+| `lookup_standard`, `screen_standards` | ≤ 500 ms the first time in a process for each topic; ≤ 50 ms afterwards | ≤ 8 KB |
 | `get_object_neighbourhood` | ≤ 50 ms when the topology and results views are cached. The first call after a load, edit or run pays that view's build, within the budgets above. The first walk into `verdict` nodes pays the screening | ≤ 8 KB, enforced |
 
 ## Token budget

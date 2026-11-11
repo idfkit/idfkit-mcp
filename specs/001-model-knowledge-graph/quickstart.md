@@ -92,22 +92,55 @@ Offline equivalent, against the committed fixtures:
 3. `rename_node("Mixed Air Node 1", "AHU-1 Mixed Air")`, then `check_model_integrity`. Expect the field count
    updated and no new topology findings. `get_change_log` should list `rename_node`.
 
-## User Story 5: envelope screening
+## User Story 5: screening against a standard (envelope, lighting, ventilation)
+
+Envelope:
 
 1. `load_model` with a model whose weather file is Chicago O'Hare (climate zone 5A), then
-   `get_standards_context`. Expect `climate_zone: "5A"` with source `weather_station`, and `edition` missing.
-2. `screen_envelope` before setting the edition. Expect an error naming `edition` and `building_category`.
-3. `set_standards_context(edition="2019", building_category="Nonresidential")`, then `screen_envelope`. Expect:
+   `get_standards_context`. Expect `climate_zone: "5A"` with source `weather_station`, `edition` missing, and
+   `topics_ready: []`.
+2. `screen_standards(topics=["envelope"])` before setting the edition. Expect an error naming `edition` and
+   `building_category`.
+3. `set_standards_context(edition="2019", building_category="Nonresidential")`, then
+   `screen_standards(topics=["envelope"])`. Expect:
    - the roof verdict cites "Table 5.5-5"
    - the limit is 0.032 Btu/h·ft²·°F, which is 0.18 W/m²·K
    - the value was computed with the roof film
    - every wall without asserted framing shows `cannot_tell` with a `resolve` hint
-4. `assign_object_role("Construction", "<wall>", "assembly_class", "SteelFramed")`, then `screen_envelope` again.
-   Expect a verdict whose assumptions say `assembly_class=SteelFramed (asserted)`.
-5. Restart the server (stdio) and call `get_object_roles(unknown_only=False)`. The assertion survives (FR-037).
+4. `assign_object_role("Construction", "<wall>", "assembly_class", "SteelFramed")`, then screen again. Expect a
+   verdict whose assumptions say `assembly_class=SteelFramed (asserted)`.
+
+Lighting and ventilation, on `5ZoneAirCooled.idf` with the 90.1 edition set as above:
+
+5. `screen_standards(topics=["lighting"])`. Expect one `cannot_tell` verdict per zone, each with a `resolve` hint
+   naming `assign_object_role` and the role `space_type`. No zone is given a verdict from its name.
+6. `assign_object_role("Zone", "SPACE1-1", "lighting_space_type", "office_open_plan_lighting")`, then screen
+   lighting again. Expect, for `SPACE1-1`:
+   - the model's lighting power density in W/m² and W/ft²
+   - a requirement whose row is "Office / Open plan", with method `CS` and the citation "From 90.1-2019 Table
+     9.6.1"
+   - an assumption that names the space-type resolution path (research R-27)
+7. `screen_standards(topics=["ventilation"])` before setting the 62.1 edition. Expect an error naming
+   `ventilation_edition`. Then `set_standards_context(ventilation_edition="2019")` and screen again. Expect, for
+   `SPACE1-1`:
+   - the model's breathing-zone outdoor air in L/s against Vbz = Rp·Pz + Ra·Az, with Pz from the model's `People`
+   - Rp and Ra in both unit systems
+   - `citation_source: "idfkit"`
+   - `not_checked` listing Ez, Vot, DCV and the IAQ procedure
+8. `screen_standards()` with no topics. Expect all three topics evaluated, and `summary` counts per topic.
+
+Persistence:
+
+9. Restart the server (stdio) and call `get_object_roles(unknown_only=False)`. The assertions survive (FR-037),
+   and `get_standards_context` still shows both editions.
 
 Hand-check sample (SC-006): `uv run pytest tests/test_standards_sample.py -v` (idfkit, needs the extra). It
-compares 30 or more verdicts across all eight editions with hand-calculated values.
+compares 30 or more envelope verdicts across all eight editions, plus at least five lighting and five ventilation
+verdicts, with hand-calculated values. It also checks each 62.1 citation entry against the published edition.
+
+Space-type mapping qualification (research R-27): `uv run pytest tests/test_standards_mapping.py -v` (idfkit, needs
+the extra). Expect every level-2 mapping of every supported edition to resolve in range, every lighting mapping to
+land on an `SS` or `CS` row, and every mapping on the review list to produce `cannot_tell`.
 
 ## User Story 6: symptom to cause
 
@@ -153,6 +186,7 @@ Through the server, after step 1 of User Story 3:
    - its zone and its reheat coil as `object` nodes, the coil linked by `flow` edges through `node` nodes
    - the coil's `membership` edge to the hot-water loop
    - the terminal's `result_fact` nodes, with `results_state: "fresh"`
-   - `standards` in `unavailable` until a standards context is set
+   - `standards` in `unavailable` until a standards context makes at least one topic ready; with only the 90.1
+     edition set, `standards` is present and `partial` names ventilation and envelope
 2. The same call with `max_nodes=5`. Expect `truncated: true`, a non-empty `frontier` and a response under 8 KB.
 3. The same call with `hops=4`. Expect an error stating the 1–3 range.

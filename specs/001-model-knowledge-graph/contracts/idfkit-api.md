@@ -112,16 +112,31 @@ Defaults preserve today's results exactly.
 
 ## `idfkit.standards` (new unit; data needs extra `idfkit[standards]`)
 
+Three topics: envelope, lighting (90.1, space-by-space method) and ventilation (62.1). See research R-26 to R-29.
+
 ```python
 class StandardsUnavailableError(IdfKitError): ...   # names the extra and the Python constraint
 
-def data_version() -> str: ...                       # raises StandardsUnavailableError
-def editions() -> list[str]: ...                     # e.g. ["2004", ..., "2025"]
+Topic = Literal["envelope", "lighting", "ventilation"]
+RoleName = Literal["surface_class", "conditioned_status", "assembly_class",
+                   "space_type", "lighting_space_type", "ventilation_space_type"]
 
+def data_version() -> str: ...                       # raises StandardsUnavailableError
+def editions(topic: Topic = "envelope") -> list[str]: ...
+    # 90.1 editions for envelope and lighting ("2004" … "2025"); 62.1 editions for ventilation ("1999" … "2022")
+def role_vocabulary(role: RoleName) -> list[str]: ...
+    # Read from the data for the three space-type roles; raises StandardsUnavailableError without the extra
+
+@dataclass(frozen=True, slots=True)
+class StandardsContext: ...          # edition, ventilation_edition, climate_zone, building_category, *_source
 @dataclass(frozen=True, slots=True)
 class Requirement: ...
 @dataclass(frozen=True, slots=True)
 class ObjectRole: ...
+@dataclass(frozen=True, slots=True)
+class ZoneLighting: ...
+@dataclass(frozen=True, slots=True)
+class ZoneOutdoorAir: ...
 @dataclass(frozen=True, slots=True)
 class ScreeningVerdict: ...
 @dataclass(frozen=True, slots=True)
@@ -129,15 +144,27 @@ class ScreeningReport: ...
 
 def lookup_envelope(*, edition: str, climate_zone: str, surface_class: str,
                     building_category: str, assembly_class: str | None = None) -> list[Requirement]: ...
+def lookup_lighting(*, edition: str, space_type: str) -> list[Requirement]: ...
+    # space_type: a level-1 or a lighting space-type name; SS and CS rows only, never BA
+def lookup_ventilation(*, edition: str, space_type: str) -> list[Requirement]: ...
+    # space_type: a level-1 or a ventilation space-type name; edition is the 62.1 edition
 
+# Model side: no extra needed (FR-006)
 def compute_roles(doc: IDFDocument) -> list[ObjectRole]: ...         # computed + unconfirmed only
-def screen_envelope(doc: IDFDocument, *, edition: str, climate_zone: str, building_category: str,
-                    asserted: Mapping[tuple[str, str, str], str] | None = None) -> ScreeningReport: ...
+def zone_lighting(doc: IDFDocument) -> list[ZoneLighting]: ...
+def zone_outdoor_air(doc: IDFDocument) -> list[ZoneOutdoorAir]: ...
+
+def screen(doc: IDFDocument, context: StandardsContext, *,
+           topics: Collection[Topic] | None = None,
+           asserted: Mapping[tuple[str, str, str], str] | None = None) -> ScreeningReport: ...
     # `asserted` maps (object_type, NAME_UPPER, role) -> value; supplied by the caller (session state).
+    # Raises ValueError naming each missing context item for a named topic, or when no topic can be evaluated.
 ```
 
-`compute_roles` and every model-side computation work without the extra. Only `lookup_envelope`,
-`screen_envelope`, `editions` and `data_version` need it.
+`compute_roles`, `zone_lighting`, `zone_outdoor_air` and `StandardsContext` work without the extra. The lookups,
+`screen`, `editions`, `role_vocabulary` and `data_version` need it.
+
+`screen_envelope`, named in earlier drafts of this contract, is replaced by `screen` before any release (R-29).
 
 ## `idfkit.graph` (new unit; combined view over the layers)
 
@@ -163,6 +190,9 @@ class ModelGraph:
     def layers(self) -> list[Layer]: ...
     @property
     def unavailable(self) -> dict[Layer, str]: ...
+    @property
+    def partial(self) -> dict[Layer, str]: ...
+        # Present layers covering only part of their scope, e.g. standards topics without a complete context
     def node_id(self, target: ObjectKey | str) -> str: ...
         # ObjectKey -> object id; str -> node id. Raises KeyError if absent from the model.
     def neighbourhood(self, start: ObjectKey | str, *, hops: int = 1,
@@ -210,8 +240,9 @@ on the reference model (HospitalLowEnergy), with a 2× CI allowance.
 | Any single `HVACTopology` query (`uses`, `trace`, `upstream`, `downstream`, `memberships`, `chain`) | ≤ 5 ms |
 | `ResultIndex.build` | ≤ 50 ms, independent of timeseries volume. Never reads `ReportData` |
 | `ResultIndex.for_object`, `diagnose` | ≤ 10 ms |
-| First `lookup_envelope` / `screen_envelope` in a process | ≤ 150 ms |
-| Later `screen_envelope` on a loaded model | ≤ 20 ms |
+| First lookup or `screen` in a process, per topic | ≤ 150 ms |
+| Later `screen` on a loaded model, all three topics | ≤ 20 ms |
+| `zone_lighting`, `zone_outdoor_air` on the reference model | ≤ 20 ms each |
 | `ModelGraph(...)` construction | ≤ 0.1 ms, with no layer built |
 | `ModelGraph.neighbourhood`, 3 hops, up to 200 nodes, topology cached | ≤ 10 ms |
 | `to_node_link()` of the `model` and `topology` layers on the reference model | ≤ 1 s, ≤ 50 MB peak extra memory |

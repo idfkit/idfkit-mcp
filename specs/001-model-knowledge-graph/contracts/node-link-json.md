@@ -26,6 +26,7 @@ The server never produces this format (FR-058).
 | `energyplus_version` | `str` | The model's version, `X.Y.Z` |
 | `layers` | `list[str]` | Layers included, from `model`, `topology`, `results`, `standards` |
 | `unavailable` | `dict[str, str]` | Each layer asked for but absent, with the reason |
+| `partial` | `dict[str, str]` | Each included layer that covers only part of its scope, and what is missing (for example standards topics without a complete context) |
 | `scope` | object | `start`, `hops`, `node_kinds`, `edge_kinds` as given, `null` when unrestricted |
 | `results_state` | `"fresh" \| "stale" \| null` | `null` when `results` is not included |
 
@@ -39,7 +40,7 @@ Required keys: `id`, `kind`, `layer`, `label`. These are optional by kind:
 | `node` | `name`, `fluid` |
 | `result_fact` | `object_type`, `name` (owner), `metric`, `value`, `units`, `source`, `where`, `multiplier`, `stale` |
 | `message` | `severity`, `message_kind`, `text`, `occurrences`, `first_seen`, `stale` |
-| `verdict` | `object_type`, `name` (construction), `surface_class`, `verdict`, `value_si`, `limit_si`, `limit_ip`, `citation` |
+| `verdict` | `object_type`, `name` (construction or zone), `topic`, `check`, `verdict`, `value_si`, `limit_si`, `limit_ip`, `units_si`, `units_ip`, `citation`, `citation_source`; plus `surface_class` (envelope) or `space_type_row` as a two-item array (lighting, ventilation) |
 
 `id` is unique within the file. It is formed from the kind and the upper-cased identity, so the same model gives the
 same ids on every export.
