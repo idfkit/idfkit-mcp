@@ -114,3 +114,45 @@ compares 30 or more verdicts across all eight editions with hand-calculated valu
 After step 1 of User Story 3, `diagnose_symptom("unmet_heating", object_type="Zone", name="<zone>")`. Expect the
 undersized terminal in the top three, with its sizing fact as evidence and a `verify` call. Expect no weak-only
 candidate at rank 1.
+
+## User Story 7: building other applications on the graph
+
+No MCP server is involved. In idfkit:
+
+```bash
+cd idfkit
+# The documented standalone script (US7 independent test) runs and type-checks as written
+uv run pytest tests/test_agent_references.py -v -k model-graph
+uv run pyright agent_references/snippets/model-graph.py
+
+# The public surface is declared and registered
+make check            # includes check-parity-ledger and check-naming-register for hvac, standards, graph
+
+# Node-link export: format checks with the standard library, then networkx loads it unchanged
+uv run pytest tests/test_graph_view.py tests/test_graph_node_link.py -v
+uv run --with "networkx>=3.6" pytest -m nodelink -v
+```
+
+Expect:
+- `model-graph.py:standalone-script` loads the reference model, lists connection findings, traces a node and
+  screens the envelope, using only names from the units' `__all__`
+- `ModelGraph(doc).layers == ["model", "topology"]`, with `results` and `standards` in `unavailable` with reasons
+- the export's `graph.format_version == 1`, every edge endpoint present in `nodes`, and networkx reporting the
+  same node and edge counts
+
+From the consumer side, in idfkit-mcp:
+
+```bash
+cd idfkit-mcp
+uv run pytest tests/test_public_api_only.py -v   # no private idfkit imports or attributes (FR-050)
+```
+
+Through the server, after step 1 of User Story 3:
+
+1. `get_object_neighbourhood("AirTerminal:SingleDuct:VAV:Reheat", "<name>", hops=2)`. Expect:
+   - its zone and its reheat coil as `object` nodes, the coil linked by `flow` edges through `node` nodes
+   - the coil's `membership` edge to the hot-water loop
+   - the terminal's `result_fact` nodes, with `results_state: "fresh"`
+   - `standards` in `unavailable` until a standards context is set
+2. The same call with `max_nodes=5`. Expect `truncated: true`, a non-empty `frontier` and a response under 8 KB.
+3. The same call with `hops=4`. Expect an error stating the 1–3 range.

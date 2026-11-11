@@ -317,6 +317,79 @@ verdict (FR-036).
 
 ---
 
+## Combined graph view (`idfkit.graph`)
+
+Spec: *Model graph view* (FR-055 to FR-058). It is a read-only adapter over the layers, with no storage of its own
+(research R-23).
+
+### NodeKind and EdgeKind (closed `Literal` vocabularies)
+
+| Kind | Layer |
+|---|---|
+| node kind `object` | `model` |
+| node kind `node` | `topology` |
+| node kinds `result_fact`, `message` | `results` |
+| node kind `verdict` | `standards` |
+| edge kind `reference` | `model` |
+| edge kinds `flow`, `control`, `membership` | `topology` |
+| edge kind `result_link` | `results` |
+| edge kind `verdict` | `standards` |
+
+`Layer = Literal["model", "topology", "results", "standards"]`. Adding a kind is an additive change. Removing or
+redefining one is breaking (FR-053).
+
+### GraphNode
+
+| Field | Type | Rule |
+|---|---|---|
+| `id` | `str` | Stable composite id (research R-24). Upper-cased names, so equal ids mean equal identity |
+| `kind` | `NodeKind` | |
+| `layer` | `Layer` | Fixed by `kind` |
+| `key` | `ObjectKey \| None` | Set for `object`, and for the owner of a `result_fact` or `verdict` |
+| `node` | `str \| None` | Set for `node`, with the model's spelling |
+| `label` | `str` | Short display text, for example `Zone "SPACE1-1"` or `unmet_heating_hours = 312 h` |
+| `attrs` | `Mapping[str, str \| int \| float \| bool \| None]` | Kind-specific scalars only, for example `fluid`, `metric`, `value`, `units`, `severity`, `verdict`, `stale` |
+
+### GraphEdge
+
+| Field | Type | Rule |
+|---|---|---|
+| `source` / `target` | `str` | Graph node ids. Direction as in the edge table of research R-23 |
+| `kind` | `EdgeKind` | |
+| `layer` | `Layer` | Fixed by `kind` |
+| `key` | `str` | Unique among edges with the same endpoints, for example `reference:zone_name` or `flow:air_outlet_node_name` |
+| `attrs` | `Mapping[str, str \| int \| float \| bool \| None]` | `field`, `connection_type`, `fluid`, `side`, `branch`, `position`, `confidence`, `provenance` (FR-010a), as applicable |
+
+### Subgraph
+
+Returned by `ModelGraph.neighbourhood`.
+
+| Field | Type | Rule |
+|---|---|---|
+| `start` | `str` | Graph node id |
+| `nodes` / `edges` | `list[GraphNode]` / `list[GraphEdge]` | Breadth-first order from `start` |
+| `layers` | `list[Layer]` | Layers present in the view |
+| `unavailable` | `dict[Layer, str]` | Each missing layer and why (FR-056) |
+| `truncated` | `bool` | True when a hop or node bound cut the walk |
+| `omitted_nodes` | `int` | Nodes reached but not returned. A lower bound, since the walk stops at the cut |
+| `frontier` | `list[str]` | Returned node ids whose neighbours were not expanded |
+| `results_state` | `"fresh" \| "stale" \| None` | `None` when the results layer is absent |
+
+**State: which layers are present.** It is decided per call, not stored:
+- `model` and `topology`: always present.
+- `results`: present when a `ResultIndex` was given, whether fresh or stale. Stale facts are marked, not dropped.
+- `standards`: present when a `StandardsContext` with edition, climate zone and building category was given **and**
+  the standards data is importable. Otherwise the layer is listed in `unavailable` with the reason.
+
+### Node-link document
+
+This is the export, a JSON object. Its normative definition is in
+[contracts/node-link-json.md](contracts/node-link-json.md). The top-level keys are `directed`, `multigraph`,
+`graph`, `nodes` and `edges`. Each element of `nodes` and `edges` is a `GraphNode` or `GraphEdge` flattened:
+`attrs` is merged into the element, and `key` becomes `object_type` and `name`.
+
+---
+
 ## Evaluation (idfkit-mcp `eval/`, not shipped)
 
 ### FaultType

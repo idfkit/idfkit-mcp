@@ -230,6 +230,45 @@ Same content as `get_standards_context`.
 
 ---
 
+## Combined view
+
+### `get_object_neighbourhood` (`_READ_ONLY`)
+
+This is the cross-layer neighbourhood of one object or node (FR-058, research R-25). It is built from
+`idfkit.graph.ModelGraph` with the session's document, its `ResultIndex` if this session ran a simulation, and its
+standards context and asserted roles if the context is complete.
+
+| Param | Type | Default | Notes |
+|---|---|---|---|
+| `object_type` | `str` | required | Use `"Node"` to start from a node |
+| `name` | `str` | required | Matched case-insensitively |
+| `hops` | `int` | 1 | 1–3 |
+| `node_kinds` | `list[NodeKind] \| None` | `None` | From `object`, `node`, `result_fact`, `message`, `verdict` |
+| `edge_kinds` | `list[EdgeKind] \| None` | `None` | From `reference`, `flow`, `control`, `membership`, `result_link`, `verdict` |
+| `max_nodes` | `int` | 40 | 1–100 |
+
+Returns `ObjectNeighbourhood`, the Pydantic mirror of `Subgraph`:
+- `start`
+- `nodes` and `edges`
+- `layers` and `unavailable`, each layer with its reason, for example "results: no simulation run in this session"
+- `truncated`, `omitted_nodes`, `frontier`
+- `results_state`
+
+When the serialised response would exceed 8 KB, the tool lowers the node count until it fits and sets
+`truncated`. It never returns a partial node or edge.
+
+Errors:
+- no model loaded
+- object or node not found: the error lists the closest names and never picks one
+- `hops` or `max_nodes` out of range: the error states the range
+- an unknown kind: the error lists the vocabulary
+
+A missing layer is never an error. It is reported in `unavailable`.
+
+There is **no** export tool and no graph resource (FR-058).
+
+---
+
 ## Performance budget
 
 Every new or changed tool and resource meets these server-side budgets on the reference model (HospitalLowEnergy),
@@ -243,6 +282,7 @@ as measured by the `perf` protocol tests in idfkit-mcp (spec SC-011 to SC-013, r
 | `get_object_results`, `diagnose_symptom` | ≤ 250 ms the first time after a run; ≤ 10 ms afterwards | ≤ 8 KB |
 | `get_standards_context`, `get_object_roles`, `assign_object_role`, `set_standards_context` | ≤ 10 ms | ≤ 8 KB |
 | `lookup_standard`, `screen_envelope` | ≤ 500 ms the first time in a process; ≤ 50 ms afterwards | ≤ 8 KB |
+| `get_object_neighbourhood` | ≤ 50 ms when the topology and results views are cached. The first call after a load, edit or run pays that view's build, within the budgets above. The first walk into `verdict` nodes pays the screening | ≤ 8 KB, enforced |
 
 ## Token budget
 

@@ -62,6 +62,9 @@ idfkit-mcp adds tool modules that call these and hold no domain knowledge.
   corrupt `get_referencing` and rename semantics (report 01, §3).
 - A single new `idfkit.graph` unit for everything. Rejected: it would bundle a core-only capability with one that
   needs an optional dependency, and it would make the ledger row lie about what is available without the extra.
+  *Later clarification (layered APIs plus a combined view):* `idfkit.graph` does exist, but only as a thin,
+  read-only view **over** the layer units. The domain logic stays in `idfkit.hvac`, `idfkit.simulation` and
+  `idfkit.standards` (R-23).
 
 ## R-03 Identifying node fields
 
@@ -449,6 +452,9 @@ Measured on HospitalLowEnergy, the largest example model, on Python 3.12:
 | One results query | — | ≤ 10 ms |
 | Standards: first call in a process (envelope table load and index) | 43 + 3.9 ms | ≤ 150 ms (SC-013 allows 0.5 s) |
 | Standards: envelope screening of a loaded model | — | ≤ 20 ms |
+| `ModelGraph` construction | — (stores its arguments) | ≤ 0.1 ms, with no layer built (FR-056) |
+| `ModelGraph.neighbourhood`, 3 hops, up to 200 nodes, after the topology view is cached | — | ≤ 10 ms |
+| Node-link export of the `model` and `topology` layers of the whole reference model | — | ≤ 1 s and ≤ 50 MB peak extra memory. A plan-level budget: export is a one-off developer call, not a question, so it has no SC. To be confirmed by benchmark in its slice |
 | Default response size of any new tool | — | ≤ 8 KB (SC-013) |
 | Additional resident memory per loaded model | 1.5 MB | ≤ 10 MB |
 
@@ -523,3 +529,237 @@ Measured on HospitalLowEnergy, the largest example model, on Python 3.12:
   enough for budgets with a 2× allowance.
 - Caching standards data on disk in a pre-indexed form. Rejected: 43 ms once per process is within budget, and a
   disk cache adds invalidation and file-write concerns (Constitution Principle V).
+
+## R-22 The developer API: public, typed and independent of the server
+
+**Context.** Clarifications 6 to 9 (2026-11-11) make developers who use idfkit directly in Python a first-class
+audience (User Story 7, FR-050 to FR-054). The layer designs in R-03 to R-11 already put every capability in
+idfkit. This entry sets the rules that make that code a public API, not just an upstream for idfkit-mcp.
+
+**Decision.**
+- **One public surface per layer.** Each unit exports its public names from its package `__init__` and lists them
+  in `__all__`: `idfkit.hvac`, `idfkit.simulation` (the linking names are re-exported), `idfkit.standards`,
+  `idfkit.thermal` and `idfkit.graph` (R-23). Everything else lives in an underscore module or carries an
+  underscore name. [contracts/idfkit-api.md](contracts/idfkit-api.md) is the full list.
+- **The server uses only the public surface (FR-050).** idfkit-mcp gains a test, `tests/test_public_api_only.py`,
+  that parses every module under `src/idfkit_mcp/` and fails on:
+  - any import from an `idfkit` module whose path has an underscore segment
+  - any imported `idfkit` name that starts with an underscore
+  - any attribute access to an underscore attribute of an idfkit object (`doc._derived`, `topology._uses`)
+
+  **checked:** idfkit-mcp passes this rule today. A grep of `src/` finds no private idfkit imports and no private
+  attribute access, so the test starts green and only catches regressions.
+- **Session concepts are arguments (FR-054).** No idfkit function reads session, server or global mutable state.
+  The caller passes in:
+  - asserted roles (`asserted=` on `screen_envelope` and `compute_roles`)
+  - the standards context (`StandardsContext`, built by the caller)
+  - the run identity (`run_revision` and `run_model_hash` on `ResultIndex.build`)
+
+  The only process-wide state is the read-only standards cache (R-21, decision 9). It holds no caller data.
+- **Strict typing (FR-051).** Every public name passes pyright strict with no `# type: ignore`. Public containers
+  are frozen, slotted dataclasses or `Literal` and `Enum` types, never `dict[str, Any]`. The node-link export
+  (R-24) is the one place that returns JSON-shaped data, and it is typed with a recursive `JSONValue` alias.
+- **Runnable documentation (FR-052, SC-014).** Each layer gets an agent-reference template and snippet in idfkit:
+  `hvac-topology` and `standards` are new, `model-graph` is new (R-23), and `result-parsing`,
+  `thermal-properties`, `reference-tracking` and `hvac-loops` are updated. They are typed under the existing
+  strict snippet environment, run in `tests/test_agent_references.py`, and are re-baked by the existing
+  `check-baker` gate. The human reference pages live in **idfkit-developers**, idfkit's documentation repository,
+  and embed the same snippets, so a page cannot show code the test suite has not run. One snippet,
+  `model-graph.py:standalone-script`, is User Story 7's independent test written out. It loads a model, lists
+  findings, traces a node and screens the envelope, using only public names.
+- **Stability (FR-053).** idfkit's existing policy applies: no breaking change within a major release, and a
+  `DeprecationWarning` at least one minor release before a removal. Two existing gates make a silent break fail
+  the build:
+  - `scripts/check_naming_register.py` fails when a registered name disappears from the surface.
+  - `scripts/check_parity_ledger.py` fails when a unit appears without a ledger row.
+
+  Each new unit is recorded as Python-only until idfkit-js implements it.
+
+**Rationale.** A real consumer is the best test of a public API. If idfkit-mcp is allowed to use private helpers,
+the public API is designed around nothing. The AST test is about 40 lines of standard library code. It enforces
+FR-050 mechanically, as Principle VII prefers, not by review alone.
+
+**Alternatives considered.**
+- An `idfkit.api` facade module re-exporting everything. Rejected: it duplicates `__all__` and gives two import
+  paths for every name.
+- Relying on review to keep idfkit-mcp off private names. Rejected: review is what let earlier string joins
+  between results and the model through (report 03, §1).
+- A separate snapshot file of the public surface. Rejected: the naming register is already the normative list,
+  and a second list would drift from it.
+
+## R-23 The combined graph view (`idfkit.graph`)
+
+**Decision.**
+- **What it is.** A new unit, `idfkit.graph`, with one class, `ModelGraph`. It is a read-only adapter over the
+  layer APIs (FR-055, FR-056). It holds references to the layers and no copies of their data:
+  - the document and its `ReferenceGraph`
+  - the cached `HVACTopology` (R-05), fetched through `HVACTopology.from_document` on every walk, so it is always
+    current
+  - an optional `ResultIndex` passed in by the caller
+  - an optional `StandardsContext` and asserted roles passed in by the caller, from which a `ScreeningReport` is
+    computed on the first walk that reaches a verdict
+
+  Construction does no work. `ModelGraph(doc, results=..., standards=..., asserted=...)` stores its arguments and
+  returns, which meets "costs nothing until first used".
+- **Vocabulary.** It is fixed and documented, and it is the same in Python, in the export and in the server:
+
+  | Node kind | Layer | Identity passed back to the layer APIs |
+  |---|---|---|
+  | `object` | `model` | `ObjectKey` |
+  | `node` | `topology` | node name |
+  | `result_fact` | `results` | owning `ObjectKey`, `metric` and `where` |
+  | `message` | `results` | message kind and index within the run |
+  | `verdict` | `standards` | construction `ObjectKey` and surface class |
+
+  | Edge kind | Layer | From → to |
+  |---|---|---|
+  | `reference` | `model` | object → object it names (field recorded) |
+  | `flow` | `topology` | object → node (outlet) and node → object (inlet), with fluid and connection type |
+  | `control` | `topology` | object → node it senses, sets or actuates |
+  | `membership` | `topology` | component → loop object, with side, branch and position |
+  | `result_link` | `results` | result fact or message → object or node, with the link confidence (R-07) |
+  | `verdict` | `standards` | verdict → construction |
+
+  `object` is in the `model` layer because objects exist without any of the three new layers. Reference edges come
+  from the existing `ReferenceGraph`. Its targets are resolved to typed `ObjectKey`s through the field's object
+  list, never by name alone (the shared-names edge case).
+- **Layers present.** `model` and `topology` are always present, since both are core and need no data.
+  - `results` is present only when a `ResultIndex` is passed in.
+  - `standards` is present only when a `StandardsContext` is passed in and the extra is installed.
+
+  `ModelGraph.layers` lists the layers present. `ModelGraph.unavailable` maps each missing layer to its reason, for
+  example `"standards: building-energy-standards-data is not installed (pip install 'idfkit[standards]')"`. A walk
+  that asks for a kind from a missing layer returns no items of that kind and reports the reason. It never raises,
+  because a partial graph is a valid graph (FR-056).
+- **Walking.** `neighbourhood(start, *, hops=1, node_kinds=None, edge_kinds=None, max_nodes=200)` is an iterative
+  breadth-first search over the union of the layers' adjacency. Each layer answers "neighbours of this graph node"
+  from its own index:
+  - references: `get_references_with_fields` and `get_referencing_edges`
+  - topology: the integer adjacency lists of R-21
+  - results: the per-object fact and message lists
+  - standards: verdicts by construction
+
+  It returns a `Subgraph` with `nodes`, `edges`, `truncated`, `omitted_nodes` and `frontier`, the nodes whose
+  neighbours were not expanded. Graph nodes and edges are built as dataclasses only for the items returned, per
+  R-21, decision 2.
+- **Freshness.** A `ResultIndex` that is stale for the document (R-06) is still walked. Every result node carries
+  `stale: true`, and the subgraph reports `results_state`. Staleness is never hidden (FR-026).
+
+**Rationale.**
+- The three layers stay usable on their own (FR-055), and the view adds no domain logic, so Principle I and R-02
+  hold.
+- Adapting at walk time, instead of materialising one big graph, is what makes construction free and keeps memory
+  flat. A materialised graph of HospitalLowEnergy would hold about 7k object nodes, 2.9k topology nodes and tens of
+  thousands of edges per session, all duplicating the layers (FR-056 forbids that).
+- `ModelGraph` is a capability unit, so it needs a parity-ledger and naming-register row (R-02). It is
+  Python-only. This time the R-02 objection does not apply: the unit has no optional dependency of its own, and
+  `unavailable` states which layers are missing.
+
+**Alternatives considered.**
+- `IDFDocument.graph()` as a method. Rejected: it would import every layer into `document.py` and tie the
+  document to optional data.
+- A materialised graph built eagerly per revision. Rejected as above, and it would need its own invalidation.
+- Using networkx as the in-memory graph. Rejected under R-01. It is also slower to build than the integer
+  adjacency already in place.
+- A free-form edge vocabulary ("any field name is an edge kind"). Rejected: filters and the export format need a
+  closed, versioned set. Field names travel as edge attributes instead.
+
+## R-24 Node-link JSON export
+
+**Decision.**
+- **API.** `ModelGraph.to_node_link(...) -> dict[str, JSONValue]` builds the document. `write_node_link(...) ->
+  str` serialises it, and `save_node_link(graph, path, ...) -> None` writes it to a file. This follows the family
+  verbs: `write` returns text, `save` writes a path. All three take the same scope arguments, which bound the
+  export (FR-057):
+  - `layers`, `node_kinds`, `edge_kinds`
+  - `start` with `hops`, for the neighbourhood of one object, with no node cap because the caller asked for it
+- **Shape.** It is networkx's node-link layout, written with `json` from the standard library:
+
+  ```json
+  {
+    "directed": true,
+    "multigraph": true,
+    "graph": {
+      "format": "idfkit-model-graph", "format_version": 1,
+      "idfkit_version": "…", "energyplus_version": "26.2.0",
+      "layers": ["model", "topology"], "unavailable": {"results": "…"},
+      "scope": {"start": null, "hops": null, "node_kinds": null, "edge_kinds": null},
+      "results_state": null
+    },
+    "nodes": [{"id": "object:ZONE:SPACE1-1", "kind": "object", "layer": "model",
+               "object_type": "Zone", "name": "SPACE1-1"}],
+    "edges": [{"source": "…", "target": "…", "key": "reference:zone_name", "kind": "reference",
+               "layer": "model", "field": "zone_name"}]
+  }
+  ```
+
+  - **Identity.** The `id` is `"<kind>:<OBJECT TYPE UPPER>:<NAME UPPER>"` for objects, `"node:<NAME UPPER>"` for
+    nodes, and a similar composite for facts, messages and verdicts. It is stable across runs of the same model. The
+    display spelling and the `ObjectKey` fields travel as attributes, so a developer can pass them back to the
+    layer APIs (FR-057).
+  - **Multigraph.** Two objects can be joined by both a reference and a flow edge, or by two references through
+    different fields. `key` keeps them apart.
+  - **Version.** `format_version` starts at 1. A change that removes or renames a key, or changes a kind's meaning,
+    is a breaking change under FR-053. Adding an optional attribute is not.
+- **The edge key is `"edges"`.** **checked during planning** against networkx's reader:
+
+  | networkx | `node_link_graph(data)` with `"edges"` | with `"links"` |
+  |---|---|---|
+  | 3.6, 3.7 (current) | loads | `KeyError` |
+  | 3.4, 3.5 | needs `edges="edges"` | loads |
+  | 3.2 | needs `link="edges"` | loads |
+
+  "Loads unchanged into networkx's node-link reader" can therefore hold for only one generation at a time. The
+  current generation is chosen. The reference page states the one keyword older networkx needs. d3-force expects
+  `links`, so the page also shows the one-line rename for JavaScript users. Writing both keys was rejected because
+  it doubles the file and makes the two copies drift.
+- **Gate.** idfkit's default test suite checks the format with the standard library (shape, unique ids, every edge
+  endpoint is a node). A separate test marked `nodelink` loads the export of the reference model with networkx. CI
+  runs it as `uv run --with "networkx>=3.6" pytest -m nodelink`, so networkx is **never** declared in idfkit's
+  `pyproject.toml` or lock file, not even as a development dependency (R-01).
+- **Not through the server.** idfkit-mcp exposes no export tool or resource (FR-058, Out of Scope).
+
+**Rationale.** Node-link JSON is the one format both networkx and browser graph libraries read without a
+converter. The standard library writes it. A `format_version` in the `graph` block lets the format evolve under
+FR-053 without guessing from the shape.
+
+**Alternatives considered.**
+- GraphML or RDF. Out of scope (spec). The closed vocabulary of R-23 keeps them possible later.
+- Emitting `links` for compatibility with networkx before 3.6. Rejected: current networkx rejects it, and the
+  spec asks for the current reader to load the file unchanged.
+- Adding networkx as an optional extra providing `to_networkx()`. Rejected: one more dependency, and the JSON
+  loads in one call anyway.
+
+## R-25 The neighbourhood tool in idfkit-mcp
+
+**Decision.**
+- **The tool.** `get_object_neighbourhood` (`_READ_ONLY`) builds a `ModelGraph` from the session:
+  - the document
+  - the session's `ResultIndex`, if the server ran a simulation in this session (FR-019)
+  - the session's `StandardsContext` and asserted roles, if the context is complete
+
+  It returns `ModelGraph.neighbourhood(...)` mapped onto Pydantic mirrors. idfkit-mcp adds no node or edge kinds
+  and no traversal logic. Its only job is mapping types and holding session state, as Principle I requires.
+- **Bounds (FR-058).**
+  - `hops` defaults to 1, with a maximum of 3.
+  - `max_nodes` defaults to 40, with a maximum of 100.
+  - `node_kinds` and `edge_kinds` are optional filters from the R-23 vocabulary.
+  - The serialised response stays under 8 KB. When the walk exceeds a bound, the tool cuts it at the bound and
+    reports `truncated`, `omitted_nodes` and the `frontier`, so the agent can continue from a frontier node.
+  - The default of 40 nodes comes from the response budget: one node with attributes serialises to about
+    120–160 bytes, and one edge to about 80–100 bytes. To be confirmed by the `perf` protocol test in the slice
+    that adds the tool.
+- **Not added.** No export tool and no export resource (FR-058). No "whole graph" mode: `start` is required.
+- **Token cost.** One tool with five parameters. Its description is measured with `scripts/token_audit.py` and
+  counts toward the 15% cap of SC-010.
+
+**Rationale.** The literature scan found that a bounded graph neighbourhood helps an LLM, while the whole graph
+does not. The per-layer tools (`trace_node`, `trace_component`, `get_object_results`) remain the precise,
+layer-specific questions. The neighbourhood tool is the one cross-layer question, for example "this zone: its
+terminal, the coil upstream, the coil's sizing facts and the warnings linked to it" in one call.
+
+**Alternatives considered.**
+- No server tool, with the combined view available to Python only. Rejected in clarification 9.
+- One tool per edge kind. Rejected: it adds listing cost for questions that `edge_kinds` already filters.
+- A resource template `idfkit://model/graph/{type}/{name}`. Rejected as the primary interface: resources cannot
+  take the hop and kind filters cleanly. It can be added later if clients ask for it.
