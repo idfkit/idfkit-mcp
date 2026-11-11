@@ -752,7 +752,7 @@ wheels = [
 [[package]]
 name = "idfkit"
 version = "1.2.0"
-source = { git = "https://github.com/idfkit/idfkit?branch=claude%2Frelaxed-brown-oug1gx#5e7ba899d48b09151b40f4e56f856d914a6439be" }
+source = { git = "https://github.com/idfkit/idfkit?branch=claude%2Frelaxed-brown-oug1gx#102e29c82e67ac31fb21c12ff1006a9c8dad2407" }
 
 [[package]]
 name = "idfkit-mcp"
