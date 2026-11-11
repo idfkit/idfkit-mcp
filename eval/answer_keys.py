@@ -8,9 +8,8 @@ module, so a reviewer can read the expected answers and a test can detect a key 
 uv run python -m eval.answer_keys [--example-files <dir>]   # rewrite the committed keys
 ```
 
-The keys are computed from the EnergyPlus ExampleFiles of the installed EnergyPlus. The evaluation targets the 26.2
-files (contracts/eval-harness.md), but the committed keys were computed from 26.1, the newest installed when they
-were written; each file says which in its ``header`` and ``energyplus`` fields. Results-layer keys need EnergyPlus
+The keys are computed from the EnergyPlus ExampleFiles of the installed EnergyPlus; each file says which version in
+its ``header`` and ``energyplus`` fields. The evaluation targets the 26.2 files (contracts/eval-harness.md). Results-layer keys need EnergyPlus
 (a design-day run each).
 """
 
@@ -30,8 +29,7 @@ from eval.registry import EVAL_DIR, applicable_models, load_task_modules
 QUESTIONS_DIR = EVAL_DIR / "tasks" / "questions"
 HEADER = (
     "Answer keys computed by answer_key(doc) from the unmodified reference models of the EnergyPlus {version} "
-    "ExampleFiles. The evaluation targets 26.2; 26.2 was not installed when these keys were computed, so they come "
-    "from {version}. Regenerate with: uv run python -m eval.answer_keys"
+    "ExampleFiles. Regenerate with: uv run python -m eval.answer_keys"
 )
 
 

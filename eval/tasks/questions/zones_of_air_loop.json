@@ -1,7 +1,7 @@
 {
-  "header": "Answer keys computed by answer_key(doc) from the unmodified reference models of the EnergyPlus 26.1.0 ExampleFiles. The evaluation targets 26.2; 26.2 was not installed when these keys were computed, so they come from 26.1.0. Regenerate with: uv run python -m eval.answer_keys",
+  "header": "Answer keys computed by answer_key(doc) from the unmodified reference models of the EnergyPlus 26.2.0 ExampleFiles. Regenerate with: uv run python -m eval.answer_keys",
   "question": "zones_of_air_loop",
-  "energyplus": "26.1.0",
+  "energyplus": "26.2.0",
   "keys": {
     "5ZoneAirCooled": "SPACE1-1; SPACE2-1; SPACE3-1; SPACE4-1; SPACE5-1",
     "5ZoneAirCooledDemandLimiting": "SPACE1-1; SPACE2-1; SPACE3-1; SPACE4-1; SPACE5-1",
