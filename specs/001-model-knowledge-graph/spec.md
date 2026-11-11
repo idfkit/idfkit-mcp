@@ -673,7 +673,8 @@ release needs no change.
 - **Standards topics in this feature: envelope, lighting power and 62.1 ventilation** (confirmed in Clarifications,
   2026-11-11). Lighting uses the space-by-space method. The building area method, HVAC minimum efficiency,
   economizer and system requirements, other codes (IECC, 189.1, NECB) and
-  typical-value benchmarks are later work, because they depend on the topology and results layers. They reuse the
+  typical-value benchmarks are later work. HVAC efficiency and system requirements wait for the topology and results
+  layers they depend on. All of them reuse the
   standards context, roles and verdict shape defined here.
 - **The standards source is PNNL's building-energy-standards-data.** It is BSD-2 licensed, has no dependencies,
   covers ASHRAE 90.1 2004–2025, 62.1, IECC and 189.1, and cites the source table on every row. It is added as an
