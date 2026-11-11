@@ -58,6 +58,8 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 
 - Q: Should the three layers and the evaluation stay in one spec, or be split into separate specs? → A: Keep one
   umbrella spec. One plan covers all layers, and stories are delivered in priority order.
+- Q: When a modeller or agent asserts an object's role, where should that assertion be saved? → A: In the session
+  only. It survives server restarts but not the end of the session, and nothing is written to model files.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -386,8 +388,10 @@ value as evidence.
   asserted by the agent or modeller. These roles are surface class, conditioned status and assembly class. A role
   that cannot be determined MUST be reported as unknown. Any suggestion based on names MUST be labelled unconfirmed
   and MUST NOT be used in a verdict until it is confirmed.
-- **FR-037**: An asserted role MUST be recorded in the session change log. It MUST survive object renames and session
-  restarts.
+- **FR-037**: An asserted role MUST be recorded in the session change log and kept in the session's persisted state.
+  It MUST survive object renames and server restarts within the same session. It MUST NOT be written into the model
+  file or any file beside it. When the session ends, or the model is loaded in a new session, asserted roles are
+  gone, and screenings report the affected objects as "cannot tell" until roles are asserted again.
 - **FR-038**: Requirement data MUST come from an openly licensed, maintained third-party source. Neither idfkit nor
   idfkit-mcp may copy standards text, exceptions or footnotes, or reproduce requirement tables of their own.
 
@@ -433,7 +437,8 @@ value as evidence.
 - **Requirement**: One requirement value with its units, its applicability (climate zone, assembly class, building
   category) and its citation.
 - **Object role**: A classification of an object (surface class, conditioned status, assembly class, later space
-  type) with its origin: computed, asserted or unconfirmed suggestion.
+  type) with its origin: computed, asserted or unconfirmed suggestion. Asserted roles belong to the session, not to
+  the model.
 - **Screening verdict**: Meets, does not meet or cannot tell, for one construction against one requirement, with
   value, margin, area, citation and assumptions.
 - **Fault type and evaluation task**: A known, injectable defect with its correct fix. A task applies one fault to one
