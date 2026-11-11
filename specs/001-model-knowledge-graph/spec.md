@@ -88,6 +88,11 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 - Q: Should agents also get MCP tools to walk the combined graph and export it, or should the combined view and
   export be available only to Python developers? → A: One bounded MCP tool returns the cross-layer neighbourhood of
   an object. Export stays Python-only.
+- Q: Which standards topics should this feature link to model objects in the knowledge graph? → A: The envelope
+  (U, C and F factors and SHGC), lighting power and 62.1 ventilation. A zone space-type role is added, which can be
+  asserted, and name-based suggestions are labelled unconfirmed. HVAC minimum efficiency, economizer and system
+  requirements, IECC and 189.1 are later work, because they depend on the topology and results layers being
+  finished.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -228,13 +233,17 @@ new name and the connection check still passes.
 
 ---
 
-### User Story 5 - Screen the envelope against a chosen energy standard (Priority: P2)
+### User Story 5 - Screen the model against a chosen energy standard (Priority: P2)
 
 A modeller asks "does this envelope meet ASHRAE 90.1-2019 in Chicago?". The agent establishes the climate zone and
 where it came from, and confirms the standard edition. It then requests a screening. Each opaque construction and
 window type gets a verdict (meets, does not meet, or cannot tell), with the computed value and the requirement in
 both SI and inch-pound units. Each verdict cites the standard's table, lists the assumptions it rests on, and lists
 what was not checked. The screening is labelled as a screening, not a compliance determination.
+
+The same screening covers lighting power and outdoor-air ventilation for each zone. Each of those needs the zone's
+space type, which the model does not record. The agent can propose space types, for example from zone names, but a
+proposal stays unconfirmed until the modeller or the agent asserts it. Until then those zones are "cannot tell".
 
 **Why this priority**: Agents do this from memory today, and the guidance shipped to them is wrong. The roof
 targets in the plugin's envelope agent are inch-pound values labelled as SI. An openly licensed (BSD-2),
@@ -259,6 +268,12 @@ requirement from the cited table in both unit systems, and a verdict matching a 
    uses the asserted value and records it as asserted, not inferred.
 5. **Given** any screening response, **When** it is returned, **Then** it states the standard, the edition, the data
    source and its version, and the provisions it did not evaluate.
+6. **Given** a zone with no asserted space type, **When** the screening runs, **Then** its lighting and ventilation
+   checks are "cannot tell", with any name-based suggestion labelled unconfirmed and the request that would assert
+   it.
+7. **Given** a zone whose space type has been asserted, **When** the screening runs, **Then** its lighting power and
+   its outdoor-air rates are compared with the allowance and minimum for that space type, in both unit systems,
+   each with the cited table.
 
 ---
 
@@ -342,6 +357,8 @@ release needs no change.
 - **Large models**: Responses for models with thousands of nodes or hundreds of warnings stay within a fixed budget
   by summarising, counting and paging.
 - **Stale results**: Edits after a simulation make the results stale, and every response that uses them says so.
+- **No space type**: Lighting and ventilation requirements depend on a space type the model does not record. A
+  zone without an asserted space type is "cannot tell" for those checks, never matched by name.
 - **No weather location**: Without a weather location the climate zone is unknown, and the screening says so rather
   than guessing.
 - **Standards gaps**: A requirement the data source does not cover is reported as not evaluated, not as a pass.
@@ -366,7 +383,7 @@ release needs no change.
 - **FR-005**: The system MUST NOT present an inferred or pattern-matched value as a fact. Each inferred value MUST
   carry how it was obtained. Links made through EnergyPlus naming conventions MUST carry the convention used.
   Matches based only on free text MUST be labelled weak.
-- **FR-006**: Capabilities that read only the model (topology, standards lookup, envelope screening) MUST work with no
+- **FR-006**: Capabilities that read only the model (topology, standards lookup, screening) MUST work with no
   EnergyPlus installation and no network access.
 - **FR-007**: The capabilities MUST support every EnergyPlus version that idfkit supports.
 - **FR-008**: No response may describe a connection check or a screening as proof that a model will simulate or
@@ -461,9 +478,11 @@ release needs no change.
   by it.
 - **FR-031**: An agent MUST be able to obtain, for each construction used on the building's exterior, its thermal
   transmittance. Fenestration also gets solar heat gain coefficient. Surface films MUST be the ones appropriate to
-  the surface's orientation (wall, roof, floor).
+  the surface's orientation (wall, roof, floor). For each zone, the agent MUST also be able to obtain its installed
+  lighting power per floor area and its design outdoor-air rates per person and per floor area, each computed from
+  the model with zone multipliers carried.
 - **FR-032**: An agent or modeller MUST be able to set the standard, edition, climate zone and building category for
-  a session. A screening MUST fail with an actionable message when any required item is missing, rather than
+  a session, and the ASHRAE 62.1 edition used for ventilation. A screening MUST fail with an actionable message when any required item is missing, rather than
   assuming a default.
 - **FR-033**: An agent MUST be able to look up requirement values for envelope assemblies by standard, edition,
   climate zone and assembly class. Results come back in SI and inch-pound units with the standard's table cited.
@@ -471,20 +490,26 @@ release needs no change.
   support every ASHRAE 90.1 edition the data source covers (currently 2004 through 2025). Where a limit is given
   for a whole climate zone and also for its moist, dry or marine subtype (for example "3" and "3A"), the subtype
   row MUST be used. A requested edition the data source does not cover MUST be refused, with the covered editions
-  named.
-- **FR-034**: An agent MUST be able to request an envelope screening. Each opaque construction and fenestration type
-  receives one of three verdicts: meets, does not meet, or cannot tell. Each verdict comes with:
+  named. The agent MUST also be able to look up lighting power allowances by 90.1 edition and space type, and
+  outdoor-air minimums by 62.1 edition and space type, for every edition the data source covers (currently 90.1
+  2004 through 2025 and 62.1 1999 through 2022), in both unit systems with the table cited.
+- **FR-034**: An agent MUST be able to request a screening covering three topics: the envelope, lighting power and
+  ventilation. Each opaque construction and fenestration type receives an envelope verdict. Each zone receives a
+  lighting verdict and a ventilation verdict. A verdict is one of meets, does not meet or cannot tell. The agent MUST
+  be able to limit a screening to one topic. Each verdict comes with:
   - the computed value
   - the requirement in both unit systems
   - the margin
-  - the area concerned
+  - the area concerned (exterior area for constructions, floor area for zones)
   - the cited table
   - the assumptions used
 - **FR-035**: Every screening response MUST state the data source and its version. It MUST list the provisions it does
   not evaluate (mandatory provisions, exceptions, trade-off paths), and MUST call itself a screening, not a
   compliance determination.
 - **FR-036**: Object roles that a screening depends on MUST be derived only from model physics and structure, or
-  asserted by the agent or modeller. These roles are surface class, conditioned status and assembly class. A role
+  asserted by the agent or modeller. These roles are surface class, conditioned status, assembly class and zone
+  space type. Space type is never computed: it is asserted, or reported as unknown with any name-based suggestion
+  labelled unconfirmed. Space types use the data source's own vocabulary. A role
   that cannot be determined MUST be reported as unknown. Any suggestion based on names MUST be labelled unconfirmed
   and MUST NOT be used in a verdict until it is confirmed.
 - **FR-037**: An asserted role MUST be recorded in the session change log and kept in the session's persisted state.
@@ -573,11 +598,11 @@ release needs no change.
   with its source.
 - **Requirement**: One requirement value with its units, its applicability (climate zone, assembly class, building
   category) and its citation.
-- **Object role**: A classification of an object (surface class, conditioned status, assembly class, later space
-  type) with its origin: computed, asserted or unconfirmed suggestion. Asserted roles belong to the session, not to
+- **Object role**: A classification of an object (surface class, conditioned status, assembly class, space type)
+  with its origin: computed, asserted or unconfirmed suggestion. Asserted roles belong to the session, not to
   the model.
-- **Screening verdict**: Meets, does not meet or cannot tell, for one construction against one requirement, with
-  value, margin, area, citation and assumptions.
+- **Screening verdict**: Meets, does not meet or cannot tell, for one construction (envelope) or one zone (lighting,
+  ventilation) against one requirement, with value, margin, area, citation and assumptions.
 - **Model graph view**: The combined, read-only view across layers (FR-055). Its node kinds are object, node,
   result fact, message and verdict. Its edge kinds are reference, flow, control, membership, result link and
   verdict. Each node and edge carries its kind, its layer and the identity (object type and name, or node name) a
@@ -607,7 +632,8 @@ release needs no change.
 - **SC-006**: For every screening verdict in a hand-checked sample of at least 30, the requirement and its units match
   the cited table, and the computed value matches a hand calculation within 2%. The sample includes at least three
   verdicts from every supported 90.1 edition, and at least one climate zone whose limits differ by subtype
-  (3A, 3B or 3C).
+  (3A, 3B or 3C). The sample also includes at least five lighting verdicts and at least five ventilation verdicts,
+  checked the same way against an asserted space type.
 - **SC-007**: No screening verdict rests on a role inferred from a name. Every verdict cites its source and lists its
   assumptions.
 - **SC-008**: The evaluation runs repeatably on the full catalogue and reference set. Repeated runs under the same
@@ -640,9 +666,10 @@ release needs no change.
   they share entities, identity rules (type and name) and the evaluation. Each user story is independently
   deliverable. User Stories 1 and 2 form the first slice. User Story 6 waits for the decision gate in SC-009.
   Keeping one spec was confirmed in Clarifications (2026-11-11), so one plan covers all layers.
-- **Envelope only for standards in this feature.** Lighting power, ventilation, HVAC efficiency, other codes (IECC,
-  NECB) and typical-value benchmarks are later work. They reuse the standards context, roles and verdict shape
-  defined here.
+- **Standards topics in this feature: envelope, lighting power and 62.1 ventilation** (confirmed in Clarifications,
+  2026-11-11). HVAC minimum efficiency, economizer and system requirements, other codes (IECC, 189.1, NECB) and
+  typical-value benchmarks are later work, because they depend on the topology and results layers. They reuse the
+  standards context, roles and verdict shape defined here.
 - **The standards source is PNNL's building-energy-standards-data.** It is BSD-2 licensed, has no dependencies,
   covers ASHRAE 90.1 2004–2025, 62.1, IECC and 189.1, and cites the source table on every row. It is added as an
   optional dependency, so the core of idfkit keeps zero third-party dependencies. Version 0.3.3 was checked.
