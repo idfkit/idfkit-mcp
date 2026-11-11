@@ -139,6 +139,28 @@ def screen_envelope(doc: IDFDocument, *, edition: str, climate_zone: str, buildi
 `compute_roles` and every model-side computation work without the extra. Only `lookup_envelope`,
 `screen_envelope`, `editions` and `data_version` need it.
 
+## Performance contract
+
+These are part of the API's guarantees (spec FR-009, research R-21). They are checked by the `perf` benchmark gate
+on the reference model (HospitalLowEnergy), with a 2× CI allowance.
+
+| Call | Budget |
+|---|---|
+| First `HVACTopology.from_document(doc)` after load or an edit, including `check()` | ≤ 50 ms, and ≤ 25% of `load_idf` time |
+| Repeated `from_document(doc)` with no edit in between | Returns the cached view (≤ 0.1 ms) |
+| Any single `HVACTopology` query (`uses`, `trace`, `upstream`, `downstream`, `memberships`, `chain`) | ≤ 5 ms |
+| `ResultIndex.build` | ≤ 50 ms, independent of timeseries volume. Never reads `ReportData` |
+| `ResultIndex.for_object`, `diagnose` | ≤ 10 ms |
+| First `lookup_envelope` / `screen_envelope` in a process | ≤ 150 ms |
+| Later `screen_envelope` on a loaded model | ≤ 20 ms |
+
+Implementation obligations that keep these budgets:
+- Per-type plans are computed once per schema version.
+- Only node-bearing collections are visited.
+- Internal records are tuples, and dataclasses are built only for returned items.
+- Derived views are cached in `IDFDocument._derived` and stamped with the revision.
+- Standards tables are loaded lazily, projected and shared process-wide.
+
 ## Codegen and gates (idfkit)
 
 - `python -m idfkit.codegen.generate_node_fields` writes `src/idfkit/hvac/_node_fields.py`. `make check` gains

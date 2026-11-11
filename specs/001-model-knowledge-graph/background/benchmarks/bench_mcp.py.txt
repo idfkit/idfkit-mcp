@@ -1,0 +1,30 @@
+from __future__ import annotations
+import asyncio, json, sys, time
+from idfkit_mcp.server import mcp
+
+P = sys.argv[1]
+
+async def call(name, **kw):
+    t0 = time.perf_counter()
+    r = await mcp.call_tool(name, kw)
+    dt = time.perf_counter() - t0
+    size = len(json.dumps(r.structured_content)) if r.structured_content is not None else 0
+    return dt, size
+
+async def main():
+    out = {}
+    dt, _ = await call("load_model", file_path=P)
+    out["load_model_ms"] = round(dt * 1e3)
+    for name, kw in [("check_model_integrity", {}), ("get_zone_properties", {"zone_name": None}), ("list_objects", {"object_type": "Branch", "limit": 20})]:
+        best = 1e9; size = 0
+        for _ in range(3):
+            try:
+                dt, size = await call(name, **{k: v for k, v in kw.items() if v is not None})
+            except Exception as e:
+                out[name] = f"error: {type(e).__name__}"; break
+            best = min(best, dt)
+        else:
+            out[name + "_ms"] = round(best * 1e3, 1); out[name + "_bytes"] = size
+    print(json.dumps(out))
+
+asyncio.run(main())

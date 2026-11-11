@@ -11,6 +11,7 @@ that `/speckit-plan` can take them as input rather than as decisions already mad
 | [`01-hvac-topology.md`](01-hvac-topology.md) | Layer 1: a typed HVAC topology graph. Current state, schema feasibility measured over all bundled versions, a prototype swept over 575 EnergyPlus example models, proposed checks, MCP surface, prior art and phases. |
 | [`02-standards-and-ontologies.md`](02-standards-and-ontologies.md) | Layer 3: links to standards knowledge and ontologies. What the agent supplies from memory today, the Brick, 223P, Haystack, ASHRAE 229 and PNNL BESD landscape with licences, ranked options and phases. |
 | [`03-results-on-graph.md`](03-results-on-graph.md) | Layer 2: simulation results attached to model objects. Name-mapping rates measured on real paired runs, failure categories over 735 example models, data model, MCP scenarios and phases. |
+| [`04-performance-measurements.md`](04-performance-measurements.md) | Planning-time benchmarks on real models: node-graph build strategies, record construction cost, results index build, standards data loading, and MCP call overhead and response size. Scripts are in [`benchmarks/`](benchmarks/). |
 | [`prototype/hvac_topology_proto.py.txt`](prototype/hvac_topology_proto.py.txt) | The throwaway topology prototype behind report 01. It is stored as `.txt` so repository linters skip it. |
 
 Reports 01 to 03 were produced by three research agents working in parallel on 2026-11-10 against `idfkit` and

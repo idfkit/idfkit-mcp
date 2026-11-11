@@ -230,6 +230,20 @@ Same content as `get_standards_context`.
 
 ---
 
+## Performance budget
+
+Every new or changed tool and resource meets these server-side budgets on the reference model (HospitalLowEnergy),
+as measured by the `perf` protocol tests in idfkit-mcp (spec SC-011 to SC-013, research R-21):
+
+| Call | Server time | Default response |
+|---|---|---|
+| `trace_node`, `trace_component`, `get_hvac_topology` (one loop), `rename_node` | ≤ 50 ms the first time after load or an edit; ≤ 10 ms when cached | ≤ 8 KB |
+| `get_hvac_topology` (all loops, summary) | same | ≤ 8 KB, paged |
+| `check_model_integrity` with the `hvac_topology` group | ≤ 60 ms (existing checks plus topology) | ≤ 8 KB, grouped |
+| `get_object_results`, `diagnose_symptom` | ≤ 250 ms the first time after a run; ≤ 10 ms afterwards | ≤ 8 KB |
+| `get_standards_context`, `get_object_roles`, `assign_object_role`, `set_standards_context` | ≤ 10 ms | ≤ 8 KB |
+| `lookup_standard`, `screen_envelope` | ≤ 500 ms the first time in a process; ≤ 50 ms afterwards | ≤ 8 KB |
+
 ## Token budget
 
 Every tool and resource above is measured with `scripts/token_audit.py` in the change that adds it. The total

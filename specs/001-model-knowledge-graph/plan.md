@@ -25,6 +25,11 @@ is the only new third-party dependency. It is an optional extra whose JSON files
 the package. idfkit-mcp adds thin tool modules, session state and an unpackaged `eval/` harness, and gains no new
 direct dependency.
 
+**Performance is designed in, not tuned afterwards.** It rests on planning-time measurements of real models, and
+the budgets are enforced by a benchmark gate in both repositories (R-21). Deriving the connection view costs a
+few percent of loading the model, a topology question costs microseconds in idfkit, the results index never reads
+timeseries, and no default response exceeds 8 KB.
+
 ## Technical Context
 
 **Language/Version**: Python 3.10–3.13 for everything. The standards data declares `<3.14`, so on 3.14 the
@@ -55,13 +60,28 @@ HTTP. EnergyPlus is needed only for simulation, corpus qualification, fixture bu
 
 **Project Type**: a library (idfkit) and an MCP server (idfkit-mcp), changed together. The upstream lands first.
 
-**Performance Goals**:
+**Performance Goals**: performance is a requirement (spec FR-009, SC-011 to SC-013). The budgets come from
+measurements on real models taken during planning
+([background/04](background/04-performance-measurements.md)) and are enforced by a benchmark gate (research R-21).
 
-| Operation | Target, on a developer laptop |
-|---|---|
-| Topology derivation | ≤ 1 s for a 7,000-object model (HospitalLowEnergy scale); cached afterwards |
-| Result index build | ≤ 2 s for a 50 MB SQL file |
-| Envelope screening | ≤ 1 s, including the first lazy load of the 90.1 envelope table (6,315 rows) |
+| Operation, on HospitalLowEnergy (6,876 objects, 2,869 nodes) | Measured (prototype) | Budget |
+|---|---|---|
+| Load the IDF (existing, for scale) | 228 ms | — |
+| Topology build with checks | 5.2 ms (core build only) | ≤ 50 ms, and ≤ 25% of load |
+| One topology query | ~1.5 µs traversal, ~1 ms MCP overhead | ≤ 5 ms in idfkit, ≤ 10 ms through MCP |
+| Results index build (32.5 MB SQL) | 1.8 ms | ≤ 50 ms, independent of timeseries volume |
+| Standards first call per process (11.3 MB table) | 43 ms load + 3.9 ms index | ≤ 150 ms |
+| Default response size | Existing unbounded tool: 110 KB | ≤ 8 KB |
+| Extra memory per model | 1.5 MB | ≤ 10 MB |
+
+The architecture behind these numbers (R-21):
+- per-type plans, computed once
+- integer-interned nodes with adjacency lists
+- tuples inside, dataclasses only for returned items
+- rebuild per revision instead of incremental upkeep
+- derived views cached on the document
+- results indexed without touching timeseries
+- standards tables loaded lazily, projected and shared
 
 **Constraints**:
 - Bounded responses: default 20 rows, about 200 tokens per loop summary, and tool-listing growth ≤ 15% (SC-010).
@@ -141,6 +161,11 @@ idfkit/                                    # upstream (github.com/idfkit/idfkit)
 │   └── codegen/generate_node_fields.py    # NEW
 ├── agent_references/{templates,snippets}/ # + hvac-topology, standards; update result-parsing, thermal
 ├── scripts/build_linking_fixtures.py      # NEW (needs EnergyPlus 26.2)
+├── benchmarks/
+│   ├── bench_hvac_topology.py             # NEW: build, checks, queries (R-21)
+│   ├── bench_result_index.py              # NEW: index build, per-object query
+│   ├── bench_standards.py                 # NEW: first load, lookup, screening
+│   └── fixtures/HospitalLowEnergy.idf.gz  # NEW: reference model (0.24 MB compressed)
 └── tests/
     ├── test_hvac_topology.py              # unit and injected faults
     ├── test_hvac_corpus.py                # @integration: SC-001 on 26.2 ExampleFiles
@@ -149,6 +174,7 @@ idfkit/                                    # upstream (github.com/idfkit/idfkit)
     ├── test_thermal_films.py
     ├── test_standards_envelope.py         # skips without the extra
     ├── test_standards_sample.py           # SC-006 hand-check sample
+    ├── test_perf_budgets.py               # @perf: R-21 budgets with a 2× CI allowance, on 3.10 and 3.12
     └── fixtures/simulation/linked/        # trimmed (IDF, SQL, ERR) triples, ≤ 10 MB
 
 idfkit-mcp/                                # this repository
@@ -177,6 +203,7 @@ idfkit-mcp/                                # this repository
     ├── test_results_tools.py
     ├── test_standards_tools.py
     ├── test_session_persistence.py        # + v2 fields, v1 compatibility
+    ├── test_perf_tools.py                 # @perf: per-call server time and response size budgets
     └── test_eval_harness.py               # harness logic with a fake runner, no LLM
 ```
 
@@ -191,8 +218,8 @@ The order follows the spec's priorities and the one hard dependency: idfkit befo
 
 | Slice | idfkit | idfkit-mcp | Gate to the next slice |
 |---|---|---|---|
-| 0 | `revision`, `SQLResult` readers, fixture builder and fixtures | Session v2 skeleton | Fixtures committed |
-| 1: US1 | `idfkit.hvac` (node fields, about 40 rules, T010, T011, T030, T090, T091), corpus test, parity rows | `trace_node`, `hvac_topology` integrity group | SC-001 green on 26.2 |
+| 0 | `revision` and `_derived` cache slot, `SQLResult` readers, fixture builder and fixtures, **benchmark harness, reference model and `perf` gate** | Session v2 skeleton, `perf` protocol test harness | Fixtures committed; gate runs in CI |
+| 1: US1 | `idfkit.hvac` (node fields, about 40 rules, T010, T011, T030, T090, T091), corpus test, parity rows | `trace_node`, `hvac_topology` integrity group | SC-001 green on 26.2; **topology budget confirmed by benchmark before slice 3** |
 | 2: US2 | — | `eval/` harness, topology and standards faults | First baseline/treatment run on topology faults |
 | 3: US3 | `linking.py`, `err_catalog.py` (about 15 kinds) | `get_object_results`, `affected_objects`, peak-load object keys | SC-004 green on fixtures |
 | 4: US4 | Memberships, `chain`, `rename_node`, T001–T004 | `trace_component`, `get_hvac_topology`, `rename_node`, resource | SC-003 |
@@ -200,7 +227,8 @@ The order follows the spec's priorities and the one hard dependency: idfkit befo
 | 6: US6 | `diagnose`, catalogue to about 40 kinds | `diagnose_symptom` | Built only if the SC-009 gate passes on the slice 2–5 evaluation |
 
 Each slice in idfkit ships with its agent-reference template and snippet, re-baked, and a CHANGELOG entry. Each
-slice in idfkit-mcp ships with docs pages and a token-audit figure.
+slice in idfkit-mcp ships with docs pages and a token-audit figure. **Every slice's pull request includes the
+benchmark table before and after, and none merges with a budget failing** (FR-009).
 
 ## Complexity Tracking
 
@@ -209,4 +237,6 @@ slice in idfkit-mcp ships with docs pages and a token-audit figure.
 | Two new idfkit capability units, each needing a parity-ledger and naming-register row in idfkit-conformance | The parity gate requires every new public subpackage to be declared. Topology and standards are genuinely new capabilities | Hiding them inside existing units (`references`, `thermal`) would misplace node semantics and an optional-dependency feature, and would make the ledger understate the surface |
 | idfkit-mcp dependency becomes `idfkit[standards]==X` | idfkit-mcp must reach the standards data, and Principle I keeps it out of idfkit-mcp's own code | Depending on `building-energy-standards-data` directly would add a second third-party dependency to idfkit-mcp and split the level declaration. A register amendment is cheaper if the check requires one |
 | Session file v1 → v2 | FR-037 requires asserted roles to survive restarts, and FR-026 requires staleness across restarts | Not persisting would violate FR-037, and a sidecar file was ruled out in Clarifications |
+| Two new private slots on `IDFDocument` (`_revision`, `_derived`) | Performance (R-06, R-21). The document has no `__weakref__`, so derived views cannot be cached externally without leaks or id reuse | Recomputing per call wastes about 5 ms per question, and the results index would re-read SQL every time. An external cache keyed by `id(doc)` leaks memory under concurrent HTTP sessions |
+| A `perf` benchmark gate in both repositories | FR-009 makes the budgets requirements, and a requirement needs a check | Reviewing timings by hand misses regressions. `pytest-benchmark` would add a dependency (R-01) |
 | `eval/` directory with its own CLI in idfkit-mcp | User Story 2 is P1, and FR-042 requires with/without runs | Putting it in idfkit would invert the dependency, since the eval drives the server. A separate repository is unwarranted for one harness |

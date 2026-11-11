@@ -1,0 +1,248 @@
+"""Benchmark: naive vs planned HVAC node-graph construction on real EnergyPlus models.
+
+Run from the idfkit checkout:  uv run python <this file> <ExampleFiles dir> [N largest]
+"""
+
+from __future__ import annotations
+
+import collections
+import gc
+import json
+import os
+import re
+import statistics
+import sys
+import time
+import tracemalloc
+from dataclasses import dataclass
+
+from idfkit import load_idf
+
+NODE_RX = re.compile(r"node(_or_nodelist)?_names?$")
+EXCLUDE = re.compile(r"electric|airflow_?network|roomair", re.I)
+
+
+# ---------------- variant A: naive ----------------
+@dataclass(frozen=True, slots=True)
+class NodeUse:
+    node: str
+    obj_type: str
+    obj_name: str
+    field: str
+    role: str
+
+
+def role_of(field: str) -> str:
+    f = field.lower()
+    if "setpoint" in f or "sensor" in f or "reference" in f:
+        return "control"
+    if "outlet" in f:
+        return "out"
+    if "inlet" in f:
+        return "in"
+    return "other"
+
+
+def build_naive(doc) -> dict[str, list[NodeUse]]:
+    idx: dict[str, list[NodeUse]] = collections.defaultdict(list)
+    for obj in doc.all_objects:
+        t = obj.obj_type
+        for k, v in obj.data.items():
+            if isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict):
+                        for kk, vv in item.items():
+                            if isinstance(vv, str) and vv and NODE_RX.search(kk) and not EXCLUDE.search(t):
+                                idx[vv.upper()].append(NodeUse(vv, t, obj.name, f"{k}.{kk}", role_of(kk)))
+            elif isinstance(v, str) and v and NODE_RX.search(k) and not EXCLUDE.search(t):
+                idx[v.upper()].append(NodeUse(v, t, obj.name, k, role_of(k)))
+    return idx
+
+
+# ---------------- variant B: planned + interned ----------------
+ROLE_CODE = {"in": 0, "out": 1, "control": 2, "other": 3}
+
+
+def make_plans(doc) -> dict[str, tuple[tuple[tuple[str, int], ...], str | None, tuple[tuple[str, int], ...]]]:
+    """Per object type: (top-level node fields, extensible wrapper, extensible node subfields), computed once."""
+    sch = doc.schema
+    plans = {}
+    for t in doc._collections:  # types present in this model only
+        if EXCLUDE.search(t):
+            continue
+        top = tuple((f, ROLE_CODE[role_of(f)]) for f in sch.get_field_names(t) if NODE_RX.search(f))
+        wrap = sch.get_extensible_wrapper_key(t)
+        ext = ()
+        if wrap:
+            ext = tuple((f, ROLE_CODE[role_of(f)]) for f in sch.get_extensible_field_names(t) if NODE_RX.search(f))
+        if top or ext:
+            plans[t] = (top, wrap, ext)
+    return plans
+
+
+class Graph:
+    __slots__ = ("adj_in", "adj_out", "names", "node_id", "objs", "uses")
+
+    def __init__(self) -> None:
+        self.node_id: dict[str, int] = {}
+        self.names: list[str] = []
+        self.objs: list[object] = []
+        # uses[node] = list of (obj_index, role_code); tuples, not dataclasses
+        self.uses: list[list[tuple[int, int]]] = []
+        self.adj_out: list[list[int]] = []  # obj -> objs downstream
+        self.adj_in: list[list[int]] = []
+
+
+def build_planned(doc) -> Graph:
+    g = Graph()
+    plans = make_plans(doc)
+    node_id = g.node_id
+    names = g.names
+    uses = g.uses
+    objs = g.objs
+    for t, (top, wrap, ext) in plans.items():
+        for obj in doc.get_collection(t):
+            oi = len(objs)
+            objs.append(obj)
+            data = obj.data
+            for f, rc in top:
+                v = data.get(f)
+                if v:
+                    key = v.upper()
+                    ni = node_id.get(key)
+                    if ni is None:
+                        ni = len(names)
+                        node_id[key] = ni
+                        names.append(v)
+                        uses.append([])
+                    uses[ni].append((oi, rc))
+            if wrap and ext:
+                for item in data.get(wrap) or ():
+                    for f, rc in ext:
+                        v = item.get(f)
+                        if v:
+                            key = v.upper()
+                            ni = node_id.get(key)
+                            if ni is None:
+                                ni = len(names)
+                                node_id[key] = ni
+                                names.append(v)
+                                uses.append([])
+                            uses[ni].append((oi, rc))
+    n = len(objs)
+    adj_out: list[list[int]] = [[] for _ in range(n)]
+    adj_in: list[list[int]] = [[] for _ in range(n)]
+    for lst in uses:
+        prods = [o for o, r in lst if r == 1]
+        cons = [o for o, r in lst if r == 0]
+        for p in prods:
+            for c in cons:
+                if p != c:
+                    adj_out[p].append(c)
+                    adj_in[c].append(p)
+    g.adj_out = adj_out
+    g.adj_in = adj_in
+    return g
+
+
+def bfs(adj: list[list[int]], start: int, hops: int) -> int:
+    seen = {start}
+    frontier = [start]
+    for _ in range(hops):
+        nxt = []
+        for u in frontier:
+            for v in adj[u]:
+                if v not in seen:
+                    seen.add(v)
+                    nxt.append(v)
+        frontier = nxt
+        if not frontier:
+            break
+    return len(seen)
+
+
+def timeit(fn, repeat: int = 5) -> float:
+    best = float("inf")
+    for _ in range(repeat):
+        gc.collect()
+        t0 = time.perf_counter()
+        fn()
+        best = min(best, time.perf_counter() - t0)
+    return best
+
+
+def main() -> None:
+    root = sys.argv[1]
+    n = int(sys.argv[2]) if len(sys.argv) > 2 else 15
+    files = []
+    for f in os.listdir(root):
+        if f.endswith(".idf"):
+            p = os.path.join(root, f)
+            with open(p, errors="ignore") as fh:
+                if "Branch," in fh.read():
+                    files.append((os.path.getsize(p), p))
+    files.sort(reverse=True)
+    rows = []
+    for _, p in files[:n]:
+        t0 = time.perf_counter()
+        doc = load_idf(p)
+        t_load = time.perf_counter() - t0
+        n_objs = sum(len(c) for c in doc._collections.values())
+        t_naive = timeit(lambda: build_naive(doc))
+        t_plan = timeit(lambda: build_planned(doc))
+        t_plans_only = timeit(lambda: make_plans(doc))
+        g = build_planned(doc)
+        tracemalloc.start()
+        build_planned(doc)
+        _, peak_b = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        tracemalloc.start()
+        build_naive(doc)
+        _, peak_a = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        starts = list(range(0, len(g.objs), max(1, len(g.objs) // 200)))[:200]
+        t0 = time.perf_counter()
+        for s in starts:
+            bfs(g.adj_out, s, 3)
+            bfs(g.adj_in, s, 3)
+        t_q = (time.perf_counter() - t0) / max(1, len(starts))
+        rows.append(
+            {
+                "file": os.path.basename(p),
+                "objects": n_objs,
+                "node_objs": len(g.objs),
+                "nodes": len(g.names),
+                "edges": sum(len(a) for a in g.adj_out),
+                "load_s": round(t_load, 3),
+                "naive_ms": round(t_naive * 1e3, 1),
+                "planned_ms": round(t_plan * 1e3, 1),
+                "plans_ms": round(t_plans_only * 1e3, 2),
+                "speedup": round(t_naive / t_plan, 1),
+                "naive_peak_kb": peak_a // 1024,
+                "planned_peak_kb": peak_b // 1024,
+                "query_us": round(t_q * 1e6, 1),
+            }
+        )
+        print(json.dumps(rows[-1]), flush=True)
+    print("SUMMARY", json.dumps({
+        "models": len(rows),
+        "max_objects": max(r["objects"] for r in rows),
+        "max_nodes": max(r["nodes"] for r in rows),
+        "load_s_max": max(r["load_s"] for r in rows),
+        "naive_ms_max": max(r["naive_ms"] for r in rows),
+        "planned_ms_max": max(r["planned_ms"] for r in rows),
+        "speedup_median": statistics.median(r["speedup"] for r in rows),
+        "query_us_max": max(r["query_us"] for r in rows),
+    }))
+
+    # micro: construction cost of record types (500k records)
+    N = 500_000
+    t_dc = timeit(lambda: [NodeUse("n", "t", "o", "f", "in") for _ in range(N)], 3)
+    t_tu = timeit(lambda: [("n", "t", "o", "f", "in") for _ in range(N)], 3)
+    t_it = timeit(lambda: [(1, 0) for _ in range(N)], 3)
+    print("MICRO", json.dumps({"frozen_slots_dataclass_ms": round(t_dc * 1e3), "tuple5_ms": round(t_tu * 1e3),
+                               "int_tuple2_ms": round(t_it * 1e3)}))
+
+
+if __name__ == "__main__":
+    main()

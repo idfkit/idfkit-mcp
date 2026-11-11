@@ -23,6 +23,23 @@ make check && make test
 make check && make test
 ```
 
+## Performance budgets (all stories)
+
+```bash
+# idfkit: the R-21 budgets on the vendored reference model; no EnergyPlus needed
+uv run pytest -m perf tests/test_perf_budgets.py -v
+uv run python benchmarks/bench_hvac_topology.py   # prints the before/after table for the PR
+uv run python benchmarks/bench_result_index.py
+uv run python benchmarks/bench_standards.py       # needs the standards extra
+
+# idfkit-mcp: per-call server time and response size through FastMCP
+uv run pytest -m perf tests/test_perf_tools.py -v
+```
+
+Expect every budget in [contracts/idfkit-api.md](contracts/idfkit-api.md#performance-contract) and
+[contracts/mcp-tools.md](contracts/mcp-tools.md#performance-budget) to be met, with the 2× CI allowance. Expect
+topology build plus checks to stay at or under 25% of `load_idf` time on HospitalLowEnergy (SC-011).
+
 ## User Story 1: connection faults before simulating
 
 ```bash

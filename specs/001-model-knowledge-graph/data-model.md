@@ -11,6 +11,11 @@ Pydantic models only rename for clarity. They never add domain fields.
 Common identity: an object is identified by **`ObjectKey(object_type, name)`**, compared case-insensitively. A
 node is identified by its name, compared case-insensitively. Responses always use the model's own spelling.
 
+**The dataclasses below are the public, returned shape, not the storage.** Performance is a requirement (spec
+FR-009), and building a frozen dataclass costs 9.5× a tuple. Derived views therefore store compact integer-indexed
+tuples, as set out in [Internal representation](#internal-representation-performance). Dataclasses are built only
+for the bounded set of items a call returns (research R-21).
+
 ---
 
 ## Shared
@@ -329,3 +334,52 @@ verdict (FR-036).
 
 `run_id`, `started_at`, `runner_command`, `model_identifier`, `baseline_version`, `treatment_revision`,
 `outcomes: list[TaskOutcome]`, and summary metrics per fault type and overall (SC-008, SC-009).
+
+---
+
+## Internal representation (performance)
+
+This section is normative for idfkit's implementation (research R-21). It is not part of any public contract.
+
+### Derived-view cache on `IDFDocument`
+
+| Slot | Type | Rule |
+|---|---|---|
+| `_revision` | `int` | Bumped by every mutation path (R-06) |
+| `_derived` | `dict[str, tuple[int, object]]` | View name to `(revision at build, view)`. A view is valid only while its revision equals `_revision`. The slot is freed with the document; there is no global registry |
+
+### Topology view (`hvac` cache entry)
+
+| Structure | Type | Contents |
+|---|---|---|
+| `node_id` | `dict[str, int]` | Upper-cased node name to a dense id |
+| `node_name` | `list[str]` | Display spelling by id |
+| `obj` | `list[IDFObject]` | Node-bearing objects by dense object id. Other objects are never visited |
+| `uses` | `list[list[tuple[int, int, int, int]]]` | Per node: `(object id, field-plan index, connection code, stream)` |
+| `out_adj` / `in_adj` | `list[list[int]]` | Per object: downstream and upstream object ids (flow edges only) |
+| `findings` | `list[tuple[int, int, int, int, int]]` | `(code index, severity code, object id, node id or -1, field-plan index or -1)` |
+| `memberships` | `dict[int, list[tuple[...]]] \| None` | Built on first request, then memoised |
+| `chains` | `dict[tuple[int, int], list[list[int]]]` | Per (loop object id, side), built on first request |
+
+**Per-type plans** (module-level cache keyed by schema version): object type to `(top-level fields, extensible
+wrapper key, extensible fields)`, each field paired with its compiled rule `(connection code, stream, fluid code,
+is_parent, accepts_nodelist, predicate or None)`.
+
+### Results view (`results` cache entry, stamped with run id and revision)
+
+| Structure | Type |
+|---|---|
+| `names` | `dict[str, tuple[str, ...]]` (upper-cased name to object types) |
+| `facts` | `dict[tuple[str, str], list[tuple[str, str, float \| str \| None, str \| None, str, int \| None]]]` |
+| `series` | `dict[tuple[str, str], list[int]]` (indexes into the report dictionary, never values) |
+| `messages` | `list[tuple[int, str, str, tuple[int, ...], int, str \| None]]` |
+| `unresolved` | `list[tuple[str, str]]` |
+
+### Standards cache (process-wide, read-only)
+
+| Structure | Type |
+|---|---|
+| `envelope_90_1` | `dict[tuple[str, str, str, str], tuple[tuple[...], ...]]` (edition, climate zone set, surface type, building category) to projected rows |
+| `data_version` | `str` |
+
+Loaded on first use under a lock and shared by every session. The parsed JSON is discarded after projection.

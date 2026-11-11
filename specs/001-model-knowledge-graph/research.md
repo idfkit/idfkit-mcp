@@ -114,9 +114,10 @@ connection errors. It also makes the branch-and-node report (`eplusout.bnd`) usa
 - `IDFDocument.rename_node(old, new)` updates every node field and every NodeList entry in one pass. It returns
   the fields changed and fires the existing change notifications for each one.
 
-**Rationale.** The topology is a pure function of the model, so deriving it avoids keeping two indexes in sync. A
-5,000–7,000-object model derives in well under a second, because the prototype's time went to IDF parsing, not
-analysis. A rename has no safe path today: the agent docs tell agents to update both ends by hand.
+**Rationale.** The topology is a pure function of the model, so deriving it avoids keeping two indexes in sync.
+**Measured:** the core node-graph build takes 5.2 ms on HospitalLowEnergy (6,876 objects, 2,869 nodes), against
+228 ms to load the model ([background/04](background/04-performance-measurements.md), §1). A rename has no safe
+path today: the agent docs tell agents to update both ends by hand. The internal representation is set by R-21.
 
 **Alternatives considered.**
 - Maintaining a live node index alongside `ReferenceGraph`. Rejected for phase 1: it adds a second
@@ -128,7 +129,11 @@ analysis. A rename has no safe path today: the agent docs tell agents to update 
 - **Counter.** `IDFDocument` gains a monotonically increasing integer `revision`. It is incremented by `add`,
   `removeidfobject`, field assignment (through the existing `notify_reference_change` and `notify_name_change`
   paths, plus a direct bump for non-reference fields) and `rename_node`.
-- **Caching.** Callers that cache derived views (topology, the results index) key them on `(id(doc), revision)`.
+- **Caching.** Derived views (topology, the results index) are cached in a new `IDFDocument` slot, `_derived`,
+  as a dict of view name to `(revision, view)`. A view is reused while the revision is unchanged. **checked:**
+  `IDFDocument.__slots__` has no `__weakref__`, so a `WeakKeyDictionary` keyed on the document is impossible.
+  Keying on `id(doc)` would leak memory and could return another document's view after the id is reused. Holding
+  the cache on the document ties its lifetime to the document, which matters under concurrent HTTP sessions.
 - **Staleness within a session.** When idfkit-mcp runs a simulation it records the revision.
 - **Staleness across restarts.** It also records a SHA-256 of the IDF text it wrote for EnergyPlus, persisted in
   the session file. Results are stale when the revision moved (same process) or, after a restart, when the hash
@@ -377,3 +382,97 @@ declared only in `project.dependencies`.
 **Risk.** The `consumer-register` job may treat the extra as a new dependency form. If it does, the change needs a
 paired register amendment in idfkit-conformance (Constitution Principle VI). This is recorded in the plan's
 Complexity Tracking.
+
+## R-21 Performance architecture
+
+**Context.** The user stated that performance is critical. Spec FR-009 and SC-011 to SC-013 make it a requirement.
+Every decision below rests on measurements of real models and outputs taken during planning
+([background/04-performance-measurements.md](background/04-performance-measurements.md)). The budgets keep about
+10× headroom over the prototype figures, because the shipped code adds rule tables and checks.
+
+### Budgets
+
+Measured on HospitalLowEnergy, the largest example model, on Python 3.12:
+
+| Operation | Prototype measured | Budget (benchmark gate) |
+|---|---|---|
+| Node-graph build, connection roles, memberships and all checks | 5.2 ms (core build only) | ≤ 50 ms, and ≤ 25% of model load time (SC-011) |
+| One topology query (trace, summary of one loop), server side, including serialization | ~1.5 µs traversal + ~1 ms framework | ≤ 5 ms per call, well under SC-011's 0.05 s |
+| Results index build, once per run | 1.8–3.1 ms | ≤ 50 ms, whatever the timeseries volume (SC-012) |
+| One results query | — | ≤ 10 ms |
+| Standards: first call in a process (envelope table load and index) | 43 + 3.9 ms | ≤ 150 ms (SC-013 allows 0.5 s) |
+| Standards: envelope screening of a loaded model | — | ≤ 20 ms |
+| Default response size of any new tool | — | ≤ 8 KB (SC-013) |
+| Additional resident memory per loaded model | 1.5 MB | ≤ 10 MB |
+
+### Decisions
+
+1. **Plan per type, once.** Per object type, the node fields (top-level and extensible), their connection rules and
+   their predicates are compiled into a plan of tuples. The plan is cached per schema version, at module level, as
+   idfkit's parsing cache already is. The build visits only collections whose type has a plan. *Measured:* about
+   65% of objects in large models have no node fields. Skipping them is the main 4.6× gain, and plans cost
+   0.3–0.6 ms to compute.
+2. **Tuples inside, dataclasses at the boundary.** Internal records are plain tuples of integers and interned
+   strings. The public dataclasses in [contracts/idfkit-api.md](contracts/idfkit-api.md) are built only for the
+   bounded set of items a call returns. *Measured:* a frozen slotted dataclass costs 9.5× a tuple to construct.
+3. **Integer IDs and adjacency lists.** Node names are interned to dense integers (`dict[str, int]` keyed by
+   upper-cased name, plus a `list[str]` of display spellings). Objects are indexed to integers. Forward and reverse
+   adjacency are `list[list[int]]`. Traversal is iterative breadth-first search with a hop limit and an integer
+   visited set. Recursion is never used. *Measured:* 1.5 µs per 3-hop query.
+4. **Rebuild on edit, no incremental maintenance.** A view is rebuilt when the document revision changes, and
+   only when it is next asked for. *Measured:* the build costs about 2% of loading the model, so incremental
+   upkeep would add a second mutation path for no measurable gain. This is revisited only if the slice 1
+   benchmark exceeds the 50 ms budget.
+5. **Cache on the document** (R-06). The `_derived` slot holds views keyed by name and stamped with the revision.
+   It is freed with the document, with no global registries.
+6. **Lazy sub-views.** The base build produces node uses, flow edges and findings. Loop chains, memberships per
+   loop, and up- and downstream walks are computed on first request and memoised inside the view.
+7. **Checks in one pass.** Connection checks run over the same integer structures in a single pass per check
+   family, never one query per object.
+8. **Results index without timeseries.**
+   - The SQL file is opened read-only (`mode=ro`, `PRAGMA query_only`), with one query per source table.
+   - `ReportData` is never read during the index build.
+   - A name index (upper-cased name to object types) is built once from idfkit's collections.
+   - Summary statistics over timeseries, when asked for, use SQL aggregation (`MIN`, `MAX`, `AVG`, `COUNT` with
+     `WHERE`) for one key at a time, never row loops in Python.
+   - The index is built on the first results question after a run, then cached on the document stamped with the
+     run, so later questions never re-read the file.
+   - *Measured:* 1.8 ms on a 32.5 MB file, independent of timeseries volume.
+9. **Standards data: lazy, projected, shared.**
+   - Each PNNL table is loaded on first use. Its rows are projected to the columns screening needs as tuples,
+     indexed by `(edition, climate zone set, surface type, building category)`, and the parsed JSON is discarded.
+   - The result is a process-wide, read-only cache guarded by a lock during the first load, and shared by every
+     session.
+   - Tables this feature never reads are never opened.
+   - *Measured:* the envelope table takes 43 ms to parse and 0.085 µs per indexed lookup. All tables together are
+     61.6 MB on disk.
+10. **Bounded responses are a performance rule.** Every tool has a `limit` with a small default, summaries before
+    detail, deduplication with counts, and the 8 KB default response budget. *Measured:* an existing unbounded
+    response, `get_zone_properties` on all hospital zones, takes 87 ms and returns 110 KB.
+11. **No blocking surprises in the server.** Every new tool's server-side work stays within the budgets above,
+    so a call never holds the event loop longer than an existing read tool. The first standards load (≤ 150 ms)
+    is the only cold-start cost, and it is paid once per process.
+
+### Enforcement
+
+- **Benchmarks in idfkit.** `benchmarks/bench_hvac_topology.py`, `bench_result_index.py` and `bench_standards.py`
+  use stdlib `time.perf_counter` with best-of-N. They run against the committed reference model (HospitalLowEnergy
+  from the 26.2 ExampleFiles, vendored gzip-compressed into `benchmarks/fixtures/`: 4.5 MB raw, 0.24 MB
+  compressed for the 24.1 file) and the linking fixtures. The benchmark needs no EnergyPlus installation.
+- **Gate.** A `perf`-marked pytest module asserts each budget with a 2× allowance for CI noise. It runs in CI on
+  Python 3.10 and 3.12. A change that misses a budget fails the build. Moving a budget needs a stated reason in the
+  CHANGELOG (FR-009).
+- **idfkit-mcp.** A `perf`-marked protocol test calls each new tool on the reference model through FastMCP and
+  asserts the per-call server time and response size budgets.
+- **Reporting.** Each slice's pull request includes the benchmark table before and after.
+
+**Alternatives considered.**
+- Incremental graph maintenance through `notify_*` hooks. Rejected on measurement (decision 4).
+- Arrays (`array.array`) or compressed sparse rows for adjacency. Rejected: no measurable gain over lists at
+  3k nodes, and harder to read.
+- A compiled extension (Cython, Rust). Rejected: the measured costs are milliseconds, and idfkit's core is pure
+  Python.
+- `pytest-benchmark` for the gate. Rejected under R-01 (no new dependency). A stdlib timer with best-of-N is
+  enough for budgets with a 2× allowance.
+- Caching standards data on disk in a pre-indexed form. Rejected: 43 ms once per process is within budget, and a
+  disk cache adds invalidation and file-write concerns (Constitution Principle V).

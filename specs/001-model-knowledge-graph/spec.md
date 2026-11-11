@@ -313,6 +313,10 @@ value as evidence.
 - **FR-007**: The capabilities MUST support every EnergyPlus version that idfkit supports.
 - **FR-008**: No response may describe a connection check or a screening as proof that a model will simulate or
   complies with a code (Constitution, Principle IV).
+- **FR-009**: Performance is a requirement, not a goal. Every capability in this feature MUST meet the time and size
+  budgets in SC-011 to SC-013 on the largest reference model. Each budget MUST be checked by an automated benchmark
+  that fails the build on a regression. Analysis MUST cost a small fraction of loading the model. It MUST NOT
+  require reloading the model or re-reading simulation output on every question.
 
 **Layer 1: HVAC topology**
 
@@ -496,6 +500,15 @@ value as evidence.
   with no increase in unwanted changes to correct parts of the model.
 - **SC-010**: The tools added by this feature together increase the cost of the server's tool listing by no more than
   15%. The increase is stated in the change that adds them (Constitution, Principle II).
+- **SC-011**: On the largest reference model, at about 7,000 objects and 2,900 nodes, the following stay within
+  budget:
+  - Deriving the full connection view and running every connection check, after loading or after an edit, adds
+    no more than 25% to the time it takes to load that model.
+  - Every subsequent topology question is answered in under 0.05 s of server time.
+- **SC-012**: After a simulation, the first results question is answered in under 0.25 s of server time, and every
+  later one in under 0.05 s, whatever the size of the timeseries output.
+- **SC-013**: The first standards question in a server process is answered in under 0.5 s, and every later one in
+  under 0.05 s. A default response from any capability in this feature is under 8 KB.
 
 ## Assumptions
 
@@ -582,3 +595,4 @@ Full reports: [background/](background/README.md). Highlights that shaped the re
 | Brick and 223P exports are low value now. 229 and its ruleset checking tool are unstable | Report 02, §§2.1, 3 | Out of Scope |
 | No published work joins agent, MCP and a live model graph. Graph retrieval helped LLMs by 20–40% on Brick data, and pasting the whole ontology did not help | Literature scan | FR-003, FR-015, FR-016, User Story 2 |
 | No study measures the benefit to an agent | All reports | User Story 2, SC-008, SC-009 |
+| A planned node-graph build takes 5.2 ms against 228 ms to load the largest example model. The results index takes 1.8 ms on a 32.5 MB SQL file. The standards table takes 43 ms to load once. An existing unbounded tool response is 110 KB | Performance measurements | FR-009, SC-011–SC-013 |
