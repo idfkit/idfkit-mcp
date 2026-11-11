@@ -69,11 +69,20 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
   check can report errors? → A: The latest supported version only (26.2).
 - Q: Should result linking and diagnosis also work on simulation outputs the agent did not produce, such as an
   existing run directory? → A: No. Only runs started through the server in the current session.
+- Q: Should developers who use idfkit directly in Python be a first-class audience of this feature, with their own
+  user story and requirements? → A: Yes. The graph is a documented, tested, stable public API of idfkit in its own
+  right. The MCP server is one consumer of it.
 
 ## User Scenarios & Testing *(mandatory)*
 
-The primary actor throughout is an **agent**: an LLM working on an EnergyPlus model through idfkit-mcp on behalf of
-a **modeller**. The secondary actor is a **maintainer** of idfkit and idfkit-mcp who decides what to build next.
+There are three actors:
+
+- **Agent.** An LLM working on an EnergyPlus model through idfkit-mcp on behalf of a **modeller**. It is the
+  primary actor of User Stories 1 and 3 to 6.
+- **Developer.** Someone who uses idfkit directly in Python to build their own application on the graph: a QA
+  script, a dashboard, a design tool, another server. The developer is a first-class audience (User Story 7), and
+  idfkit-mcp is one consumer of the same public API.
+- **Maintainer.** Someone who maintains idfkit and idfkit-mcp and decides what to build next (User Story 2).
 
 ### User Story 1 - Catch HVAC connection faults before simulating (Priority: P1)
 
@@ -263,6 +272,37 @@ value as evidence.
 
 ---
 
+### User Story 7 - Build other applications on the model graph (Priority: P2)
+
+A developer writing their own tool in Python, for example a pre-submission QA script for their firm's models, loads
+a model with idfkit and uses the same graph the agent uses. They walk air and water connections, list connection
+findings, read the results attached to an object after a simulation, and screen constructions against a standard.
+The API is documented with runnable examples, fully typed, and stable across minor releases. Nothing in it assumes
+an MCP server or an AI agent.
+
+**Why this priority**: idfkit is a library first. Every capability in this feature is built in idfkit (FR-001), so a
+well-shaped public API costs little extra and lets other applications reuse the work. Designing it only around one
+consumer would produce an API that has to be broken later. It is P2 because User Stories 1 and 2 deliver the
+first, measurable value; this story makes sure each later layer lands in a form developers can use.
+
+**Independent Test**: In a plain Python script with no MCP server, load a reference model, list the connection
+findings, trace one node, and screen the envelope (with the standards extra installed). Do it using only the public
+API and the documented examples. The script passes strict type checking, and repeating it against the next minor
+release needs no change.
+
+**Acceptance Scenarios**:
+
+1. **Given** a loaded model, **When** a developer asks idfkit for its connection view, **Then** they can trace any
+   node or component and list findings using public, typed functions, with no MCP server involved.
+2. **Given** a completed simulation run through idfkit, **When** a developer asks for the results of one object,
+   **Then** they get the same linked facts and messages that the agent receives through the server.
+3. **Given** the documentation for each layer, **When** a developer runs its examples, **Then** each example runs
+   unchanged and passes the project's strict type checking.
+4. **Given** a minor release after this feature ships, **When** a developer upgrades, **Then** code written against the
+   documented API keeps working, and any deprecation is announced at least one minor release before removal.
+
+---
+
 ### Edge Cases
 
 - **Template systems**: Models with unexpanded HVAC template objects have no nodes for those systems. Connection
@@ -438,6 +478,21 @@ value as evidence.
   boundary, with no AI client involved (Constitution, Principle VII). Agent conversations, including the
   evaluation, are evidence of benefit, not tests of correctness.
 
+**Developer API**
+
+- **FR-050**: Every capability in this feature MUST be available to developers as a public, documented idfkit API
+  that works without idfkit-mcp. idfkit-mcp MUST reach each capability only through that same public API, never
+  through private functions, so the public API is exercised by a real consumer.
+- **FR-051**: The public API MUST be fully typed, so that code using it passes the project's strict type checking
+  without suppressions.
+- **FR-052**: Each layer MUST ship a reference page and runnable examples in idfkit's documentation and in its bundled
+  agent references. Every example MUST run unchanged in the test suite.
+- **FR-053**: The public API MUST follow idfkit's versioning: no breaking change within a major release, and
+  deprecations announced at least one minor release before removal. Its names MUST be recorded in the naming
+  register and its subpackages in the parity ledger (as Python-only until idfkit-js implements them).
+- **FR-054**: The public API MUST make no assumptions about agents, sessions or servers. Session concepts (asserted
+  roles, standards context) are passed in by the caller, not read from global state.
+
 ### Key Entities
 
 - **Node**: A named connection point through which air or water flows. It is not an object. It is used by two or
@@ -509,6 +564,10 @@ value as evidence.
   later one in under 0.05 s, whatever the size of the timeseries output.
 - **SC-013**: The first standards question in a server process is answered in under 0.5 s, and every later one in
   under 0.05 s. A default response from any capability in this feature is under 8 KB.
+
+- **SC-014**: Every public name this feature adds to idfkit appears in the reference documentation with at least one
+  runnable example. Every example runs in the test suite and passes strict type checking. A developer can complete
+  User Story 7's independent test using only the documentation.
 
 ## Assumptions
 
