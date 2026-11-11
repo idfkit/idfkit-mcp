@@ -72,6 +72,9 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 - Q: Should developers who use idfkit directly in Python be a first-class audience of this feature, with their own
   user story and requirements? → A: Yes. The graph is a documented, tested, stable public API of idfkit in its own
   right. The MCP server is one consumer of it.
+- Q: Should developers reach the three layers through one combined graph object, or through three separate APIs?
+  → A: Three layered APIs, plus a thin combined graph view on top with one vocabulary of node and edge kinds for
+  walking across layers.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -492,6 +495,18 @@ release needs no change.
   register and its subpackages in the parity ledger (as Python-only until idfkit-js implements them).
 - **FR-054**: The public API MUST make no assumptions about agents, sessions or servers. Session concepts (asserted
   roles, standards context) are passed in by the caller, not read from global state.
+- **FR-055**: Each layer MUST be usable on its own through its own API: references (existing), topology, results
+  and standards. On top of them, idfkit MUST offer a combined graph view of a model that:
+  - presents objects, nodes, results and verdicts as typed graph nodes
+  - presents references, flow connections, control connections, loop membership, result links and screening
+    verdicts as typed edges
+  - uses one documented vocabulary of node and edge kinds
+  - lets a developer walk across layers from any starting object with a hop limit and optional filters on node and
+    edge kinds
+- **FR-056**: The combined view MUST be derived from the layer APIs and never duplicate their data. It MUST cost
+  nothing until it is first used. It MUST include only the layers that are available: results only after a
+  simulation, and verdicts only with the standards data installed and a standards context supplied. It MUST say
+  which layers it includes.
 
 ### Key Entities
 
@@ -517,6 +532,10 @@ release needs no change.
   the model.
 - **Screening verdict**: Meets, does not meet or cannot tell, for one construction against one requirement, with
   value, margin, area, citation and assumptions.
+- **Model graph view**: The combined, read-only view across layers (FR-055). Its node kinds are object, node,
+  result fact, message and verdict. Its edge kinds are reference, flow, control, membership, result link and
+  verdict. Each node and edge carries its kind, its layer and the identity (object type and name, or node name) a
+  developer can pass back to the layer APIs.
 - **Fault type and evaluation task**: A known, injectable defect with its correct fix. A task applies one fault to one
   model and records how an agent performed.
 
