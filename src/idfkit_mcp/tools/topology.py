@@ -134,7 +134,8 @@ def coverage_model(coverage: Coverage) -> m.Coverage:
 # ----------------------------------------------------------------------------------------------- #
 
 
-def _closest(name: str, candidates: Iterable[str]) -> str:
+def closest(name: str, candidates: Iterable[str]) -> str:
+    """A sentence naming up to five close matches of *name*, or an empty string."""
     pool = list(candidates)
     by_upper = {c.upper(): c for c in pool}
     near = difflib.get_close_matches(name.upper(), list(by_upper), n=_CLOSEST, cutoff=0.6)
@@ -174,7 +175,7 @@ def _canonical_type(doc: IDFDocument[Any], object_type: str) -> str:
         if known.upper() == wanted:
             msg = f"The model has no {known} objects."
             raise ToolError(msg)
-    msg = f"Unknown object type {object_type!r}.{_closest(object_type, schema_types)} Use search_schema to find it."
+    msg = f"Unknown object type {object_type!r}.{closest(object_type, schema_types)} Use search_schema to find it."
     raise ToolError(msg)
 
 
@@ -184,7 +185,7 @@ def find_object(doc: IDFDocument[Any], object_type: str, name: str) -> IDFObject
     obj = collection.get(name) if name else None
     if obj is None:
         names = [o.name for o in collection]
-        msg = f"No {collection.obj_type} named {name!r}.{_closest(name, names)}"
+        msg = f"No {collection.obj_type} named {name!r}.{closest(name, names)}"
         raise ToolError(msg)
     return obj
 
@@ -238,7 +239,7 @@ def _node_trace(doc: IDFDocument[Any], topo: HVACTopology, name: str, walk: dict
     except (KeyError, IndexError):
         members = _nodelist_members(doc, topo, name)
         if not members:
-            msg = f"No node or NodeList named {name!r} is used by any object.{_closest(name, topo.nodes())}"
+            msg = f"No node or NodeList named {name!r} is used by any object.{closest(name, topo.nodes())}"
             raise ToolError(msg) from None
         nodes = members
         start = m.TraceStart(object_type="NodeList", name=doc.get_collection("NodeList")[name].name)
@@ -287,7 +288,7 @@ def _object_trace(
     except KeyError:
         msg = (
             f"{obj.obj_type} {obj.name!r} has no node fields, so it has no HVAC connections. "
-            f"Read idfkit://model/references/{obj.name} to see what it references and what references it."
+            f"Call get_object_neighbourhood({obj.obj_type!r}, {obj.name!r}) to see what it references and what references it."
         )
         raise ToolError(msg) from None
     is_zone = obj.obj_type in _ZONE_TYPES
@@ -339,8 +340,8 @@ def trace_hvac(
     """Trace one HVAC node or component: its ports, producers and consumers, controls, flow up and
     downstream, and the connection findings touching it.
 
-    Nearest neighbour: the idfkit://model/references/{name} resource, for what an object references
-    and what references it. Node names are not references, so only trace_hvac sees node connections.
+    Nearest neighbour: get_object_neighbourhood, to cross layers (references and nodes together) or
+    for an object with no node fields. Use trace_hvac for loop, side, branch, position and controls.
 
     Preconditions: model loaded.
     Side effects: none.
@@ -479,7 +480,7 @@ def build_topology_summary(loop: str | None, detail: str, limit: int) -> m.HVACT
         chosen = [lp for lp in loops if lp.name.upper() == loop.strip().upper()]
         if not chosen:
             msg = (
-                f"No AirLoopHVAC, PlantLoop or CondenserLoop named {loop!r}.{_closest(loop, (lp.name for lp in loops))}"
+                f"No AirLoopHVAC, PlantLoop or CondenserLoop named {loop!r}.{closest(loop, (lp.name for lp in loops))}"
             )
             raise ToolError(msg)
         loops = chosen
@@ -543,7 +544,7 @@ def rename_node(
         result = doc.rename_node(old, new)
     except KeyError:
         topo = HVACTopology.from_document(doc)
-        msg = f"No field uses a node named {old!r}.{_closest(old, topo.nodes())}"
+        msg = f"No field uses a node named {old!r}.{closest(old, topo.nodes())}"
         raise ToolError(msg) from None
     except ValueError as e:
         raise ToolError(f"{e}. Choose another name.") from None

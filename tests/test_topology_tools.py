@@ -164,7 +164,7 @@ class TestErrors:
     async def test_an_object_without_node_fields(self, five_zone: Client[FastMCPTransport]) -> None:
         message = await trace_error(five_zone, object_type="Material", name="WD10")
         assert "no node fields" in message
-        assert "idfkit://model/references/WD10" in message
+        assert "get_object_neighbourhood(" in message
 
     async def test_an_unknown_category_lists_the_vocabulary(self, five_zone: Client[FastMCPTransport]) -> None:
         message = await trace_error(five_zone, **COIL, categories=["boilr"])

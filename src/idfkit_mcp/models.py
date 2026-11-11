@@ -943,3 +943,48 @@ class HVACTrace(BaseModel):
     downstream: list[FlowEdge]
     findings: list[TopologyFinding]
     coverage: Coverage
+
+
+# ---------------------------------------------------------------------------
+# Model graph (idfkit.graph mirrors)
+# ---------------------------------------------------------------------------
+
+GraphScalar = str | int | float | bool | None
+
+
+class GraphNode(BaseModel):
+    """A node of the model graph: an object (layer model) or a fluid node (layer topology)."""
+
+    id: str
+    kind: str  # object | node | result_fact | message; ignore kinds you do not know
+    layer: str  # model | topology | results
+    key: ObjectKey | None = None  # object nodes
+    node: str | None = None  # node nodes, model spelling
+    label: str
+    attrs: dict[str, GraphScalar] = {}  # object: category; node: fluid
+
+
+class GraphEdge(BaseModel):
+    """A directed edge of the model graph between two returned node ids."""
+
+    source: str
+    target: str
+    kind: str  # reference | flow | control | membership | result_link
+    layer: str
+    key: str  # unique per endpoint pair, e.g. reference:zone_name, flow:air_inlet_node_name
+    attrs: dict[str, GraphScalar] = {}
+
+
+class ObjectNeighbourhood(BaseModel):
+    """Response from ``get_object_neighbourhood``: a bounded subgraph around one object or node."""
+
+    start: str
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    layers: list[str]
+    unavailable: dict[str, str]
+    truncated: bool
+    omitted_nodes: int
+    frontier: list[str]  # returned ids with neighbours not returned; start a new call from one
+    results_state: Literal["fresh", "stale"] | None = None
+    coverage: Coverage
