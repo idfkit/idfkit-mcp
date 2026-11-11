@@ -2,7 +2,8 @@
 
 A maintainer tool, never packaged: it lives at the repository root and is excluded from the wheel and the sdist.
 Run it from the repository root with ``uv run python -m eval``. The command line is specified in
-``specs/001-model-knowledge-graph/contracts/eval-harness.md``; the data model in ``data-model.md`` (Evaluation).
+``specs/013-model-knowledge-graph/contracts/eval-harness.md`` in idfkit-unification; the data model in
+``data-model.md`` there (Evaluation).
 
 Modules:
 

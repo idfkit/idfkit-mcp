@@ -61,7 +61,7 @@ exclude = ["eval"]
 exclude = ["eval"]
 
 # Developer mode: build against the unreleased idfkit feature branch while the model knowledge graph
-# (specs/001-model-knowledge-graph) is developed in both repositories. The level stays declared only by
+# (idfkit-unification: specs/013-model-knowledge-graph) is developed in both repositories. The level stays declared only by
 # the exact pin in project.dependencies, which the branch satisfies, so the consumer register is unchanged.
 # Refresh after pushing to the idfkit branch: `make dev-idfkit`. Remove this table, and bump the pin
 # through bump-idfkit.yml, once idfkit is released.
