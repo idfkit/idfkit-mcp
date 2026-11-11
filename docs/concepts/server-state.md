@@ -65,6 +65,7 @@ In addition to tools, the server exposes read-only MCP resources that let client
 | `idfkit://schema/{object_type}` | Full field schema for an object type |
 | `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object |
 | `idfkit://model/references/{name}` | Inbound and outbound references for an object |
+| `idfkit://model/hvac/{loop}` | One air, plant or condenser loop in flow order |
 | `idfkit://docs/{object_type}` | Documentation URLs for an object type |
 | `idfkit://simulation/results` | Structured QA diagnostics from the most recent simulation |
 | `idfkit://simulation/peak-loads` | Peak heating/cooling load decomposition and QA analysis |

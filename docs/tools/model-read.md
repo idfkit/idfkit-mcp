@@ -94,3 +94,4 @@ The following read-only data is available via MCP resources instead of tool call
 | `idfkit://model/summary` | Model version, zones, object counts (replaces `get_model_summary`) |
 | `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object (replaces `get_object`) |
 | `idfkit://model/references/{name}` | Inbound and outbound references (replaces `get_references`) |
+| `idfkit://model/hvac/{loop}` | One HVAC loop in flow order; see [HVAC Topology Tools](hvac-topology.md) |

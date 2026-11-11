@@ -1,6 +1,6 @@
 # Tool Reference Overview
 
-`idfkit-mcp` exposes **38 tools** in eleven categories, plus **13 MCP resources** for read-only data access.
+`idfkit-mcp` exposes **42 tools** in twelve categories, plus **15 MCP resources** (10 fixed URIs and 5 URI templates) for read-only data access.
 
 ## Categories
 
@@ -8,13 +8,14 @@
 - Model read: 6 tools
 - Model write: 10 tools
 - Validation: 2 tools
-- HVAC topology: 1 tool
+- HVAC topology: 3 tools
 - Simulation: 8 tools
 - Geometry: 1 tool
 - Schedules: 1 tool
 - Weather: 2 tools
 - Migration: 1 tool
 - Documentation: 2 tools
+- Uploads: 2 tools
 
 ## Tool Catalog
 
@@ -42,7 +43,9 @@
 | Write | `clear_session` | Clear persisted session and reset state |
 | Validation | `validate_model` | Full schema and reference validation |
 | Validation | `check_model_integrity` | Run domain-level pre-simulation QA checks |
-| HVAC topology | `trace_hvac` | Trace one node or component: ports, flow up and downstream, controls, connection findings |
+| HVAC topology | `get_hvac_topology` | Summarise every loop, or one: sides as counts or in flow order, zones served, setpoint nodes, findings per code |
+| HVAC topology | `trace_hvac` | Trace one node or component: ports, loop memberships, flow up and downstream, controls, connection findings |
+| HVAC topology | `rename_node` | Rename a node in every field and `NodeList` entry that uses it |
 | Simulation | `run_simulation` | Execute EnergyPlus run |
 | Simulation | `list_output_variables` | Enumerate meters/variables |
 | Simulation | `query_timeseries` | Query time series data from SQL output |
@@ -58,6 +61,8 @@
 | Migration | `migrate_model` | Migrate IDF models forward across EnergyPlus versions |
 | Documentation | `search_docs` | Full-text search across EnergyPlus documentation |
 | Documentation | `get_doc_section` | Retrieve full content of a documentation section |
+| Uploads | `file_manager` | Upload an IDF or epJSON file from a client with no shared filesystem (MCP Apps) |
+| Uploads | `list_files` | List uploaded files, for `load_model(upload_name=...)` |
 
 ## MCP Resources
 
@@ -69,6 +74,7 @@ Read-only data is available via MCP resources without making tool calls:
 | `idfkit://schema/{object_type}` | Full field schema for an object type |
 | `idfkit://model/objects/{object_type}/{name}` | All field values for a specific object |
 | `idfkit://model/references/{name}` | Inbound and outbound references for an object |
+| `idfkit://model/hvac/{loop}` | One air, plant or condenser loop in flow order, as `get_hvac_topology(loop, detail="chain")` |
 | `idfkit://docs/{object_type}` | Documentation URLs for an object type |
 | `idfkit://simulation/results` | Structured QA diagnostics from the most recent simulation |
 | `idfkit://simulation/peak-loads` | Peak heating/cooling load decomposition and QA analysis |
@@ -78,6 +84,7 @@ Read-only data is available via MCP resources without making tool calls:
 | `ui://idfkit/schedule-viewer.html` | Interactive schedule heatmap viewer (MCP Apps) |
 | `ui://idfkit/peak-loads-viewer.html` | Interactive peak load QA/QC viewer (MCP Apps) |
 | `ui://idfkit/report-viewer.html` | Interactive tabular simulation report viewer (MCP Apps) |
+| `ui://prefab/renderer.html` | Renderer for the `file_manager` upload UI (MCP Apps) |
 
 ## Global Best Practices
 

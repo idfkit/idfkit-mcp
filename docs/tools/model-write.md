@@ -41,7 +41,8 @@ By default, guarded against deleting referenced objects.
 
 ## `rename_object`
 
-Renames an object and cascades reference updates.
+Renames an object and cascades reference updates. Node names are not references, so it never renames a
+node; use [`rename_node`](hvac-topology.md#rename_node) for that.
 
 ## `duplicate_object`
 
