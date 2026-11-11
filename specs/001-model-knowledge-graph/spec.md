@@ -75,6 +75,9 @@ therefore bind both repositories. The work in idfkit is a dependency that must l
 - Q: Should developers reach the three layers through one combined graph object, or through three separate APIs?
   → A: Three layered APIs, plus a thin combined graph view on top with one vocabulary of node and edge kinds for
   walking across layers.
+- Q: Should developers be able to export the graph to standard formats for use in other tools? → A: Yes, one format
+  in this feature: node-link JSON, written with the standard library and loadable directly by networkx and common
+  JavaScript graph tools.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -507,6 +510,11 @@ release needs no change.
   nothing until it is first used. It MUST include only the layers that are available: results only after a
   simulation, and verdicts only with the standards data installed and a standards context supplied. It MUST say
   which layers it includes.
+- **FR-057**: A developer MUST be able to export the combined view, or a bounded part of it (selected layers, node
+  and edge kinds, or the neighbourhood of a starting object within a hop limit), as node-link JSON. Each node and
+  edge carries its kind, its layer and its identity. The output MUST load unchanged into networkx's node-link reader
+  and MUST record the idfkit version, the model's EnergyPlus version and the layers included. The format MUST be
+  versioned, and a change to it follows FR-053. No other export format is part of this feature.
 
 ### Key Entities
 
@@ -648,6 +656,8 @@ release needs no change.
 - Building or rewiring HVAC systems automatically. This feature reads, checks and renames. It does not construct
   loops.
 - A visual schematic of HVAC systems.
+- Graph export formats other than node-link JSON (GraphML, RDF, database loaders). The node and edge vocabulary of
+  FR-055 is designed so they can be added later.
 - Linking or diagnosing simulation outputs that were not produced by the server in the current session, such as a
   run directory a modeller brings from OpenStudio or a colleague (Clarifications, 2026-11-11).
 - Machine-learned ranking of causes. Ranking is rule-based and explained.
