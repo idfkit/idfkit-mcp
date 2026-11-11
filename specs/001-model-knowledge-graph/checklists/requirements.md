@@ -73,3 +73,7 @@ clause so a later feature can add verdict kinds. The deferral removes FR-038a's 
 items pass again. The plan, research, data model, contracts and quickstart still describe the standards layer
 (slices 5a and 5b, `idfkit.standards`, the standards tools, R-08 to R-11 and R-26 to R-30). Re-run `/speckit-plan`
 before `/speckit-tasks`.
+
+Plan revision 2 (2026-11-11). `/speckit-plan` was re-run after passes 2 and 3. plan.md, research.md, data-model.md,
+the contracts and quickstart.md now reflect the review and the standards deferral. The deferred standards decisions
+are in `deferred-standards-research.md`. The spec is ready for `/speckit-tasks`.

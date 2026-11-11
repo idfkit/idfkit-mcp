@@ -6,23 +6,27 @@ file decides. Entries marked **checked** were verified during planning against t
 from the reports.
 
 Planning input from the user: *"a pure Python stack as much as possible; no external dependencies except for the
-PNNL standards library."*
+PNNL standards library."* Since the standards layer was deferred (spec, Clarifications, 2026-11-11), the exception
+is unused: this feature adds no third-party dependency at all.
+
+**Revision 2 (2026-11-11).** Re-planned after the spec review and the standards deferral. R-08 to R-11 and R-26 to
+R-30 moved to [deferred-standards-research.md](deferred-standards-research.md). R-12, R-13 and R-14 are rewritten,
+R-01, R-02, R-15 to R-18, R-20 to R-25 are revised, and R-31 to R-37 are new. Numbers are never reused.
 
 ---
 
 ## R-01 Stack and dependencies
 
 **Decision.** Everything new is pure Python 3.10+ using the standard library only (`dataclasses`, `enum`, `re`,
-`json`, `sqlite3`, `importlib`, `hashlib`, `subprocess`). The one new third-party dependency is PNNL's
-`building-energy-standards-data`, as an optional extra of idfkit. idfkit-mcp gains no new direct dependency: it
-reaches the PNNL data through idfkit's extra. Its existing runtime dependencies (FastMCP, `mcp`, Pydantic,
-`openstudio`) are unchanged.
+`json`, `sqlite3`, `hashlib`, `subprocess`, `random`, `statistics`). No third-party dependency is added to idfkit
+or idfkit-mcp. idfkit-mcp's existing runtime dependencies (FastMCP, `mcp`, Pydantic, `openstudio`) are unchanged,
+and its idfkit dependency stays an exact `idfkit==X` pin.
 
-**Rationale.** idfkit's core has zero third-party dependencies, and that is a published property. Every new
-capability fits in the standard library:
+**Rationale.** idfkit's core has zero third-party dependencies, and that is a published property. Every capability
+left in this feature fits in the standard library:
 - Topology is graph traversal over in-memory objects.
 - Result linking reads EnergyPlus's SQLite output, which idfkit already reads with `sqlite3`.
-- Screening is table lookups and arithmetic.
+- The evaluation's statistics are a paired bootstrap, which `random` and `statistics` cover (R-32).
 
 The user's instruction is read as "no *new* external dependencies". Removing idfkit-mcp's existing FastMCP or
 Pydantic would break the server and its constitution (Principle II requires Pydantic models).
@@ -32,8 +36,8 @@ Pydantic would break the server and its constitution (Principle II requires Pyda
   takes a few dozen lines.
 - `rdflib` or `brickschema` for semantic output. Rejected: an ontology export is out of scope, and brickschema
   needs Python 3.11 or later.
-- `pandas` for table handling. Rejected: the data is JSON lists of dicts.
-- Importing the PNNL package's query API. Rejected in R-08.
+- `scipy` or `numpy` for confidence intervals. Rejected: a percentile bootstrap over at most a few hundred tasks
+  takes well under a second in pure Python.
 
 ## R-02 Where the code lands, and the parity ledger
 
@@ -43,8 +47,8 @@ Pydantic would break the server and its constitution (Principle II requires Pyda
 |---|---|---|
 | HVAC topology, connection checks, node rename | new subpackage `idfkit.hvac`, plus `IDFDocument.rename_node` | **Yes** |
 | Result linking, message catalogue, diagnosis | `idfkit.simulation.linking` and `idfkit.simulation.parsers.err_catalog` (inside the existing `idfkit.simulation` unit) | No |
-| Surface-appropriate films | `idfkit.thermal.properties` (existing unit) | No |
-| Standards lookup, object roles, screening (envelope, lighting, ventilation) | new subpackage `idfkit.standards` | **Yes** |
+| Component categories (R-36) | `idfkit.hvac` | (same unit) |
+| Combined graph view and node-link export | new subpackage `idfkit.graph` (R-23) | **Yes** |
 
 idfkit-mcp adds tool modules that call these and hold no domain knowledge.
 
@@ -53,18 +57,16 @@ idfkit-mcp adds tool modules that call these and hold no domain knowledge.
 - **checked:** idfkit's `scripts/check_parity_ledger.py` treats every public subpackage as a *capability unit*. A
   new unit fails `make check` unless the parity ledger (`idfkit-conformance/governance/parity.toml`) and the naming
   register carry a matching row at the governance tag pinned in idfkit's `pyproject.toml`. So `idfkit.hvac` and
-  `idfkit.standards` each need a ledger row, recorded as Python-only for now (idfkit-js has neither), in a paired
+  `idfkit.graph` each need a ledger row, recorded as Python-only for now (idfkit-js has neither), in a paired
   change to idfkit-conformance.
 - Result linking deliberately extends the existing `idfkit.simulation` unit, so it needs no ledger change.
 
 **Alternatives considered.**
 - Topology inside `idfkit.references`. Rejected: node names are not object references, and mixing them would
   corrupt `get_referencing` and rename semantics (report 01, §3).
-- A single new `idfkit.graph` unit for everything. Rejected: it would bundle a core-only capability with one that
-  needs an optional dependency, and it would make the ledger row lie about what is available without the extra.
-  *Later clarification (layered APIs plus a combined view):* `idfkit.graph` does exist, but only as a thin,
-  read-only view **over** the layer units. The domain logic stays in `idfkit.hvac`, `idfkit.simulation` and
-  `idfkit.standards` (R-23).
+- A single new `idfkit.graph` unit for everything. Rejected: it would mix domain logic with the cross-layer view.
+  `idfkit.graph` exists only as a thin, read-only view **over** the layer units. The domain logic stays in
+  `idfkit.hvac` and `idfkit.simulation` (R-23).
 
 ## R-03 Identifying node fields
 
@@ -226,181 +228,117 @@ so ERR text parsing is needed only for "first occurred" timestamps, which come f
 - HTML tabular output. Rejected: it carries the same content and SQL is guaranteed on server runs.
 - Making links first-class edges in `ReferenceGraph`. Rejected: results belong to one run, while the graph is live.
 
-## R-08 Reading PNNL's standards data
-
-*Amended by R-26: the same loading rules apply to the 90.1 lighting tables, the 62.1 ventilation tables and the
-space-type mapping tables, each loaded the first time its topic is asked for.*
-
-**Decision.**
-- **Locating the data.** idfkit finds the data directory with
-  `importlib.util.find_spec("building_energy_standards_data")` and reads the JSON files under `database_files/`
-  directly, lazily, one table at a time, caching each per process. It **never imports the package**.
-- **Version.** It reads the data version from `importlib.metadata.version(...)` and puts it on every response.
-- **The extra.** It is declared as `standards = ["building-energy-standards-data>=0.3.3,<0.4; python_version <
-  '3.14'"]`.
-- **Unavailable cases.** On Python 3.14, or without the extra, standards calls raise an actionable "unavailable"
-  error naming the extra (Constitution Principle III).
-
-**Rationale. checked during planning:**
-- The package's `__init__.py` star-imports every submodule, and `client.py` opens a database and configures
-  file logging at import. `find_spec` locates the data without running any of that: verified in a clean venv,
-  where 139 files were found without importing the package.
-- The wheel declares `Requires-Python >=3.10,<3.14`, while idfkit supports 3.10 to <4.0, so the marker is
-  required.
-- `envelope_requirements_90_1.json` has 6,315 rows, with templates `90-1975`, `90.1-2004`, `2007`, `2010`, `2013`,
-  `2016`, `2019`, `2022` and `2025`. Values are in IP units (`Btu/h-ft2-F`, with 18 rows written `btu/h-ft2-F`).
-- Climate zone sets are whole zones (`ClimateZone 3`) except for subtype rows (`ClimateZone 3A`, `3B`, `3C`).
-- Surface types are the nine `intended_surface_type` values, and assembly classes are the
-  `standards_construction_type` values (`Mass`, `SteelFramed`, `WoodFramed`, `Metal Building`, `IEAD`, `Attic and
-  Other`, …).
-- 6,015 rows carry an `annotation` citation such as "From 90.1-2019 Table 5.5-5". The 300 without one are
-  `Adiabatic` building-category rows, which screening does not use.
-
-**Correction to the spec, checked:** all 288 rows whose limits are heating-degree-day formulas belong to the
-`90-1975` template. No 90.1 edition from 2004 to 2025 has one in this table. Report 02 had stated otherwise.
-FR-033 and SC-006 were amended in this planning session to require the climate-zone subtype rule instead.
-
-**Unit handling.** idfkit converts U from Btu/h·ft²·°F to W/m²·K using the factor 5.678263. It returns both
-values, with the IP value taken verbatim from the row. Unit strings are compared case-insensitively.
-
-**Alternatives considered.**
-- The package's SQLite and query API. Rejected: it has import-time side effects, and an SQL layer is needed only
-  for generic queries, which PNNL's own `besd-mcp` already offers.
-- Vendoring the tables into idfkit. Rejected under FR-038, for licence posture and to avoid duplicated
-  maintenance.
-
-## R-09 Object roles needed by envelope screening
-
-*Amended by R-27: zones also carry `space_type`, `lighting_space_type` and `ventilation_space_type`, which are
-asserted only.*
-
-**Decision.** `idfkit.standards.roles` computes roles from physics and structure only (FR-036).
-
-- **Surface class.** One of the nine PNNL surface types, from surface type, boundary condition and tilt:
-  - roof when tilt is 60° or less, floor when 120° or more, wall otherwise
-  - `GroundContact*` from a ground boundary condition
-  - `Skylight` for fenestration on a roof
-  - `GlassDoor` for a glass door
-- **Conditioned status.** `conditioned` when the zone has a thermostat and HVAC equipment, `unconditioned` when
-  it has neither, and `unknown` otherwise. Semiheated is never inferred; it must be asserted.
-- **Assembly class.**
-  - `Mass` when the construction's heat capacity per area reaches the 90.1 mass-wall threshold of 7 Btu/ft²·°F
-    (143 kJ/m²·K), computed from layer density, specific heat and thickness.
-  - `IEAD` for a roof whose insulation layer lies entirely above a structural deck, with no attic zone.
-  - `Metal Building`, `SteelFramed`, `WoodFramed` and `Attic and Other` are **never inferred**, because no field
-    of an EnergyPlus construction distinguishes them. They are `unknown` unless asserted.
-- **Name-based suggestions.** For example, a construction called "Steel Frame Wall". These are returned only as
-  `unconfirmed` and are never used in a verdict.
-
-**Rationale.** Constitution Principle III forbids values inferred from name patterns. Physics-based mass
-detection is the one framing class a model can show. Anything else is a judgement the modeller owns, which is
-what the assertion path (FR-037) is for.
-
-**Alternatives considered.**
-- Inferring steel or wood framing from layer materials. Rejected: framing is usually modelled as an equivalent
-  layer with no metal or wood material present.
-
-## R-10 Surface films
-
-**Decision.** `calculate_r_value` and `calculate_u_value` gain an optional `surface_class` argument: `wall`,
-`roof` or `floor`, defaulting to `wall`, so existing results do not change. Interior still-air films are wall
-0.12, roof (heat flow up) 0.11 and floor (heat flow down) 0.16 m²·K/W. The exterior film is 0.03 m²·K/W. Below
-grade, where the exterior film is zero, it is handled by surface class. Envelope screening always passes the
-class.
-
-**Rationale.** **checked:** `thermal/properties.py` applies the wall interior film to every surface (report 02,
-§1.1). The values are physical constants from the ASHRAE Handbook of Fundamentals and match the 90.1 Appendix A
-assumptions. Screening also honours PNNL's `u_value_includes_*_film_coefficient` flags per row.
-
-## R-11 Climate zone and standards context
-
-*Amended by R-29: the context gains the 62.1 edition, and the required items depend on the topic.*
-
-**Decision.**
-- **Source of the climate zone.** It comes from, in order:
-  1. a user or agent assertion
-  2. the weather station matching the session's weather file (by WMO, through the existing station index)
-  3. unknown
-
-  The source is reported. Station records labelled "could not be determined" count as unknown, since the index
-  already flags them.
-- **Standards context.** `{standard: "ASHRAE 90.1", edition, climate_zone, building_category}`, each with its
-  source. It lives in idfkit-mcp session state and is persisted in the session file (R-15).
-- **No defaults.** A screening with any required item missing fails with a message naming what to set (FR-032).
-
-**Rationale.** **checked:** the station index already holds `ashrae_climate_zone`, and idfkit-mcp's
-`WeatherStationModel` drops it.
-
 ## R-12 Bounded responses and token cost
+
+*Revised in revision 2. The tool list itself is decided in R-31.*
 
 **Decision.**
 - Every new tool takes a `limit` (default 20 rows) and returns `total` and `omitted` counts.
 - Loop summaries render each side as one compact string and collapse repeated parallel components (`5×
   AirTerminal:SingleDuct:VAV:Reheat`).
 - Messages are deduplicated by kind, with counts.
-- Each change that adds tools records its cost from `scripts/token_audit.py`. The sum of new tool descriptions is
-  capped so the listing grows by no more than 15% (SC-010).
+- **Listing cost (SC-010).** The cost is the whole `tools/list` response as an agent receives it: names,
+  descriptions, input schemas **and output schemas**, at 4 characters per token, as `scripts/token_audit.py`
+  counts it. **checked during planning:** at the base revision (`81d3cd6`, before this feature), the listing is
+  39 tools and about 15,300 tokens, a mean of about 390 per tool. The cap is therefore about 2,300 tokens for
+  every new tool together, plus the growth of the two changed tools, `check_model_integrity` and `analyze_peak_loads`.
+- **Keeping output schemas small.** Response models reuse one set of shared sub-models (`ObjectKey`, `Coverage`,
+  `NodeUse`, `FlowEdge`), so each appears once in `$defs`. Field descriptions live in the docs pages, not in the
+  schema. Each slice's pull request records the listing before and after.
 
 **Rationale.** Constitution Principle II. Report 01 measured a full connection dump of HospitalLowEnergy (2,607
-nodes) at about 100k tokens, and BuildingGPT found that pasting a whole graph does not help.
+nodes) at about 100k tokens, and BuildingGPT found that pasting a whole graph does not help. The spec review found
+that the earlier plan's 13 tools could not fit the cap; R-31 cuts the list to six.
 
 ## R-13 Evaluation harness
 
-**Decision.**
-- **Location.** It lives in idfkit-mcp under `eval/` and is never packaged.
-- **Code.** Pure Python using the standard library, plus the FastMCP client idfkit-mcp already depends on.
-- **Runner.** The agent is driven through a configurable **runner command**. The default is Claude Code in
-  headless mode with an MCP config pointing at the server under test, and its streamed JSON output gives tool
-  calls and tokens. So no LLM SDK becomes a dependency.
-- **Conditions.** *Baseline* runs the last released idfkit-mcp (`uvx idfkit-mcp==<previous>`). *Treatment* runs
-  the branch build. The comparison is therefore literally with and without the feature, with no feature flag in
-  the product.
-- **Running it.** A maintainer runs it on demand. It is not part of default CI: it needs EnergyPlus and model
-  credentials, and it costs money.
-- **Recorded per run.** The runner configuration, the model identifier and the git revisions.
+*Rewritten in revision 2 for FR-040a, FR-040b, FR-042 to FR-042c, FR-046, SC-008 to SC-010a. Statistics are in
+R-32, the task set in R-14 and R-33.*
 
-**Rationale.**
-- FR-042 needs with/without runs on the same agent configuration.
-- A previous release is a clean baseline that cannot drift, and it keeps disable switches out of the server.
-- Keeping the runner as an external command honours the dependency constraint and lets a maintainer swap agents.
+**Decision.**
+- **Location and code.** It lives in idfkit-mcp under `eval/`, is never packaged, and uses the standard library plus
+  the FastMCP client idfkit-mcp already depends on.
+- **Runner.** The agent is driven through a configurable runner command. The default is Claude Code in headless
+  mode with an MCP config pointing at the server under test; its streamed JSON gives tool calls and tokens. No
+  LLM SDK becomes a dependency.
+- **Baseline (FR-042c).** The baseline is idfkit-mcp at the **revision just before the feature's first change**,
+  pinned in `eval/baseline.toml` as a commit SHA and the idfkit level it pins. The harness builds both conditions
+  from git (`uv run --with` the pinned idfkit, from a `git worktree` of that SHA), so the two differ only by this
+  feature. A run against any other baseline, for example a released version, is allowed but labelled
+  `baseline_kind = "other"` in the report, and its gate verdict is marked not valid for SC-009.
+- **Ablations without product flags.** To compare the targeted tools with the neighbourhood tool (R-31), a runner
+  configuration can list tools the agent may not call, which the default runner passes as the CLI's disallowed-tools
+  option. The server is unchanged; only the agent's tool list differs. Ablation runs are labelled and never used
+  for the SC-009 gate.
+- **Prompts (FR-042b).** Each task carries a modeller-style prompt written against the symptom or goal, from a
+  small set of templates (`"The simulation of this model fails. Make it run."`, `"Zone {zone} is too cold in
+  winter. Find out why and fix it."`). A lint in `test_eval_harness.py` fails when a prompt contains the injected
+  object's name, the field name, the fault id, or the words "fault", "injected" or "bug".
+- **Recorded per task and repeat (FR-042).** Fixed or not; verified by check, by simulation or skipped; tool calls;
+  response tokens consumed; unwanted changes outside the fault's declared scope; for control tasks, any change or
+  any reported fault (a false fix); for treatment runs, which new tool was used, attributed against the task's
+  `intended_tools` (SC-010a); for diagnosis tasks, whether the agent edited the top-ranked candidate and whether
+  it was the injected object (SC-009a).
+- **Per-slice runs (FR-046).** The pull request that completes a user story includes a run over that story's fault
+  types and the comparison with the previous slice's run, and a decision record `eval/decisions/<slice>.md` when
+  the run shows no benefit on any SC-009 measure. The record names the maintainer, the decision and the reason.
+- **Running it.** A maintainer runs it on demand. It is not part of default CI: it needs EnergyPlus and model
+  credentials, and it costs money (spec, Assumptions).
+
+**Rationale.** The review found the earlier design measured the checks rather than the agent: one run per task,
+faults written alongside the checks, prompts that could reveal the fault, and a baseline that included unrelated
+changes. The disallowed-tools ablation answers FR-059's "measured saving" question without adding product surface.
 
 **Alternatives considered.**
-- An Anthropic or OpenAI SDK inside the harness. Rejected by the dependency constraint.
-- A `--disable-tools` server flag. Rejected: it adds product surface used only for testing.
+- Baseline = last release (the earlier decision). Rejected by FR-042c: a release mixes in other changes.
+- A `--disable-tools` server flag. Rejected: it adds product surface used only for testing. The runner-side
+  disallowed list does the same from outside.
+- An Anthropic or OpenAI SDK inside the harness. Rejected by R-01.
 
-## R-14 Fault catalogue and reference models
+## R-14 Task set and reference models
 
-*Amended by R-30: 13 fault types, with a lighting fault added.*
+*Rewritten in revision 2. The held-out process is R-33.*
 
 **Decision.**
-- **Catalogue.** 12 fault types, each an idfkit-based injector with a known fix and a verifier:
+- **Designed fault types (10).** Each is an idfkit-based injector with a known fix and a verifier:
   - topology (6): outlet node typo, swapped inlet and outlet, branch missing from its branch list, setpoint
-    manager on a node no flow component uses, terminal outlet not a zone inlet, water coil connected to the
-    wrong plant loop side
+    manager on a node no flow component uses, terminal outlet not a zone inlet, water coil connected to the wrong
+    plant loop side
   - results (4): undersized reheat coil, wrong heating setpoint schedule, uninsulated exterior wall, availability
     schedule off for a packaged unit
-  - standards (2): roof insulation below the limit, window SHGC above the limit
-- **Reference models.** At least 20 models are drawn from the 26.2 ExampleFiles, covering VAV with reheat,
-  chilled and hot water plant, packaged units, zone lists and HVACTemplate. The list is pinned by file name.
+- **Held-out fault types (at least 5, a third of 15).** Defined by R-33's process, so their content is not known
+  here. Their sources are listed there.
+- **Control tasks.** At least one per five fault tasks: an unmodified reference model with the same prompt
+  templates. A false fix is any model change or any reported fault.
+- **Authoring tasks (4).** Build or change an HVAC system from a description on a reference model: add a hot-water
+  reheat coil and connect it to the existing hot-water loop; add a second chiller in parallel on the chilled-water
+  supply side; add a zone with a VAV reheat terminal on an existing air loop; replace a constant-volume fan with a
+  variable-volume fan. Success is a model that passes the connection check with no error finding and simulates.
+- **Open questions (6).** Questions about a model with an answer computed by idfkit from the unmodified model and
+  committed as the key, for example "which zones served by this air loop had more than 300 unmet heating hours?"
+  or "which plant loop serves the reheat coil of zone 3?". No single new tool answers any of them directly.
+- **Reference models.** At least 20 from the 26.2 ExampleFiles, covering VAV with reheat, chilled and hot water
+  plant, packaged units, zone lists and HVACTemplate, pinned by file name. Each fault type declares the model tags
+  it applies to, and runs on every applicable model, capped at 8 models per type.
 
-**Rationale.** FR-040 and FR-041 need 10 or more fault types across all three layers and 20 or more models. The
-topology faults reuse report 01's injection method, which caught a typo the current validation misses.
+**Rationale.** FR-040, FR-040a, FR-040b and FR-041. The authoring and open-question tasks measure the two uses the
+earlier set ignored: building systems, which is most of what agents do, and questions outside the canned tools.
+The cap of 8 models per type keeps a full run near 100 tasks (R-32 sizes the repeats).
 
 ## R-15 Session persistence
 
-*Amended by R-29: `standards_context` includes `ventilation_edition`.*
+*Revised in revision 2: the standards fields left with the standards layer.*
 
 **Decision.** The idfkit-mcp session file moves from `"version": 1` to `2` and adds:
-- `standards_context`
-- `asserted_roles`, a list of `{object_type, name, role, value, asserted_at}`
-- `simulation_model_hash`
+- `simulation_model_hash`, the SHA-256 of the IDF text written for the session's last run (R-06)
+- `simulation_run_dir`, already held in memory today, so that linking can resume after a restart
 
-Version-1 files still load. Asserted roles are re-keyed on `rename_object`. Nothing is written into model files
-(clarification 2). HTTP sessions keep persistence disabled, as today, so their assertions last only as long as
-the connection, which is consistent with "session only".
+Version-1 files still load, with no simulation recorded. Nothing is written into model files. HTTP sessions keep
+persistence disabled, as today.
 
-**Rationale.** Constitution Principle V requires persisted session state with reported restore failures.
-Clarification 2 rules out sidecar files.
+**Rationale.** Constitution Principle V requires persisted session state with reported restore failures, and
+FR-026 requires staleness to be detected across restarts. The asserted roles and standards context of the earlier
+plan are deferred with the standards layer, which leaves the session file change small.
 
 ## R-16 Diagnosis ranking
 
@@ -412,6 +350,16 @@ is taken over the HVAC topology (upstream only) where available, and over the re
 links are never ranked first. Each candidate carries evidence, a reason and a verification step. No score is
 shown without the reason behind it.
 
+*Revised in revision 2 (FR-027, SC-009a):*
+- **Evidence strength.** Each candidate's evidence is `strong` (a linked result value past the rule's threshold,
+  or a connection finding), `moderate` (a linked value within the threshold, or a typed or convention link) or
+  `weak` (a free-text match only).
+- **No strong candidate.** When no candidate is `strong`, the `Diagnosis` sets `no_strong_candidate = true` and
+  its first field is a one-line statement saying so. Ranking is unchanged; the statement comes first.
+- **Cause families.** The catalogue groups its rules into families per symptom (for unmet heating: capacity,
+  control and setpoint, availability, envelope, air distribution). Every `Diagnosis` lists `families_covered`, so
+  a cause outside them, such as an EMS override, is visibly unexamined.
+
 **Rationale.** FR-027 and spec "Out of Scope" (no machine-learned ranking). The ranking is domain knowledge, so
 it lives in idfkit (Principle I).
 
@@ -419,13 +367,15 @@ it lives in idfkit (Principle I).
 
 **Decision.** Topology, checks and result linking do **not** expand templates (expansion needs EnergyPlus's
 ExpandObjects). When template objects are present, responses carry `coverage.partial = true` and list the
-template systems not covered. Their absent nodes are never reported as faults.
+template systems not covered. Their absent nodes are never reported as faults. Revision 2 folds this into the
+general `Coverage.uncovered` list of R-35.
 
 ## R-18 Reference corpus for qualifying checks
 
 **Decision.** An opt-in integration test (`pytest -m integration`) loads every 26.2 ExampleFile from
 `$ENERGYPLUS_DIR/ExampleFiles` and asserts zero error-severity topology findings. A check moves from warning to
-error only with that test green (FR-013, clarification 4). The files are not committed.
+error only with that test green (FR-013, clarification 4). The files are not committed. Earlier versions are
+measured, not used for qualification (R-34).
 
 ## R-19 Fixtures for result linking
 
@@ -438,12 +388,10 @@ The `(IDF, SQL, ERR)` triples are committed under `tests/fixtures/simulation/lin
 
 ## R-20 Consumer register impact in idfkit-mcp
 
-**Decision.** idfkit-mcp's dependency changes from `idfkit==X` to `idfkit[standards]==X`. The level is still
-declared only in `project.dependencies`.
+*Revised in revision 2.*
 
-**Risk.** The `consumer-register` job may treat the extra as a new dependency form. If it does, the change needs a
-paired register amendment in idfkit-conformance (Constitution Principle VI). This is recorded in the plan's
-Complexity Tracking.
+**Decision.** No impact. idfkit-mcp's dependency stays `idfkit==X`, an exact pin in `project.dependencies`, so the
+consumer register needs no amendment. The earlier change to `idfkit[standards]==X` left with the standards layer.
 
 ## R-21 Performance architecture
 
@@ -462,8 +410,6 @@ Measured on HospitalLowEnergy, the largest example model, on Python 3.12:
 | One topology query (trace, summary of one loop), server side, including serialization | ~1.5 µs traversal + ~1 ms framework | ≤ 5 ms per call, well under SC-011's 0.05 s |
 | Results index build, once per run | 1.8–3.1 ms | ≤ 50 ms, whatever the timeseries volume (SC-012) |
 | One results query | — | ≤ 10 ms |
-| Standards: first call in a process (envelope table load and index) | 43 + 3.9 ms | ≤ 150 ms (SC-013 allows 0.5 s) |
-| Standards: screening of a loaded model, all three topics (R-29) | — | ≤ 20 ms |
 | `ModelGraph` construction | — (stores its arguments) | ≤ 0.1 ms, with no layer built (FR-056) |
 | `ModelGraph.neighbourhood`, 3 hops, up to 200 nodes, after the topology view is cached | — | ≤ 10 ms |
 | Node-link export of the `model` and `topology` layers of the whole reference model | — | ≤ 1 s and ≤ 50 MB peak extra memory. A plan-level budget: export is a one-off developer call, not a question, so it has no SC. To be confirmed by benchmark in its slice |
@@ -503,24 +449,15 @@ Measured on HospitalLowEnergy, the largest example model, on Python 3.12:
    - The index is built on the first results question after a run, then cached on the document stamped with the
      run, so later questions never re-read the file.
    - *Measured:* 1.8 ms on a 32.5 MB file, independent of timeseries volume.
-9. **Standards data: lazy, projected, shared.**
-   - Each PNNL table is loaded on first use. Its rows are projected to the columns screening needs as tuples,
-     indexed by `(edition, climate zone set, surface type, building category)`, and the parsed JSON is discarded.
-   - The result is a process-wide, read-only cache guarded by a lock during the first load, and shared by every
-     session.
-   - Tables this feature never reads are never opened.
-   - *Measured:* the envelope table takes 43 ms to parse and 0.085 µs per indexed lookup. All tables together are
-     61.6 MB on disk.
-10. **Bounded responses are a performance rule.** Every tool has a `limit` with a small default, summaries before
+9. **Bounded responses are a performance rule.** Every tool has a `limit` with a small default, summaries before
     detail, deduplication with counts, and the 8 KB default response budget. *Measured:* an existing unbounded
     response, `get_zone_properties` on all hospital zones, takes 87 ms and returns 110 KB.
-11. **No blocking surprises in the server.** Every new tool's server-side work stays within the budgets above,
-    so a call never holds the event loop longer than an existing read tool. The first standards load (≤ 150 ms)
-    is the only cold-start cost, and it is paid once per process.
+10. **No blocking surprises in the server.** Every new tool's server-side work stays within the budgets above,
+    so a call never holds the event loop longer than an existing read tool.
 
 ### Enforcement
 
-- **Benchmarks in idfkit.** `benchmarks/bench_hvac_topology.py`, `bench_result_index.py` and `bench_standards.py`
+- **Benchmarks in idfkit.** `benchmarks/bench_hvac_topology.py`, `bench_result_index.py` and `bench_graph.py`
   use stdlib `time.perf_counter` with best-of-N. They run against the committed reference model (HospitalLowEnergy
   from the 26.2 ExampleFiles, vendored gzip-compressed into `benchmarks/fixtures/`: 4.5 MB raw, 0.24 MB
   compressed for the 24.1 file) and the linking fixtures. The benchmark needs no EnergyPlus installation.
@@ -539,8 +476,6 @@ Measured on HospitalLowEnergy, the largest example model, on Python 3.12:
   Python.
 - `pytest-benchmark` for the gate. Rejected under R-01 (no new dependency). A stdlib timer with best-of-N is
   enough for budgets with a 2× allowance.
-- Caching standards data on disk in a pre-indexed form. Rejected: 43 ms once per process is within budget, and a
-  disk cache adds invalidation and file-write concerns (Constitution Principle V).
 
 ## R-22 The developer API: public, typed and independent of the server
 
@@ -550,8 +485,8 @@ idfkit. This entry sets the rules that make that code a public API, not just an 
 
 **Decision.**
 - **One public surface per layer.** Each unit exports its public names from its package `__init__` and lists them
-  in `__all__`: `idfkit.hvac`, `idfkit.simulation` (the linking names are re-exported), `idfkit.standards`,
-  `idfkit.thermal` and `idfkit.graph` (R-23). Everything else lives in an underscore module or carries an
+  in `__all__`: `idfkit.hvac`, `idfkit.simulation` (the linking names are re-exported) and `idfkit.graph`
+  (R-23). Everything else lives in an underscore module or carries an
   underscore name. [contracts/idfkit-api.md](contracts/idfkit-api.md) is the full list.
 - **The server uses only the public surface (FR-050).** idfkit-mcp gains a test, `tests/test_public_api_only.py`,
   that parses every module under `src/idfkit_mcp/` and fails on:
@@ -562,23 +497,20 @@ idfkit. This entry sets the rules that make that code a public API, not just an 
   **checked:** idfkit-mcp passes this rule today. A grep of `src/` finds no private idfkit imports and no private
   attribute access, so the test starts green and only catches regressions.
 - **Session concepts are arguments (FR-054).** No idfkit function reads session, server or global mutable state.
-  The caller passes in:
-  - asserted roles (`asserted=` on `screen` and `compute_roles`, R-29)
-  - the standards context (`StandardsContext`, built by the caller)
-  - the run identity (`run_revision` and `run_model_hash` on `ResultIndex.build`)
-
-  The only process-wide state is the read-only standards cache (R-21, decision 9). It holds no caller data.
+  The caller passes in the run identity (`run_revision` and `run_model_hash` on `ResultIndex.build`) and the
+  `ResultIndex` itself, where a function needs results. The only process-wide state is the per-schema-version plan
+  cache (R-21, decision 1), which holds no caller data.
 - **Strict typing (FR-051).** Every public name passes pyright strict with no `# type: ignore`. Public containers
   are frozen, slotted dataclasses or `Literal` and `Enum` types, never `dict[str, Any]`. The node-link export
   (R-24) is the one place that returns JSON-shaped data, and it is typed with a recursive `JSONValue` alias.
 - **Runnable documentation (FR-052, SC-014).** Each layer gets an agent-reference template and snippet in idfkit:
-  `hvac-topology` and `standards` are new, `model-graph` is new (R-23), and `result-parsing`,
-  `thermal-properties`, `reference-tracking` and `hvac-loops` are updated. They are typed under the existing
+  `hvac-topology` and `model-graph` (R-23) are new, and `result-parsing`, `reference-tracking` and `hvac-loops`
+  are updated. They are typed under the existing
   strict snippet environment, run in `tests/test_agent_references.py`, and are re-baked by the existing
   `check-baker` gate. The human reference pages live in **idfkit-developers**, idfkit's documentation repository,
   and embed the same snippets, so a page cannot show code the test suite has not run. One snippet,
   `model-graph.py:standalone-script`, is User Story 7's independent test written out. It loads a model, lists
-  findings, traces a node and screens the envelope, using only public names.
+  findings, traces a node and walks one component's neighbourhood, using only public names.
 - **Stability (FR-053).** idfkit's existing policy applies: no breaking change within a major release, and a
   `DeprecationWarning` at least one minor release before a removal. Two existing gates make a silent break fail
   the build:
@@ -608,10 +540,8 @@ FR-050 mechanically, as Principle VII prefers, not by review alone.
   - the cached `HVACTopology` (R-05), fetched through `HVACTopology.from_document` on every walk, so it is always
     current
   - an optional `ResultIndex` passed in by the caller
-  - an optional `StandardsContext` and asserted roles passed in by the caller, from which a `ScreeningReport` is
-    computed on the first walk that reaches a verdict
 
-  Construction does no work. `ModelGraph(doc, results=..., standards=..., asserted=...)` stores its arguments and
+  Construction does no work. `ModelGraph(doc, results=...)` stores its arguments and
   returns, which meets "costs nothing until first used".
 - **Vocabulary.** It is fixed and documented, and it is the same in Python, in the export and in the server:
 
@@ -621,7 +551,6 @@ FR-050 mechanically, as Principle VII prefers, not by review alone.
   | `node` | `topology` | node name |
   | `result_fact` | `results` | owning `ObjectKey`, `metric` and `where` |
   | `message` | `results` | message kind and index within the run |
-  | `verdict` | `standards` | construction or zone `ObjectKey`, topic and check |
 
   | Edge kind | Layer | From → to |
   |---|---|---|
@@ -630,17 +559,15 @@ FR-050 mechanically, as Principle VII prefers, not by review alone.
   | `control` | `topology` | object → node it senses, sets or actuates |
   | `membership` | `topology` | component → loop object, with side, branch and position |
   | `result_link` | `results` | result fact or message → object or node, with the link confidence (R-07) |
-  | `verdict` | `standards` | verdict → construction (envelope) or zone (lighting, ventilation) |
 
   `object` is in the `model` layer because objects exist without any of the three new layers. Reference edges come
   from the existing `ReferenceGraph`. Its targets are resolved to typed `ObjectKey`s through the field's object
   list, never by name alone (the shared-names edge case).
 - **Layers present.** `model` and `topology` are always present, since both are core and need no data.
   - `results` is present only when a `ResultIndex` is passed in.
-  - `standards` is present only when a `StandardsContext` is passed in and the extra is installed.
 
   `ModelGraph.layers` lists the layers present. `ModelGraph.unavailable` maps each missing layer to its reason, for
-  example `"standards: building-energy-standards-data is not installed (pip install 'idfkit[standards]')"`. A walk
+  example `"results: no ResultIndex was passed in"`. A walk
   that asks for a kind from a missing layer returns no items of that kind and reports the reason. It never raises,
   because a partial graph is a valid graph (FR-056).
 - **Walking.** `neighbourhood(start, *, hops=1, node_kinds=None, edge_kinds=None, max_nodes=200)` is an iterative
@@ -649,7 +576,6 @@ FR-050 mechanically, as Principle VII prefers, not by review alone.
   - references: `get_references_with_fields` and `get_referencing_edges`
   - topology: the integer adjacency lists of R-21
   - results: the per-object fact and message lists
-  - standards: verdicts by construction, and by zone for lighting and ventilation (R-29)
 
   It returns a `Subgraph` with `nodes`, `edges`, `truncated`, `omitted_nodes` and `frontier`, the nodes whose
   neighbours were not expanded. Graph nodes and edges are built as dataclasses only for the items returned, per
@@ -664,8 +590,13 @@ FR-050 mechanically, as Principle VII prefers, not by review alone.
   flat. A materialised graph of HospitalLowEnergy would hold about 7k object nodes, 2.9k topology nodes and tens of
   thousands of edges per session, all duplicating the layers (FR-056 forbids that).
 - `ModelGraph` is a capability unit, so it needs a parity-ledger and naming-register row (R-02). It is
-  Python-only. This time the R-02 objection does not apply: the unit has no optional dependency of its own, and
-  `unavailable` states which layers are missing.
+  Python-only.
+- **Extensible vocabulary (FR-056, revision 2).** `NodeKind`, `EdgeKind` and `Layer` are closed sets in a given
+  release, and adding a member is a minor-version change under FR-053, never a breaking one. Code that matches on
+  kinds is documented to ignore unknown members, and the node-link reader contract (R-24) says the same. That is
+  what lets a future standards feature add `verdict` kinds and a `standards` layer.
+- **Categories (R-36).** Object nodes carry their component `category` as an attribute, and `neighbourhood` takes
+  an optional `categories` filter that keeps object nodes of those categories (and always the start).
 
 **Alternatives considered.**
 - `IDFDocument.graph()` as a method. Rejected: it would import every layer into `document.py` and tie the
@@ -706,7 +637,7 @@ FR-050 mechanically, as Principle VII prefers, not by review alone.
   ```
 
   - **Identity.** The `id` is `"<kind>:<OBJECT TYPE UPPER>:<NAME UPPER>"` for objects, `"node:<NAME UPPER>"` for
-    nodes, and a similar composite for facts, messages and verdicts. It is stable across runs of the same model. The
+    nodes, and a similar composite for facts and messages. It is stable across runs of the same model. The
     display spelling and the `ObjectKey` fields travel as attributes, so a developer can pass them back to the
     layer APIs (FR-057).
   - **Multigraph.** Two objects can be joined by both a reference and a flow edge, or by two references through
@@ -748,7 +679,6 @@ FR-053 without guessing from the shape.
 - **The tool.** `get_object_neighbourhood` (`_READ_ONLY`) builds a `ModelGraph` from the session:
   - the document
   - the session's `ResultIndex`, if the server ran a simulation in this session (FR-019)
-  - the session's `StandardsContext` and asserted roles, if the context is complete
 
   It returns `ModelGraph.neighbourhood(...)` mapped onto Pydantic mirrors. idfkit-mcp adds no node or edge kinds
   and no traversal logic. Its only job is mapping types and holding session state, as Principle I requires.
@@ -762,12 +692,12 @@ FR-053 without guessing from the shape.
     120–160 bytes, and one edge to about 80–100 bytes. To be confirmed by the `perf` protocol test in the slice
     that adds the tool.
 - **Not added.** No export tool and no export resource (FR-058). No "whole graph" mode: `start` is required.
-- **Token cost.** One tool with five parameters. Its description is measured with `scripts/token_audit.py` and
-  counts toward the 15% cap of SC-010.
+- **Token cost.** One tool with six parameters (R-36 adds `categories`). It is measured with
+  `scripts/token_audit.py` and counts toward the 15% cap of SC-010.
 
 **Rationale.** The literature scan found that a bounded graph neighbourhood helps an LLM, while the whole graph
-does not. The per-layer tools (`trace_node`, `trace_component`, `get_object_results`) remain the precise,
-layer-specific questions. The neighbourhood tool is the one cross-layer question, for example "this zone: its
+does not. The targeted tools kept by R-31 (`trace_hvac`, `get_object_results`) remain the precise, layer-specific
+questions, on the condition R-31 sets. The neighbourhood tool is the one cross-layer question, for example "this zone: its
 terminal, the coil upstream, the coil's sizing facts and the warnings linked to it" in one call.
 
 **Alternatives considered.**
@@ -778,201 +708,173 @@ terminal, the coil upstream, the coil's sizing facts and the warnings linked to 
 
 ---
 
-## Re-planning after the 2026-11-11 clarification: lighting and ventilation
+---
 
-The spec now covers three standards topics: the envelope, lighting power (90.1, space-by-space method) and
-outdoor-air ventilation (62.1). Every zone gets a space-type role, which is asserted, never computed (FR-031 to
-FR-036). R-26 to R-30 are new. R-08, R-09, R-11, R-14, R-15, R-21 and R-23 carry short amendments that point here.
-Every **checked** fact below was read from `building-energy-standards-data` 0.3.3, the wheel the earlier entries
-used.
+## Revision 2: the spec review (2026-11-11)
 
-## R-26 Lighting and ventilation tables in the standards data
+The spec review added FR-004a, FR-013a, FR-016a, FR-040a, FR-040b, FR-042a to FR-042c, FR-046, FR-059, SC-001a,
+SC-009a and SC-010a, and the standards layer was deferred. R-31 to R-37 decide how each is met.
 
-**Checked.**
+## R-31 The tool surface (FR-059, SC-010, SC-010a)
 
-| Table family | Files | Rows per edition | Units | Citation (`annotation`) |
-|---|---|---|---|---|
-| 90.1 lighting (`level_3_lighting_90_1_<edition>.json`) | 2004, 2007, 2010, 2013, 2016, 2019, 2022, 2025 | 126–158 | `W/ft2`, except 2 rows in `W/ft` in 2010, 2013 and 2016 | On all but at most one row per edition, for example "From 90.1-2019 Table 9.6.1" or "From 90.1-2022 Table 9.5.2.1-1" |
-| 62.1 ventilation (`level_3_ventilation_62_1_<edition>.json`) | 1999, 2004, 2007, 2010, 2013, 2016, 2019, 2022 | 64–110 | `cfm/person` and `cfm/ft2`, except 3 rows in `cfm/room` in 1999 | **None.** Every row's `annotation` is empty |
-| Space-type mapping | `level_1_space_types.json` (61 names), `level_2_lighting_space_types.json` (2,735 rows), `level_2_ventilation_space_types.json` (596 rows) | — | — | — |
+**Decision.** The feature adds **six** tools, not thirteen:
 
-Further facts that shape the design:
-- Each lighting row has a `method`: `BA` (building area), `SS` (space-by-space, building-specific) or `CS` (common
-  space types). The space-by-space method uses the `SS` and `CS` rows.
-- Lighting rows from 2010 onwards carry `rcr_threshold` (room cavity ratio), on 94 to 121 rows per edition. They
-  also carry control requirements (daylight-responsive, partial-off, full-off, scheduled shutoff).
-- 62.1-2004 has 7 rows where a rate is null.
-- A ventilation row gives `ventilation_rate_occupant` (Rp), `ventilation_rate_area` (Ra), a default occupant
-  density and an air class.
+| Tool | Story | Replaces in the earlier plan | Why it is not a special case of another tool |
+|---|---|---|---|
+| `trace_hvac` | US1, US4 | `trace_node` and `trace_component` | One addressing scheme (`object_type="Node"` or a component) like `get_object_neighbourhood`. Returns loop, side, branch, position and the controls acting on it already interpreted; the neighbourhood returns raw edges the agent must interpret. Kept on condition (below) |
+| `get_hvac_topology` | US4 | — | Aggregates a whole loop into a compact chain. No walk produces that |
+| `rename_node` | US4 | — | The only mutating tool |
+| `get_object_results` | US3 | — | Adds deduplicated message counts, available variables and coverage that the neighbourhood's result nodes do not carry. Kept on condition (below) |
+| `diagnose_symptom` | US6 | — | Ranking with evidence. Built only after the SC-009 gate |
+| `get_object_neighbourhood` | US7 | — | The one cross-layer walk |
 
-**Decision.**
-- **Lighting.** The lighting check reads only the `SS` and `CS` rows of the requested 90.1 edition. It converts
-  W/ft² to W/m² by multiplying by 10.7639, and returns the IP value verbatim from the row. `BA` rows are never read
-  (Clarifications). A row in `W/ft` is a per-length allowance that cannot be compared with a zone's power per area,
-  so a zone that maps to one is `cannot_tell` with that reason.
-- **Ventilation.** It converts cfm/person to L/s·person (× 0.471947) and cfm/ft² to L/s·m² (× 5.08). A row with a
-  null rate, or in `cfm/room`, yields `cannot_tell` with the reason. It never yields a zero.
-- **Ventilation citation.** The data carries none, so FR-033 cannot be met from the data alone. idfkit keeps a
-  small reviewed table that maps each 62.1 edition to the number of its minimum ventilation rate table. It holds
-  eight entries and no values. Each verdict records whether its citation came from the data source or from that
-  table (`citation_source: "data" | "idfkit"`). Each entry is checked by a person against the published edition as
-  part of the SC-006 sample, and the table numbers are not trusted before that check. This is a citation, not a
-  copy of the standard's text, so FR-038 holds.
-- **Not evaluated, and listed in `not_checked`:**
-  - lighting: room-cavity-ratio adjustments, additional allowances (decorative, retail display), control
-    requirements, exterior lighting
-  - ventilation: zone air distribution effectiveness (Ez), the system-level outdoor-air intake (Vot) and its
-    efficiency, demand-controlled ventilation, the IAQ procedure, exhaust requirements
+Changed, not new: `check_model_integrity` (a check group), `analyze_peak_loads` and the `idfkit://simulation/results`
+resource (`affected_objects` fields). Resources added: `idfkit://model/hvac/{loop}` and
+`idfkit://simulation/objects/{type}/{name}`. Resources are not in the tool listing.
 
-**Rationale.** The lighting rows cite their tables, as the envelope rows do. The ventilation rows do not, and
-inventing a citation silently would break Principle III. Labelling the source of the citation keeps the gap
-visible.
+**The condition on the two targeted tools.** In slice 4, when `get_object_neighbourhood` lands, the evaluation runs
+an ablation (R-13) on the topology and results tasks: treatment with all tools, against treatment with
+`trace_hvac` and `get_object_results` disallowed. A targeted tool stays only if removing it costs at least 20%
+more tool calls or response tokens at no lower fix rate. Otherwise it is removed before the release that would
+first publish it, so no deprecation is needed. Each tool's description names its nearest neighbour and when to use
+it instead (FR-059).
+
+**Budget.** About 2,300 tokens for six tools is about 380 per tool, the current mean. The two conditional tools
+are the first cut if the slice 4 measurement exceeds the cap.
+
+**Tool choice (SC-010a).** Each task declares `intended_tools`. The harness reports, for treatment runs, the share
+of tasks whose intended tool was used, per tool.
+
+**Rationale.** Tool-selection accuracy falls as the number of overlapping tools grows, and the cap measured in R-12
+left about 175 tokens per tool for the earlier list. Fewer, broader tools meet the cap without stripping
+descriptions.
 
 **Alternatives considered.**
-- Leaving ventilation verdicts without a citation. Rejected: FR-033 and FR-034 require one.
-- Supporting only 62.1 editions whose rows carry a citation. Rejected: none do.
+- Keep `trace_node` and `trace_component` separate. Rejected: they differ only in what the start is, which the
+  neighbourhood tool already handles with one parameter.
+- Neighbourhood only, no targeted tools. Not chosen yet: whether interpreted answers save calls is exactly what
+  the slice 4 ablation measures.
+- Exposing per-object results only as a resource. Rejected: several clients do not let the model read resources
+  on its own initiative.
 
-## R-27 The space-type role and how it resolves to a requirement row
-
-**Checked.** PNNL's mapping runs in three levels:
-
-1. A level-1 space type (61 names, for example `office` or `corridor`) names a lighting space type and a
-   ventilation space type.
-2. A level-2 row maps a lighting space type (119 names) or a ventilation space type (98 names) to a row in each
-   edition's level-3 table, through `level_3_*_definition_id`.
-3. The package's table code declares that id as the level-3 table's `INTEGER PRIMARY KEY`, assigned in insertion
-   order. In the JSON, that is the 1-based row position.
-
-The 1-based reading resolves most mappings plausibly. Measured with a token match between the space-type name and
-the row's labels, it agrees for 95–104 of 119 lighting mappings from 2004 to 2019, but only for 71 of 119 in 2022
-and 2025, and for about 60% of ventilation mappings. Spot checks find:
-- **correct:** `office_open_plan_lighting` → 2019 "Office / Open plan", `corridor_lighting` → 2019 "Corridor"
-- **a proxy chosen by PNNL:** `airport_concourse_ventilation` → 2019 "Office Buildings / Reception areas"
-- **plainly wrong:** `airport_concourse_lighting` → 2019 "Sports Arena: Playing Area / Class IV facility"
-
-The level-2 mapping is therefore PNNL's modelling convention, partly stale against the current level-3 files. It
-is not the standard.
+## R-32 Evaluation statistics (FR-042a, SC-008, SC-009)
 
 **Decision.**
-- **Roles.** Each zone gets three roles:
-  - `space_type`, from the level-1 vocabulary (61 names)
-  - optionally, `lighting_space_type` and `ventilation_space_type`, from the level-2 vocabularies, for finer
-    distinctions such as enclosed versus open-plan office. A topic-specific role wins over `space_type` for its
-    topic.
+- **Repeats.** Every task runs 3 times per condition (`--repeat 3` is the default). A task's score in a condition
+  is the mean of its repeats: fix rate, tool calls, tokens.
+- **Paired comparison.** Differences are computed per task (treatment minus baseline) and summarised by their
+  mean. The 95% confidence interval is a percentile bootstrap over tasks, 10,000 resamples, with the seed recorded
+  in `run.json`. It is computed overall, per layer and per fault type.
+- **Per-type figures.** A fault type whose interval includes zero is shown as descriptive and flagged as such in
+  `summary.md`. SC-009 is decided on the pooled tasks of the relevant layer, not per type.
+- **Gate verdict.** `summary.md` states the SC-009 verdict with each clause: effect size against 20 points or 30%
+  fewer calls, interval excludes zero, direction on held-out types, unwanted changes, false fixes on controls.
+- **Repeatability (SC-008).** The spread is the range of the overall fix rate across the 3 repeat passes of one
+  run. A second run is not needed to check it.
 
-  All three are only ever asserted (FR-036). Name-based suggestions are returned with origin `unconfirmed` and are
-  never used.
-- **Resolution.** A role is resolved through the data source's mapping, never through idfkit's own judgement: level
-  1 to level 2 by name, then level 2 to the level-3 row by 1-based id. Each verdict carries the resolved row's
-  labels (primary and secondary space type, and method), the citation, and the assumption "space type resolved
-  through the data source's space-type mapping (level 1 → level 2 → row N)". An agent and a modeller can then see
-  which row was used, and challenge it.
-- **Mapping qualification.** idfkit runs a test with the extra installed. For every supported edition, it resolves
-  every level-2 mapping and checks that the id is in range and that the row's `method` is `SS` or `CS` for
-  lighting.
-  - A person reviews the resolved labels once per data version. Any mapping judged wrong is recorded in a reviewed
-    file, `idfkit/standards/_mapping_review.py`, with the data version and a reason, and is reported upstream to
-    PNNL. The file holds no values.
-  - A zone whose role resolves through a mapping on that list is `cannot_tell`, with the reason "the data source's
-    mapping for this space type is under review", and the hint is to assert a finer topic-specific space type.
-  - A mapping is never corrected locally. A local correction would be idfkit's own standards judgement (FR-038).
-  - A new data version reruns the test, and the review list is kept only for mappings that still resolve the same
-    way.
-- **No building area method.** No role for building type is added (Clarifications).
+**Rationale.** With about 20 tasks per fault type and one run, the standard error of a fix rate near 50% is about
+11 points, wider than the effects the gate looks for. Pooling by layer and repeating three times brings the
+interval for a layer of about 50 tasks to roughly ±8 points, enough to see a 20-point effect. A bootstrap needs no
+distributional assumption and no third-party library.
 
-**Rationale.** One assertion per zone is what the clarification chose. The level-1 vocabulary keeps it to one, and
-the topic-specific roles cover cases where the level-1 name is too coarse. Showing the resolved row honours FR-005,
-and the review list keeps a known-bad mapping from producing a confident verdict (Principle III).
+**Cost.** About 100 tasks × 3 repeats × 2 conditions is about 600 agent runs for a full evaluation. Per-slice runs
+(FR-046) cover only that slice's fault types and controls, about 150 to 250 runs.
 
-**Alternatives considered.**
-- Asserting the edition's own row labels directly. Rejected: the labels change between editions, as "Atrium:
-  First Three Floors" in 2004 became "Atrium / < 20 ft in height" in 2019, so one assertion would not carry across
-  editions.
-- Trusting the level-2 mapping blindly. Rejected on the spot checks above.
-- Matching level-3 labels by text. Rejected: free-text matching is weak (FR-005) and could never feed a verdict.
-
-## R-28 Model-side lighting power and outdoor air
-
-**Checked.** Neither idfkit nor idfkit-mcp computes a zone's lighting power density or design outdoor air today.
-idfkit has `geometry.calculate_zone_floor_area`, and nothing reads `Lights`, `People` or
-`DesignSpecification:OutdoorAir` for standards purposes.
-
-**Decision.** `idfkit.standards` gains two model-side functions that need no extra (FR-006):
-- **`zone_lighting(doc)`**, for each zone:
-  - Sums installed interior lighting power over every `Lights` object that applies to the zone, directly or
-    through a `ZoneList`, `Space` or `SpaceList`.
-  - Converts by the object's calculation method: `LightingLevel` as given, `Watts/Area` times the zone or space
-    floor area, and `Watts/Person` times the design number of people from `People`.
-  - Divides by the zone floor area, giving W/m² and W/ft².
-  - Schedules are ignored, because the allowance concerns installed power. That is stated as an assumption.
-  - The zone multiplier is carried (FR-025), and it does not change a density.
-- **`zone_outdoor_air(doc)`**, for each zone:
-  - Reads the `DesignSpecification:OutdoorAir` or `DesignSpecification:OutdoorAir:SpaceList` named by the zone's
-    `Sizing:Zone`.
-  - Computes the design breathing-zone outdoor air in L/s from its method: `Flow/Person`, `Flow/Area`,
-    `Flow/Zone`, `AirChanges/Hour`, `Sum` or `Maximum`.
-  - Takes the design occupancy from `People` and the floor area and volume from geometry.
-  - A zone with no specification gets no value and the reason. A method that cannot be expressed as a design flow
-    (`IndoorAirQualityProcedure` and the proportional-control methods) gets no value and the reason, never a guess.
-- **Ventilation verdict.**
-  - It compares the model's breathing-zone outdoor air with the required Vbz = Rp·Pz + Ra·Az. Pz is the model's
-    design occupancy and Az the zone floor area.
-  - When the model gives separate per-person and per-area rates (the `Sum` method), each is also reported against
-    Rp and Ra as evidence.
-  - The verdict states the assumptions: Pz is taken from `People`, the schedules are ignored, and Ez is not
-    applied.
-
-**Rationale.** These are physics and bookkeeping, not standards knowledge, so they stay usable without the data.
-They live in `idfkit.standards` because screening is their only consumer in this feature. Using the model's own
-occupancy, rather than the table's default density, keeps the check about the model as designed.
-
-**Alternatives considered.**
-- Using the table's default occupant density for Pz. Rejected: it checks a hypothetical occupancy, not the model's.
-  The default is reported alongside the verdict for comparison.
-- Reading lighting power from simulation output. Rejected: it would make a model-only check depend on a run
-  (FR-006).
-
-## R-29 One screening entry point, by topic
+## R-33 Held-out faults (FR-040a)
 
 **Decision.**
-- **idfkit.**
-  - `screen(doc, context, *, topics=None, asserted=None) -> ScreeningReport` replaces the planned
-    `screen_envelope`, which was never released. `topics` takes values from `"envelope"`, `"lighting"` and
-    `"ventilation"`. `None` means every topic whose required context items are present.
-  - `lookup_envelope`, `lookup_lighting` and `lookup_ventilation` replace the single envelope lookup.
-  - `StandardsContext` becomes a public frozen dataclass in `idfkit.standards`. It was already an argument of
-    `ModelGraph`, but was missing from the contract.
-- **Context items required, by topic:**
-  - envelope: 90.1 edition, climate zone and building category
-  - lighting: 90.1 edition
-  - ventilation: 62.1 edition, a new context field (FR-032)
+- **Who and when.** Held-out fault types are written by a maintainer who does not write connection checks or
+  result linking for this feature, and committed to `eval/faults/held_out/` before slice 1's first check lands.
+- **Enforced by git.** `eval list-faults --check-held-out` compares, for each held-out fault file, the commit that
+  first added it with the first commit that added `idfkit.hvac.checks` at the idfkit level the treatment pins. A
+  held-out fault added later is reported as `held_out_invalid` and counted with the designed faults. The check is
+  run by the harness at the start of every run.
+- **Sources.** In order of preference: failures in idfkit-mcp agent transcripts the maintainer already holds and
+  may use (stored without model content); failure categories in published LLM model-generation studies (wrong
+  object references in Zhang, Chen and Ford 2024; debugging failures in the OSTI agentic workflow); faults
+  modellers report in idfkit and idfkit-mcp issues.
+- **Reporting.** Held-out types are a separate table in `summary.md`, and the SC-009 direction clause reads it.
 
-  A topic the caller names with any item missing fails, naming each missing item. With `topics=None`, a topic whose
-  items are missing is listed in the report's `not_evaluated` with what to set. A screening that would evaluate no
-  topic fails (Principle III).
-- **idfkit-mcp.** A single tool, `screen_standards(topics=None, limit=20)`, replaces `screen_envelope`. This
-  saves one tool description against SC-010. `lookup_standard` takes `topic` from the same three values, with
-  `space_type` required for lighting and ventilation.
-
-**Rationale.** One entry point and one report shape, with verdicts on constructions and zones, keep the graph's
-`verdict` kind uniform. One tool keeps the tool listing small.
+**Rationale.** If every fault is one a check was written for, the treatment wins by calling that check. Separating
+the authors and dating the commits makes "held out" a property anyone can verify, not a promise.
 
 **Alternatives considered.**
-- Three tools, one per topic. Rejected: they cost more in the listing for no gain in precision, because `topics`
-  filters.
-- Keeping `screen_envelope` beside a generic `screen`. Rejected: it was never released, and two names would mean
-  two ways to do the same thing.
+- Generating faults with an LLM. Not excluded as a source, but its faults count as held out only under the same
+  authorship and date rule.
 
-## R-30 Evaluation, fixtures and budgets for the new topics
+## R-34 Earlier-version corpora (FR-013a, SC-001a)
 
 **Decision.**
-- **Fault catalogue.** It grows to 13 fault types. The standards layer gains "lighting power above the allowance
-  for the asserted space type". The prompt states the space type, so the task does not depend on the agent
-  guessing it. FR-040 and FR-041 still hold.
-- **Hand-check sample (SC-006).** It gains at least five lighting and five ventilation verdicts against asserted
-  space types. It includes at least one 62.1 citation from idfkit's citation table, and at least one zone whose
-  mapping is under review, to show the `cannot_tell` path.
-- **Budgets.** The lighting and ventilation tables are 54–160 KB per edition, and the level-2 lighting mapping
-  is 1.5 MB. The first standards call stays within ≤ 150 ms (R-21), to be confirmed by `bench_standards.py` in the
-  slice. A full three-topic screening of a loaded model stays within ≤ 20 ms. Each table is loaded only when its
-  topic is first asked for.
+- **Corpora.** The ExampleFiles of EnergyPlus **9.6.0** (the last 9.x release idfkit supports) and **23.2.0**.
+  Both are in idfkit's version registry.
+- **Measurement.** The corpus test takes repeatable `--corpus VERSION=PATH` pytest options, so a maintainer points
+  it at each installation's ExampleFiles. No new environment variable is read (idfkit's environment-variable rule
+  applies to `src/` only, but the option keeps the test explicit). For each version and check it records models,
+  findings and false findings.
+- **The warning cap.** The measurement writes a committed table, `idfkit/hvac/_version_caps.py`, mapping
+  `(check id, schema version)` to a maximum severity. At run time a check's severity is capped for a model whose
+  version is in the table with a false finding. Versions between two measured ones take the cap of the nearest
+  older measured version; versions older than 9.6 take 9.6's.
+- **Publication.** The release notes of each idfkit release that changes the table list the false-finding rate per
+  version and check.
+
+**Rationale.** Most models agents receive are older than the latest release. Measuring two points, one per major
+series, finds version-specific field layouts without the cost of seventeen corpora. Capping by measurement keeps
+the clarification (26.2 qualifies checks) while stopping a known false error from reaching an older model.
+
+**Alternatives considered.**
+- Migrating older models to 26.2 before checking. Rejected: migration needs EnergyPlus, and the check must work
+  offline (FR-006).
+- Measuring every supported version. Deferred: the cost is a maintainer afternoon per version; two are enough to
+  see whether the problem exists.
+
+## R-35 Coverage and blind spots (FR-004, FR-004a)
+
+**Decision.** One shared `Coverage` shape is returned by every graph-answering tool and function:
+`{partial: bool, uncovered: list[{kind, count, examples, reason}], resolved, unresolved}`. The `uncovered` kinds
+are a closed set:
+- `hvac_template`: unexpanded `HVACTemplate:*` systems (R-17)
+- `ems_program`: `EnergyManagementSystem:Program` and `:Subroutine` objects, whose Erl text is not parsed
+- `unclassified_type`: object types with no connection rule (R-04, unknown types)
+- `unlinked_result`: result items listed as unresolved (R-07)
+
+**EMS sensors and actuators.** `EnergyManagementSystem:Sensor` key names and `EnergyManagementSystem:Actuator`
+component names are resolved to objects of a type compatible with the sensed variable or actuator component type
+where the schema allows, and linked with confidence `convention` and rule `ems_key`. They become `control` edges
+in the graph. Unresolved ones are listed. Program text is never searched for names.
+
+**Rationale.** An agent must tell "nothing found" from "not looked at" (FR-004a). EMS is the most common way a
+model's behaviour departs from what its objects say, and it is invisible to every layer otherwise.
+
+## R-36 Component categories (FR-016a)
+
+**Decision.** A committed table, `idfkit/hvac/_categories.py`, maps object types to a closed `ComponentCategory`
+vocabulary by exact type or by type prefix: `heating_coil` (`Coil:Heating:*`, and the heating halves of
+`Coil:*:WaterToAirHeatPump:*` by type name), `cooling_coil` (`Coil:Cooling:*`), `fan` (`Fan:*`), `pump`
+(`Pump:*`, `HeaderedPumps:*`), `terminal_unit` (`AirTerminal:*`, `ZoneHVAC:AirDistributionUnit`), `chiller`
+(`Chiller:*`), `boiler` (`Boiler:*`), `heat_rejection` (`CoolingTower:*`, `FluidCooler:*`,
+`EvaporativeFluidCooler:*`), `humidifier` (`Humidifier:*`), `heat_exchanger` (`HeatExchanger:*`), `zone_equipment`
+(`ZoneHVAC:*` not listed above), `unitary` (`AirLoopHVAC:Unitary*`, `AirLoopHVAC:UnitarySystem`), `outdoor_air`
+(`AirLoopHVAC:OutdoorAirSystem*`, `OutdoorAir:*`), `setpoint_manager` (`SetpointManager:*`), `controller`
+(`Controller:*`), `other`. A coverage test lists every node-bearing type without a category, and the table is
+reviewed when rules are regenerated.
+
+Categories are exposed on `NodeUse` owners, in `trace_hvac` and in graph object nodes, and as a `categories`
+filter on `trace_hvac` (upstream and downstream walks) and on `get_object_neighbourhood`.
+
+**Rationale.** Questions such as "every heating coil upstream of this zone" cross many object types. The category
+comes from the type alone, never from names, so it is a fact, not an inference (Principle III). It also gives a
+later Brick export its equipment classes.
+
+## R-37 Diagnosis anchoring (FR-027, SC-009a)
+
+**Decision.** In addition to R-16's revised output:
+- Every diagnosis fault in the catalogue has at least one variant whose true cause lies outside the rule families
+  (for example an EMS actuator overriding a setpoint). It is a held-out type under R-33 where possible.
+- The harness records, for treatment runs that call `diagnose_symptom`, whether the agent's first model change
+  targeted the top-ranked candidate, and whether that was the injected object. SC-009a compares the rate of
+  "changed a wrong top candidate" with the baseline rate of "changed a wrong object first".
+- Slice 6 does not merge with SC-009a failing.
+
+**Rationale.** A ranked list is a strong suggestion to an agent. Measuring wrong fixes made on its advice is the
+only way to see whether diagnosis helps or anchors.

@@ -9,7 +9,8 @@ here binds `001-model-knowledge-graph`. Requirement numbers (FR-030 to FR-038a, 
 spec and should be renumbered in the new one.
 
 **Research.** The evidence is unchanged: [background/02-standards-and-ontologies.md](background/02-standards-and-ontologies.md),
-and research decisions R-08 to R-11 and R-26 to R-30 in [research.md](research.md).
+and research decisions R-08 to R-11 and R-26 to R-30, kept in
+[deferred-standards-research.md](deferred-standards-research.md).
 
 ## What the future spec should settle first
 
