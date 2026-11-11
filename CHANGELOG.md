@@ -38,12 +38,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or component categories. It returns up to 20 nodes by default, and a response
   stays within 8 KB by keeping the longest breadth-first part of the walk that fits, never a partial node
   or edge; a cut walk sets `truncated`, counts `omitted_nodes` and lists the
-  `frontier` to continue from. The results layer is not linked yet, and `unavailable` says why. Errors
+  `frontier` to continue from. After a `run_simulation` in this session the walk also reaches the
+  run's results: `result_fact` and `message` nodes joined to their objects by `result_link` edges with
+  the link's `confidence` and `rule`, and `results_state` says `fresh` or `stale`; before a run, or for a
+  run with no SQLite output, `unavailable` says why. Errors
   list the closest object or node names, or the valid kinds and categories, and never pick one. There is
   no export tool; from Python, `idfkit.graph.write_node_link` writes the graph as node-link JSON. Its
   output schema lists the top-level fields only; the full shape is in `docs/tools/graph.md`. Requires
   idfkit's `idfkit.graph`. `trace_hvac` names it as its nearest neighbour, and its error for an object
   with no node fields points to it.
+- `get_object_results` returns what the last `run_simulation` in this session reported about one
+  object or node: sizing rows and tabular cells as facts (zone facts carry the zone multiplier, since
+  EnergyPlus reports them per instance), warnings and errors deduplicated by kind with occurrence
+  counts, the output variables recorded for it, and its neighbours one hop away. Each list is bounded
+  by `limit` with `total` and `omitted`, a response stays within 8 KB, `coverage` counts the run's
+  result items no rule linked, and `results_state` reads `stale` once the model changed after the run.
+  The resource `idfkit://simulation/objects/{object_type}/{name}` returns the same content. Results are
+  linked by idfkit's `ResultIndex`; `docs/tools/results.md` gives the full shape. With it the tool
+  listing goes from 17,322 tokens for 43 tools to 16,557 for 44, because `analyze_peak_loads` now
+  lists a compact output schema.
+- `run_simulation` records the document revision it simulated, the SHA-256 of the IDF text written
+  for EnergyPlus (`simulation_model_hash`) and the run directory, so later answers can say whether
+  results are fresh. `load_model`, `new_model` and `convert_osm_to_idf` forget the run.
+- `idfkit://simulation/results` adds `affected_objects` to each QA flag, `kind` and
+  `affected_objects` to each classified warning, and `link_coverage` to the summary.
+  `analyze_peak_loads` adds the zone `object`, in the model's spelling, and `flag_details`
+  (`{flag, affected_objects}`) beside the existing `flags`. No existing field changed.
 
 ### Changed
 
