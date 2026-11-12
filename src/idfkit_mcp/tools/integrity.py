@@ -257,9 +257,11 @@ def check_model_integrity() -> ModelIntegrityResult:
     - Surface boundary condition mismatches (non-reciprocal 'Surface' pairs)
     - Fenestration surfaces referencing non-existent host surfaces
     - ZoneHVAC:EquipmentConnections referencing non-existent zones
-    - HVAC node connections (category "hvac_topology", message prefixed with the code): T010 a branch
-      naming a node its component lacks, T011 consecutive branch components that do not connect,
-      T030 an inlet nothing supplies, T090/T091 what could not be checked. Beyond 50, grouped by code.
+    - HVAC connections (category "hvac_topology", message prefixed with the code): T010/T011 branch
+      nodes that do not match or connect; T001-T003 an inlet, zone inlet or zone exhaust left open;
+      T004 a control node no flow passes; T030 a branch outlet nothing takes; T012 a branch missing
+      from its BranchList; T013 a coil or boiler on the wrong plant side; T090/T091 not checked.
+      Beyond 50, grouped by code.
 
     Use this after validate_model and before run_simulation. A model can pass
     validate_model but still fail these checks.

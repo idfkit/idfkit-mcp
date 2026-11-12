@@ -44,7 +44,13 @@ start of the message:
 |---|---|---|
 | `T010` | error | A branch lists a node its component does not have |
 | `T011` | error | Consecutive branch components do not connect |
-| `T030` | warning | An inlet nothing supplies, or a branch outlet nothing takes |
+| `T001` | warning | A component inlet nothing supplies, neither a loop inlet nor outdoor air |
+| `T002` | warning | A zone inlet nothing supplies |
+| `T003` | warning | A zone exhaust nothing draws from |
+| `T004` | warning | A node only setpoint managers, sensors, controllers or actuators name |
+| `T030` | warning | A branch outlet nothing takes |
+| `T012` | warning | A branch a loop side's splitter or mixer names that its BranchList omits, or a listed branch no splitter feeds |
+| `T013` | warning | A heating or cooling coil on a PlantLoop's supply side, or a boiler on its demand side |
 | `T090` | info | Object types the view has no rule for |
 | `T091` | info | Unexpanded `HVACTemplate` systems, which the checks cannot see |
 
