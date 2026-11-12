@@ -28,7 +28,7 @@ from eval.config import (
     load_runner,
 )
 from eval.diff import ModelDiff, diff, false_fix, first_edit_target, reported_fault, snapshot, unwanted_changes
-from eval.execute import MODEL_NOTE
+from eval.execute import MODEL_NOTE, load_solved
 from eval.held_out import CHECKS_PATH, GitError, check_held_out, first_commit_adding
 from eval.lint import PromptLintError, check_prompt, lint_prompt, lint_template
 from eval.model import (
@@ -50,7 +50,9 @@ from eval.model import (
 )
 from eval.parsers import ParsedTranscript, ToolCall, claude_stream_json, get_parser
 from eval.registry import (
+    DEFAULT_MODELS_PER_TYPE,
     EVAL_DIR,
+    MAX_MODELS_PER_TYPE,
     PlannedTask,
     Registry,
     applicable_models,
@@ -383,9 +385,14 @@ def test_runner_config_matches_contract() -> None:
     runner = load_runner(EVAL_DIR / "runners" / "claude_code.toml")
     assert runner.name == "claude-code-headless"
     assert runner.command == [
-        "claude", "-p", "{prompt}", "--mcp-config", "{mcp_config}", "--strict-mcp-config",
+        "claude", "-p", "{prompt}", "--setting-sources", "", "--tools", "",
+        "--system-prompt",
+        "You are an assistant that edits EnergyPlus building energy models through the idfkit tools. "
+        "Work only through those tools.",
+        "--mcp-config", "{mcp_config}", "--strict-mcp-config",
         "--allowedTools", "mcp__idfkit", "--output-format", "stream-json", "--verbose",
     ]  # fmt: skip
+    assert runner.model == "claude-sonnet-5-5"
     assert runner.max_turns == 40
     assert (runner.max_turns_flag, runner.model_flag, runner.timeout_seconds) == ("--max-turns", "--model", 1800)
     assert runner.parse == "claude_stream_json"
@@ -890,6 +897,92 @@ def test_cli_run_hands_the_plan_to_the_runner(tmp_path: Path, monkeypatch: pytes
     assert config.bootstrap_seed == 1
     assert config.repeats == 3
     assert [p.task_id for p in plan] == ["typo_outlet@a", "undersized_coil@a", "control_review@a", "add_reheat_coil@a"]
+
+
+def test_plan_tasks_caps_models_at_the_default(tmp_path: Path) -> None:
+    registry = discover(_make_eval_dir(tmp_path))
+    models = [ReferenceModel(id=f"m{i}", file=f"m{i}.idf", version="26.2", tags=["air_loop"]) for i in range(10)]
+    example_files = _example_files(tmp_path, [m.file for m in models])
+    plan = plan_tasks(select(registry, "typo_outlet"), models, example_files=example_files, energyplus_available=True)
+    assert [p.model.id for p in plan if p.spec_id == "typo_outlet"] == ["m0", "m1", "m2"]
+    assert DEFAULT_MODELS_PER_TYPE == 3
+    assert MAX_MODELS_PER_TYPE == 8
+    wide = plan_tasks(
+        select(registry, "typo_outlet"), models, example_files=example_files, energyplus_available=True, cap=8
+    )
+    assert len([p for p in wide if p.spec_id == "typo_outlet"]) == 8
+
+
+def test_cli_run_rejects_max_models_out_of_range(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    eval_dir = _make_eval_dir(tmp_path)
+    monkeypatch.setattr(cli, "discover", lambda: discover(eval_dir))
+
+    def fake_execute(config: cli.RunConfig, plan: Sequence[PlannedTask]) -> int:
+        return 0
+
+    monkeypatch.setattr(cli, "execute_run", fake_execute)
+    args = _run_args(
+        tmp_path, "--models", str(_models_toml(tmp_path)), "--example-files", str(_example_files(tmp_path))
+    )
+    assert cli.main([*args, "--max-models", "0"]) == 2
+    assert cli.main([*args, "--max-models", "9"]) == 2
+    assert "--max-models must be between 1 and 8" in capsys.readouterr().err
+
+
+def test_cli_run_skip_solved_drops_solved_tasks_but_keeps_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    eval_dir = _make_eval_dir(tmp_path)
+    seen: list[list[PlannedTask]] = []
+
+    def fake_execute(config: cli.RunConfig, plan: Sequence[PlannedTask]) -> int:
+        seen.append(list(plan))
+        return 0
+
+    monkeypatch.setattr(cli, "discover", lambda: discover(eval_dir))
+    monkeypatch.setattr(cli, "execute_run", fake_execute)
+    pilot = tmp_path / "pilot"
+    pilot.mkdir()
+    fixed = {"typo_outlet@a": True, "control_review@a": True, "add_reheat_coil@a": False}
+    (pilot / "pilot.json").write_text(json.dumps({"fixed": fixed}), encoding="utf-8")
+    args = _run_args(
+        tmp_path, "--models", str(_models_toml(tmp_path)), "--example-files", str(_example_files(tmp_path)),
+        "--baseline", "uvx idfkit-mcp", "--skip-solved", str(pilot),
+    )  # fmt: skip
+    assert cli.main(args) == 0
+    assert [p.task_id for p in seen[0]] == ["undersized_coil@a", "control_review@a", "add_reheat_coil@a"]
+    record = json.loads((tmp_path / "out" / "skipped_solved.json").read_text(encoding="utf-8"))
+    assert record["dropped"] == ["typo_outlet@a"]
+
+
+def test_load_solved_reads_fixed_tasks_and_rejects_a_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match=r"no pilot\.json"):
+        load_solved(tmp_path)
+    (tmp_path / "pilot.json").write_text(json.dumps({"fixed": {"x@a": True, "y@a": False}}), encoding="utf-8")
+    assert load_solved(tmp_path) == {"x@a"}
+
+
+def test_cli_pilot_runs_one_baseline_session_per_task(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    eval_dir = _make_eval_dir(tmp_path)
+    seen: list[tuple[cli.RunConfig, list[PlannedTask]]] = []
+
+    def fake_pilot(config: cli.RunConfig, plan: Sequence[PlannedTask]) -> int:
+        seen.append((config, list(plan)))
+        return 0
+
+    monkeypatch.setattr(cli, "discover", lambda: discover(eval_dir))
+    monkeypatch.setattr(cli, "execute_pilot", fake_pilot)
+    args = [
+        "pilot", "--treatment", "uv run idfkit-mcp", "--out", str(tmp_path / "pilot"),
+        "--models", str(_models_toml(tmp_path)), "--example-files", str(_example_files(tmp_path)),
+        "--baseline", "uvx idfkit-mcp",
+    ]  # fmt: skip
+    assert cli.main(args) == 0
+    config, plan = seen[0]
+    assert config.repeats == 1
+    assert len(plan) == 4
 
 
 def test_cli_run_with_a_missing_runner_exits_2(

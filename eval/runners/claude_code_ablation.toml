@@ -11,14 +11,22 @@
 # --strict-mcp-config keeps the user's own MCP servers out of the run; --allowedTools pre-approves
 # the server's tools, which print mode would otherwise deny. The server is named "idfkit" in the
 # generated config, so its tools arrive as mcp__idfkit__<tool>.
+#
+# The agent sees only the server's tools: --setting-sources "" keeps the maintainer's own settings, plugins,
+# skills and CLAUDE.md out of the run, --tools "" removes Claude Code's built-in tools (file editing, shell,
+# web), and --system-prompt replaces Claude Code's default prompt with one fixed sentence. Without them each
+# call carried about 41,000 tokens of the maintainer's setup, re-read on every turn, and the agent could edit
+# the model file directly instead of through the server. --bare is not used: it disables subscription login.
 name = "claude-code-headless-ablation"
 command = [
     "claude", "-p", "{prompt}",
+    "--setting-sources", "", "--tools", "",
+    "--system-prompt", "You are an assistant that edits EnergyPlus building energy models through the idfkit tools. Work only through those tools.",
     "--mcp-config", "{mcp_config}", "--strict-mcp-config",
     "--allowedTools", "mcp__idfkit",
     "--output-format", "stream-json", "--verbose",
 ]
-model = "unset"                     # set to the agent model identifier before a run; recorded with the run
+model = "claude-sonnet-5-5"                   # set to the agent model identifier before a run; recorded with the run
 max_turns = 40
 max_turns_flag = "--max-turns"      # appended with max_turns
 model_flag = "--model"              # appended with model unless model = "unset"

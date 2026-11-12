@@ -27,6 +27,11 @@ from eval.support import default_prompt_values
 
 EVAL_DIR = Path(__file__).resolve().parent
 MAX_MODELS_PER_TYPE = 8
+"""Most reference models a fault type or task can run on; answer keys are committed for this many."""
+DEFAULT_MODELS_PER_TYPE = 3
+"""Models per fault type or task a run plans unless ``--max-models`` says otherwise. Most reference models are
+variants of the same five-zone building, so a fault on more of them adds sessions faster than it adds
+independent evidence."""
 """R-14: each fault type runs on every applicable model, capped at 8."""
 
 _D = TypeVar("_D", FaultType, TaskSpec)
@@ -283,7 +288,7 @@ def plan_tasks(
     example_files: Path | None,
     energyplus_available: bool,
     held_out_invalid: Iterable[str] = (),
-    cap: int = MAX_MODELS_PER_TYPE,
+    cap: int = DEFAULT_MODELS_PER_TYPE,
 ) -> list[PlannedTask]:
     """Expand a selection over the reference models, in a stable order (faults, then tasks; models in file order).
 

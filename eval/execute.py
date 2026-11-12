@@ -81,6 +81,7 @@ MODEL_NOTE = (
     "If you change the model, save it back to that file before you finish."
 )
 TASKS_FILE = "tasks.jsonl"
+PILOT_FILE = "pilot.json"
 
 _SUCCESS = {
     "fault": "the fault type's verifier accepts the final model",
@@ -186,6 +187,64 @@ def execute_run(config: RunConfig, plan: Sequence[PlannedTask]) -> int:
         shutil.rmtree(workroot, ignore_errors=True)
     _err(f"run complete: {config.out_dir}")
     return EXIT_OK
+
+
+def execute_pilot(config: RunConfig, plan: Sequence[PlannedTask]) -> int:
+    """Run the baseline condition once per runnable task and write ``pilot.json`` and ``transcripts/``.
+
+    The pilot is a screen, not an evaluation: it writes no ``run.json`` and decides nothing. ``run --skip-solved``
+    reads it to drop the fault, question and authoring tasks the baseline already solves, which cannot show a
+    difference between the conditions. Controls are never dropped.
+    """
+    parser = get_parser(config.runner.parse)
+    _check_executable(config.runner.command[0])
+    if config.baseline is None and config.baseline_command is None:
+        raise ConfigError("the pilot needs a baseline condition")
+    started = _now()
+    workroot = Path(tempfile.mkdtemp(prefix="idfkit-eval-pilot-"))
+    try:
+        tasks = prepare_tasks(config, plan, workroot)
+        env = {"ENERGYPLUS_DIR": str(config.energyplus_dir)} if config.energyplus_dir is not None else {}
+        with build_conditions(
+            treatment_command=config.treatment_command,
+            baseline=config.baseline,
+            baseline_command=config.baseline_command,
+            ablation=False,
+            env=env,
+        ) as conditions:
+            assert conditions.baseline is not None  # noqa: S101
+            (config.out_dir / TRANSCRIPTS_DIR).mkdir(parents=True, exist_ok=True)
+            runnable = [t for t in tasks if t.skip_reason is None]
+            results: dict[str, bool] = {}
+            for counter, item in enumerate(runnable, start=1):
+                outcome = _run_one(config, item, "baseline", 0, conditions.baseline, [], parser, workroot, counter)
+                results[item.planned.task_id] = outcome.fixed
+                state = "fixed" if outcome.fixed else "not fixed"
+                _err(f"[pilot {counter}/{len(runnable)}] {item.planned.task_id} baseline: {state}")
+        pilot = {
+            "model_identifier": config.runner.model,
+            "baseline_command": conditions.baseline.display(),
+            "started_at": started,
+            "finished_at": _now(),
+            "fixed": results,
+        }
+        (config.out_dir / PILOT_FILE).write_text(json.dumps(pilot, indent=2) + "\n", encoding="utf-8")
+    finally:
+        shutil.rmtree(workroot, ignore_errors=True)
+    _err(f"pilot complete: {config.out_dir / PILOT_FILE}")
+    return EXIT_OK
+
+
+def load_solved(pilot_dir: Path) -> set[str]:
+    """The task ids a pilot's baseline fixed, from ``<pilot_dir>/pilot.json``."""
+    path = pilot_dir / PILOT_FILE
+    if not path.is_file():
+        raise ConfigError(f"--skip-solved {pilot_dir}: no {PILOT_FILE}")
+    data = cast("dict[str, object]", json.loads(path.read_text(encoding="utf-8")))
+    fixed = data.get("fixed")
+    if not isinstance(fixed, dict):
+        raise ConfigError(f"{path}: expected an object 'fixed'")
+    return {str(task_id) for task_id, ok in cast("dict[str, object]", fixed).items() if ok is True}
 
 
 # --- preparation -----------------------------------------------------------------------------------------------------

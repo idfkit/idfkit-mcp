@@ -25,6 +25,7 @@ weather file of the harness's verification simulations; design days only when om
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import sys
 from collections.abc import Sequence
@@ -38,11 +39,20 @@ from eval.config import (
     load_reference_models,
     load_runner,
 )
-from eval.execute import RunConfig, execute_run
+from eval.execute import RunConfig, execute_pilot, execute_run, load_solved
 from eval.held_out import GitError, HeldOutReport, check_held_out
 from eval.lint import PromptLintError, check_prompt
 from eval.model import MIN_REPEATS, BaselineKind, EvaluationRun, load_run
-from eval.registry import EVAL_DIR, Registry, discover, plan_tasks, select
+from eval.registry import (
+    DEFAULT_MODELS_PER_TYPE,
+    EVAL_DIR,
+    MAX_MODELS_PER_TYPE,
+    PlannedTask,
+    Registry,
+    discover,
+    plan_tasks,
+    select,
+)
 from eval.report import SUMMARY_FILE, render_summary
 from eval.stats import DEFAULT_RESAMPLES
 
@@ -58,22 +68,19 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="run the evaluation")
-    run.add_argument("--models", type=Path, default=EVAL_DIR / "reference_models.toml")
-    run.add_argument("--faults", default="all", help='"all", a layer ("topology", "results") or comma-separated ids')
-    baseline = run.add_mutually_exclusive_group()
-    baseline.add_argument("--baseline-config", type=Path, default=EVAL_DIR / "baseline.toml")
-    baseline.add_argument("--baseline", help='baseline server command; the run is recorded as baseline_kind="other"')
-    run.add_argument("--treatment", required=True, help='treatment server command, e.g. "uv run idfkit-mcp"')
-    run.add_argument("--runner", type=Path, default=EVAL_DIR / "runners" / "claude_code.toml")
+    _add_plan_args(run)
     run.add_argument("--repeat", type=int, default=MIN_REPEATS)
-    run.add_argument("--out", type=Path, required=True)
     run.add_argument("--seed", type=int, default=None, help="bootstrap seed (random when omitted; always recorded)")
-    _add_held_out_args(run)
-    run.add_argument("--energyplus-dir", type=Path, default=None, help="EnergyPlus install (default: discovered)")
-    run.add_argument("--example-files", type=Path, default=None, help="default: <EnergyPlus install>/ExampleFiles")
     run.add_argument(
-        "--weather", type=Path, default=None, help="EPW for verification simulations (default: design days)"
+        "--skip-solved",
+        type=Path,
+        default=None,
+        metavar="PILOT_DIR",
+        help="drop the fault, question and authoring tasks a pilot's baseline fixed; controls are kept",
     )
+
+    pilot = sub.add_parser("pilot", help="run the baseline once per task to find tasks it already solves")
+    _add_plan_args(pilot)
 
     compare = sub.add_parser("compare", help="tables and gate verdict for a run; slice delta for two runs")
     compare.add_argument("runs", type=Path, nargs="+", metavar="RUN_DIR")
@@ -82,6 +89,29 @@ def build_parser() -> argparse.ArgumentParser:
     list_faults.add_argument("--check-held-out", action="store_true", help="exit 2 when a held-out fault is invalid")
     _add_held_out_args(list_faults)
     return parser
+
+
+def _add_plan_args(run: argparse.ArgumentParser) -> None:
+    run.add_argument("--models", type=Path, default=EVAL_DIR / "reference_models.toml")
+    run.add_argument("--faults", default="all", help='"all", a layer ("topology", "results") or comma-separated ids')
+    baseline = run.add_mutually_exclusive_group()
+    baseline.add_argument("--baseline-config", type=Path, default=EVAL_DIR / "baseline.toml")
+    baseline.add_argument("--baseline", help='baseline server command; the run is recorded as baseline_kind="other"')
+    run.add_argument("--treatment", required=True, help='treatment server command, e.g. "uv run idfkit-mcp"')
+    run.add_argument("--runner", type=Path, default=EVAL_DIR / "runners" / "claude_code.toml")
+    run.add_argument("--out", type=Path, required=True)
+    run.add_argument(
+        "--max-models",
+        type=int,
+        default=DEFAULT_MODELS_PER_TYPE,
+        help=f"reference models per fault type or task, 1 to {MAX_MODELS_PER_TYPE} (default {DEFAULT_MODELS_PER_TYPE})",
+    )
+    _add_held_out_args(run)
+    run.add_argument("--energyplus-dir", type=Path, default=None, help="EnergyPlus install (default: discovered)")
+    run.add_argument("--example-files", type=Path, default=None, help="default: <EnergyPlus install>/ExampleFiles")
+    run.add_argument(
+        "--weather", type=Path, default=None, help="EPW for verification simulations (default: design days)"
+    )
 
 
 def _add_held_out_args(parser: argparse.ArgumentParser) -> None:
@@ -94,6 +124,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "run":
             return cmd_run(args)
+        if args.command == "pilot":
+            return cmd_pilot(args)
         if args.command == "compare":
             return cmd_compare(args.runs)
         return cmd_list_faults(args)
@@ -108,13 +140,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     config = prepare_run(args)
     lint_definitions(config)
-    plan = plan_tasks(
-        config.selection,
-        config.models,
-        example_files=config.example_files,
-        energyplus_available=config.energyplus_dir is not None,
-        held_out_invalid=config.held_out_invalid,
-    )
+    plan = _plan(config, args.max_models)
+    if args.skip_solved is not None:
+        solved = load_solved(args.skip_solved)
+        dropped = [t.task_id for t in plan if t.kind != "control" and t.task_id in solved]
+        plan = [t for t in plan if t.task_id not in dropped]
+        _err(f"--skip-solved: dropped {len(dropped)} tasks the pilot baseline fixed (controls kept)")
+        config.out_dir.mkdir(parents=True, exist_ok=True)
+        (config.out_dir / "skipped_solved.json").write_text(
+            json.dumps({"pilot": str(args.skip_solved), "dropped": dropped}, indent=2) + "\n", encoding="utf-8"
+        )
     runnable = [task for task in plan if task.runnable]
     _err(f"planned {len(plan)} tasks, {len(runnable)} runnable, {config.repeats} repeats per condition")
     if not runnable:
@@ -123,10 +158,35 @@ def cmd_run(args: argparse.Namespace) -> int:
     return execute_run(config, plan)
 
 
-def prepare_run(args: argparse.Namespace) -> RunConfig:
+def cmd_pilot(args: argparse.Namespace) -> int:
+    config = prepare_run(args, pilot=True)
+    lint_definitions(config)
+    plan = _plan(config, args.max_models)
+    runnable = [task for task in plan if task.runnable]
+    _err(f"pilot: {len(runnable)} runnable tasks, baseline only, 1 session each")
+    if not runnable:
+        _err("no runnable tasks")
+        return EXIT_NOTHING_RUNNABLE
+    return execute_pilot(config, plan)
+
+
+def _plan(config: RunConfig, max_models: int) -> list[PlannedTask]:
+    if not 1 <= max_models <= MAX_MODELS_PER_TYPE:
+        raise ConfigError(f"--max-models must be between 1 and {MAX_MODELS_PER_TYPE}, got {max_models}")
+    return plan_tasks(
+        config.selection,
+        config.models,
+        example_files=config.example_files,
+        energyplus_available=config.energyplus_dir is not None,
+        held_out_invalid=config.held_out_invalid,
+        cap=max_models,
+    )
+
+
+def prepare_run(args: argparse.Namespace, *, pilot: bool = False) -> RunConfig:
     """Load and validate the configuration, select faults and tasks, and run the held-out check."""
-    repeats: int = args.repeat
-    if repeats < MIN_REPEATS:
+    repeats: int = 1 if pilot else args.repeat
+    if not pilot and repeats < MIN_REPEATS:
         raise ConfigError(f"--repeat must be at least {MIN_REPEATS} (FR-042a), got {repeats}")
     runner = load_runner(args.runner)
     models = load_reference_models(args.models)
@@ -154,7 +214,7 @@ def prepare_run(args: argparse.Namespace) -> RunConfig:
     weather: Path | None = args.weather
     if weather is not None and not weather.is_file():
         raise ConfigError(f"--weather {weather}: not a file")
-    seed: int = args.seed if args.seed is not None else random.SystemRandom().randrange(2**32)
+    seed: int = args.seed if getattr(args, "seed", None) is not None else random.SystemRandom().randrange(2**32)
     return RunConfig(
         registry=registry,
         selection=selection,
