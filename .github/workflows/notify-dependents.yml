@@ -103,15 +103,18 @@ jobs:
           path: conformance
           persist-credentials: false
 
-      # The dependents' order check looks this release up on PyPI. Offering before the index serves it
-      # would have every one of them reject the level it is being offered.
+      # The dependents' order check looks this release up on PyPI: first in the package's release list,
+      # then in the release's own metadata. The index caches the two separately, so both must serve it.
+      # Offering before they do would have every dependent reject the level it is being offered.
       - name: Wait until the index serves this release
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           for attempt in $(seq 1 30); do
-            if curl -fsS "https://pypi.org/pypi/$PACKAGE/$VERSION/json" >/dev/null; then
-              echo "PyPI serves $PACKAGE==$VERSION (attempt $attempt)."
+            if curl -fsS "https://pypi.org/pypi/$PACKAGE/$VERSION/json" >/dev/null \
+               && curl -fsS "https://pypi.org/pypi/$PACKAGE/json" \
+                  | python3 -c 'import json, os, sys; sys.exit(os.environ["VERSION"] not in json.load(sys.stdin).get("releases", {}))'; then
+              echo "PyPI serves $PACKAGE==$VERSION and lists it among the releases (attempt $attempt)."
               exit 0
             fi
             sleep 10

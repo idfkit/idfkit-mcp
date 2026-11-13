@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.
+- `notify-dependents.yml` waits until PyPI lists the release among the package's releases, which
+  is what each dependent's order check reads, as well as serving the release's own metadata.
 
 ## [0.12.0] - 2026-11-13
 
