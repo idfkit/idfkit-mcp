@@ -13,6 +13,11 @@
 # repository already pins on its check-consumer.yml `uses:` line. The tag is read from that line rather
 # than restated here, so the self-check and this offer can never read two different registers.
 #
+# THE OFFER NAMES ITS RELEASE. Each dispatch passes `offered_by` (`$PACKAGE $VERSION`), so the
+# dependent's pull request names the server that moved rather than only the idfkit level. Every
+# dependent's bump-idfkit.yml must declare that input: GitHub refuses a dispatch with an input the
+# workflow does not declare.
+#
 # FAILURE IS LOUD. A dispatch that does not land fails the job, after its siblings have been dispatched.
 # Without APP_ID and APP_PRIVATE_KEY (a GitHub App that can dispatch workflows in the consumers) nothing
 # can be offered, and the job fails naming the missing secret rather than succeeding by doing nothing.
@@ -98,15 +103,18 @@ jobs:
           path: conformance
           persist-credentials: false
 
-      # The dependents' order check looks this release up on PyPI. Offering before the index serves it
-      # would have every one of them reject the level it is being offered.
+      # The dependents' order check looks this release up on PyPI: first in the package's release list,
+      # then in the release's own metadata. The index caches the two separately, so both must serve it.
+      # Offering before they do would have every dependent reject the level it is being offered.
       - name: Wait until the index serves this release
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           for attempt in $(seq 1 30); do
-            if curl -fsS "https://pypi.org/pypi/$PACKAGE/$VERSION/json" >/dev/null; then
-              echo "PyPI serves $PACKAGE==$VERSION (attempt $attempt)."
+            if curl -fsS "https://pypi.org/pypi/$PACKAGE/$VERSION/json" >/dev/null \
+               && curl -fsS "https://pypi.org/pypi/$PACKAGE/json" \
+                  | python3 -c 'import json, os, sys; sys.exit(os.environ["VERSION"] not in json.load(sys.stdin).get("releases", {}))'; then
+              echo "PyPI serves $PACKAGE==$VERSION and lists it among the releases (attempt $attempt)."
               exit 0
             fi
             sleep 10
@@ -144,7 +152,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           failed=0
           for repo in $dependents; do
-            if gh workflow run bump-idfkit.yml --repo "$repo" -f idfkit_version="$IDFKIT_LEVEL"; then
+            if gh workflow run bump-idfkit.yml --repo "$repo" -f idfkit_version="$IDFKIT_LEVEL" \
+                 -f offered_by="$PACKAGE $VERSION"; then
               echo "- \`$repo\`: offered idfkit $IDFKIT_LEVEL" >> "$GITHUB_STEP_SUMMARY"
             else
               echo "- \`$repo\`: **the dispatch did not land**" >> "$GITHUB_STEP_SUMMARY"
