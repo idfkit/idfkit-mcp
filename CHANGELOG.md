@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The offer `notify-dependents.yml` sends after a release names that release: it passes
+  `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
+  says which release offered the level.
+
 ## [0.12.0] - 2026-11-13
 
 ### Added
