@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-13
+
 ### Added
 
-- The site and the README adopt the idfkit visual identity at `identity-2026.5`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag.
+- The site and the README adopt the idfkit visual identity at `identity-2026.5`. The `material` derivation and the files for `mcp.idfkit.com` are vendored under `docs/identity/` as the build of idfkit-brand wrote them; `mkdocs.yml` reads the palette, the logo, the favicon and the stylesheets from there, the fonts are self-hosted, and every page carries the favicon set, the social image and a footer with the ownership line and the family links. `docs/stylesheets/extra.css` holds layout rules only. The level is declared at `[tool.idfkit.identity]` in `pyproject.toml`, and `.github/workflows/check-identity.yml` checks the vendored files and the README header against the tag. ([#92](https://github.com/idfkit/idfkit-mcp/pull/92), [#93](https://github.com/idfkit/idfkit-mcp/pull/93))
+
+### Changed
+
+- The server requires idfkit 1.2.0, up from 1.1.1. The tools now run against that release of the library; see the [idfkit 1.2.0 changelog](https://github.com/idfkit/idfkit/blob/main/CHANGELOG.md) for its changes. ([#90](https://github.com/idfkit/idfkit-mcp/pull/90))
+
+### Fixed
+
+- The README states the server as it runs. It counts 39 tools in eleven categories, 10 resources and 4 resource templates; lists the upload tools, the `sse` transport, `--version` and the environment variables the server reads; names the tools that do not return Pydantic models; limits session persistence to the stdio transport and to authenticated or OpenAI HTTP sessions; states that no prebuilt Docker image is published; and describes the current release procedure. ([#94](https://github.com/idfkit/idfkit-mcp/pull/94))
 
 ## [0.11.1] - 2026-10-19
 
@@ -211,7 +221,8 @@ Initial public release.
 - Session persistence across server restarts.
 - PyPI trusted publishing (OIDC) for releases.
 
-[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.1...HEAD
+[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.9.3...v0.10.0
