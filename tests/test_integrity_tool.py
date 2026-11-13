@@ -106,7 +106,6 @@ class TestCheckModelIntegrity:
         state.schema = doc.schema
         doc.add(
             "ZoneHVAC:EquipmentConnections",
-            "Conn1",
             zone_name="NonExistentZone",
             zone_conditioning_equipment_list_name="",
             zone_air_inlet_node_or_nodelist_name="",

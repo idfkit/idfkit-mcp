@@ -110,6 +110,8 @@ class TestGetZoneProperties:
         assert "ExtWall" in result.zones[0].constructions
 
     async def test_hvac_connections_named(self, client: object) -> None:
+        # ZoneHVAC:EquipmentConnections has no Name field: the connection is
+        # identified by the zone it serves.
         state = get_state()
         doc = new_document()
         state.document = doc
@@ -117,7 +119,6 @@ class TestGetZoneProperties:
         doc.add("Zone", "Room")
         doc.add(
             "ZoneHVAC:EquipmentConnections",
-            "Room_HVAC",
             zone_name="Room",
             zone_conditioning_equipment_list_name="",
             zone_air_inlet_node_or_nodelist_name="",
@@ -128,4 +129,4 @@ class TestGetZoneProperties:
         )
 
         result = await call_tool(client, "get_zone_properties", {"zone_name": "Room"}, GetZonePropertiesResult)
-        assert "Room_HVAC" in result.zones[0].hvac_connections
+        assert result.zones[0].hvac_connections == ["Room"]
