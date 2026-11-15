@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal, cast
 
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import tool
-from idfkit import IDFDocument
+from idfkit.document import AnyIDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -249,7 +249,7 @@ def search_objects(
     return SearchObjectsResult.model_validate({"query": query, "count": len(matches), "matches": matches})
 
 
-def build_references(doc: IDFDocument[Literal[True]], name: str) -> ReferencesResult:
+def build_references(doc: AnyIDFDocument[Literal[True]], name: str) -> ReferencesResult:
     """Build a bidirectional references result for a given object name."""
     referencing = doc.get_referencing(name)
     referenced_by = [{"object_type": obj.obj_type, "name": obj.name} for obj in referencing]
@@ -269,7 +269,7 @@ def build_references(doc: IDFDocument[Literal[True]], name: str) -> ReferencesRe
     })
 
 
-def build_model_summary(doc: IDFDocument[Literal[True]], state: ServerState) -> ModelSummary:
+def build_model_summary(doc: AnyIDFDocument[Literal[True]], state: ServerState) -> ModelSummary:
     """Build a model summary."""
     from idfkit import version_string
 
@@ -324,7 +324,7 @@ def get_change_log(
     )
 
 
-def _find_object_by_name(doc: IDFDocument[Literal[True]], name: str) -> Any:
+def _find_object_by_name(doc: AnyIDFDocument[Literal[True]], name: str) -> Any:
     """Find any object by name across all types using collection index."""
     name_upper = name.upper()
     for collection in doc.collections.values():

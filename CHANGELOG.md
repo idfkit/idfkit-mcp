@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Tests for the schedule viewer's extraction (type limits, a schedule without limits, a named
+  lookup), for window and door counts in `get_zone_properties`, and for `check_model_integrity`
+  on an EnergyPlus 9.4 model.
+
 ### Changed
 
+- The server requires idfkit 1.3.0rc1, up from 1.2.0; see the
+  [idfkit 1.3.0-rc.1 changelog](https://github.com/idfkit/idfkit/blob/main/CHANGELOG.md) for its
+  changes.
+- The loaded model is typed as `AnyIDFDocument`, which accepts a model of any EnergyPlus release
+  idfkit supports, rather than as the 26.2 `IDFDocument`. The server loads models of 8.9 to 26.2,
+  and the old annotation let the type checker pass code that reads an object type or field only
+  26.2 has. `check_model_integrity`, `get_zone_properties` and `view_schedules` now read fields
+  through typed objects (`surface.zone_name`, `fen.building_surface_name`,
+  `limits.lower_limit_value`) instead of `obj.data.get("zone_name")` or `getattr`, so pyright
+  reports a misspelled field, or one some supported release lacks. Tool output is unchanged.
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.

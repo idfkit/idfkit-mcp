@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 from urllib.request import urlopen
 
-from idfkit import LATEST_VERSION, IDFDocument, get_schema
+from idfkit import LATEST_VERSION, get_schema
+from idfkit.document import AnyIDFDocument
 
 if TYPE_CHECKING:
     from idfkit.migration import MigrationReport
@@ -191,7 +192,7 @@ class ServerState:
     session ID on every connection.
     """
 
-    document: IDFDocument[Literal[True]] | None = None
+    document: AnyIDFDocument[Literal[True]] | None = None
     schema: EpJSONSchema | None = None
     file_path: Path | None = None
     simulation_result: SimulationResult | None = None
@@ -218,7 +219,7 @@ class ServerState:
     migration_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock, repr=False)
     simulation_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock, repr=False)
 
-    def require_model(self) -> IDFDocument[Literal[True]]:
+    def require_model(self) -> AnyIDFDocument[Literal[True]]:
         """Return the active document, auto-restoring from session if needed."""
         if self.document is None:
             self._try_restore_session()
