@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 
 from fastmcp.tools import tool
-from idfkit import IDFDocument
+from idfkit.document import AnyIDFDocument
 from mcp.types import ToolAnnotations
 
 from idfkit_mcp.models import IntegrityIssue, ModelIntegrityResult
@@ -35,7 +35,7 @@ _REQUIRED_CONTROLS = (
 )
 
 
-def _check_zones_with_no_surfaces(doc: IDFDocument) -> list[IntegrityIssue]:
+def _check_zones_with_no_surfaces(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """Every Zone must have at least one BuildingSurface:Detailed."""
     issues: list[IntegrityIssue] = []
     if "Zone" not in doc:
@@ -44,12 +44,12 @@ def _check_zones_with_no_surfaces(doc: IDFDocument) -> list[IntegrityIssue]:
     # Collect zone names referenced by surfaces
     surface_zones: set[str] = set()
     if "BuildingSurface:Detailed" in doc:
-        for surface in doc.get_collection("BuildingSurface:Detailed"):
-            zn = surface.data.get("zone_name")
+        for surface in doc["BuildingSurface:Detailed"]:
+            zn = surface.zone_name
             if zn:
                 surface_zones.add(zn.lower())
 
-    for zone in doc.get_collection("Zone"):
+    for zone in doc["Zone"]:
         if zone.name.lower() not in surface_zones:
             issues.append(
                 IntegrityIssue(
@@ -63,7 +63,7 @@ def _check_zones_with_no_surfaces(doc: IDFDocument) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_required_controls(doc: IDFDocument) -> list[IntegrityIssue]:
+def _check_required_controls(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """Required singleton control objects must be present."""
     issues: list[IntegrityIssue] = []
     for obj_type in _REQUIRED_CONTROLS:
@@ -80,7 +80,7 @@ def _check_required_controls(doc: IDFDocument) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_orphan_schedules(doc: IDFDocument) -> list[IntegrityIssue]:
+def _check_orphan_schedules(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """Schedules defined but not referenced by any other object."""
     issues: list[IntegrityIssue] = []
     for sched_type in _SCHEDULE_TYPES:
@@ -102,18 +102,18 @@ def _check_orphan_schedules(doc: IDFDocument) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_surface_boundary_mismatches(doc: IDFDocument) -> list[IntegrityIssue]:
+def _check_surface_boundary_mismatches(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """Surfaces with outside_boundary_condition='Surface' must have a valid, reciprocal partner."""
     issues: list[IntegrityIssue] = []
     if "BuildingSurface:Detailed" not in doc:
         return issues
 
-    collection = doc.get_collection("BuildingSurface:Detailed")
+    collection = doc["BuildingSurface:Detailed"]
     for surface in collection:
-        obc = surface.data.get("outside_boundary_condition", "")
+        obc = surface.outside_boundary_condition or ""
         if obc.lower() != "surface":
             continue
-        partner_name = surface.data.get("outside_boundary_condition_object", "")
+        partner_name = surface.outside_boundary_condition_object or ""
         if not partner_name:
             issues.append(
                 IntegrityIssue(
@@ -144,7 +144,7 @@ def _check_surface_boundary_mismatches(doc: IDFDocument) -> list[IntegrityIssue]
             )
             continue
         # Check reciprocal reference
-        partner_obc_obj = partner.data.get("outside_boundary_condition_object", "")
+        partner_obc_obj = partner.outside_boundary_condition_object or ""
         if partner_obc_obj.lower() != surface.name.lower():
             issues.append(
                 IntegrityIssue(
@@ -161,16 +161,16 @@ def _check_surface_boundary_mismatches(doc: IDFDocument) -> list[IntegrityIssue]
     return issues
 
 
-def _check_fenestration_hosts(doc: IDFDocument) -> list[IntegrityIssue]:
+def _check_fenestration_hosts(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """FenestrationSurface:Detailed must reference an existing BuildingSurface:Detailed."""
     issues: list[IntegrityIssue] = []
     if "FenestrationSurface:Detailed" not in doc:
         return issues
     surface_names: set[str] = set()
     if "BuildingSurface:Detailed" in doc:
-        surface_names = {s.name.lower() for s in doc.get_collection("BuildingSurface:Detailed")}
-    for fen in doc.get_collection("FenestrationSurface:Detailed"):
-        host = fen.data.get("building_surface_name", "")
+        surface_names = {s.name.lower() for s in doc["BuildingSurface:Detailed"]}
+    for fen in doc["FenestrationSurface:Detailed"]:
+        host = fen.building_surface_name or ""
         if host and host.lower() not in surface_names:
             issues.append(
                 IntegrityIssue(
@@ -187,16 +187,16 @@ def _check_fenestration_hosts(doc: IDFDocument) -> list[IntegrityIssue]:
     return issues
 
 
-def _check_hvac_zone_references(doc: IDFDocument) -> list[IntegrityIssue]:
+def _check_hvac_zone_references(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """ZoneHVAC:EquipmentConnections zone_name must reference an existing Zone."""
     issues: list[IntegrityIssue] = []
     if "ZoneHVAC:EquipmentConnections" not in doc:
         return issues
     zone_names: set[str] = set()
     if "Zone" in doc:
-        zone_names = {z.name.lower() for z in doc.get_collection("Zone")}
-    for conn in doc.get_collection("ZoneHVAC:EquipmentConnections"):
-        zn = conn.data.get("zone_name", "")
+        zone_names = {z.name.lower() for z in doc["Zone"]}
+    for conn in doc["ZoneHVAC:EquipmentConnections"]:
+        zn = conn.zone_name or ""
         if zn and zn.lower() not in zone_names:
             issues.append(
                 IntegrityIssue(
@@ -233,7 +233,7 @@ def check_model_integrity() -> ModelIntegrityResult:
     state = get_state()
     doc = state.require_model()
 
-    checks: list[tuple[str, Callable[[IDFDocument], list[IntegrityIssue]]]] = [
+    checks: list[tuple[str, Callable[[AnyIDFDocument], list[IntegrityIssue]]]] = [
         ("zones_with_no_surfaces", _check_zones_with_no_surfaces),
         ("required_simulation_controls", _check_required_controls),
         ("orphan_schedules", _check_orphan_schedules),

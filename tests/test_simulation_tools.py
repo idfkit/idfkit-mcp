@@ -424,6 +424,33 @@ class TestEnsureSqliteOutput:
         assert ctrl.output_sqlite == "Yes"
         assert ctrl.output_tabular == "Yes"
 
+    def test_overrides_output_control_files_on_9_4_model(self) -> None:
+        from idfkit import new_document
+        from idfkit.versioned import IDFDocumentV9_4, as_version
+
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = as_version(new_document(version=(9, 4, 0)), IDFDocumentV9_4)
+        doc.add("OutputControl:Files", output_sqlite="No", output_tabular="No")
+        _ensure_sqlite_output(doc)
+        ctrl = doc["OutputControl:Files"].first()
+        assert ctrl is not None
+        assert ctrl.output_sqlite == "Yes"
+        assert ctrl.output_tabular == "Yes"
+
+    def test_model_before_output_control_files_gets_sqlite(self) -> None:
+        from idfkit import new_document
+        from idfkit.versioned import IDFDocumentV9_3, as_version
+
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = as_version(new_document(version=(9, 3, 0)), IDFDocumentV9_3)
+        _ensure_sqlite_output(doc)
+        sqlite = doc["Output:SQLite"].first()
+        assert sqlite is not None
+        assert sqlite.option_type == "SimpleAndTabular"
+        assert "OutputControl:Files" not in doc
+
     def test_leaves_output_control_files_yes_unchanged(self, state_with_model: ServerState) -> None:
         from idfkit_mcp.tools.simulation import _ensure_sqlite_output
 

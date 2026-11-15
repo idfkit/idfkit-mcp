@@ -80,6 +80,31 @@ class TestCheckModelIntegrity:
         ]
         assert len(boundary_errors) >= 1
 
+    async def test_checks_read_a_model_of_an_older_release(self, client: object) -> None:
+        """The checks read fields every release shares, so a 9.4 model is checked like a 26.2 one."""
+        state = get_state()
+        doc = new_document(version=(9, 4, 0))
+        state.document = doc
+        state.schema = doc.schema
+        doc.add("Zone", "ZoneA")
+        for name, partner in (("WallA", "WallB"), ("WallB", "SomeOtherWall")):
+            doc.add(
+                "BuildingSurface:Detailed",
+                name,
+                surface_type="Wall",
+                construction_name="",
+                zone_name="ZoneA",
+                outside_boundary_condition="Surface",
+                outside_boundary_condition_object=partner,
+                validate=False,
+            )
+
+        result = await call_tool(client, "check_model_integrity", model=ModelIntegrityResult)
+
+        assert not any(i.object_name == "ZoneA" for i in result.issues)
+        mismatched = {i.object_name for i in result.issues if "reciprocal" in i.message}
+        assert mismatched == {"WallA"}
+
     async def test_fenestration_missing_host(self, client: object) -> None:
         state = get_state()
         doc = new_document()

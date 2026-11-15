@@ -14,6 +14,22 @@ from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from fastmcp.tools.base import ToolResult
 from idfkit import IDFDocument
+from idfkit.document import AnyIDFDocument
+from idfkit.versioned import (
+    IDFDocumentV9_4,
+    IDFDocumentV9_5,
+    IDFDocumentV9_6,
+    IDFDocumentV22_1,
+    IDFDocumentV22_2,
+    IDFDocumentV23_1,
+    IDFDocumentV23_2,
+    IDFDocumentV24_1,
+    IDFDocumentV24_2,
+    IDFDocumentV25_1,
+    IDFDocumentV25_2,
+    IDFDocumentV26_1,
+    as_version,
+)
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -38,6 +54,23 @@ from idfkit_mcp.state import get_state
 from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
 
 logger = logging.getLogger(__name__)
+
+# The releases that have OutputControl:Files, which EnergyPlus 9.4 introduced.
+_SINCE_9_4 = (
+    IDFDocumentV9_4,
+    IDFDocumentV9_5,
+    IDFDocumentV9_6,
+    IDFDocumentV22_1,
+    IDFDocumentV22_2,
+    IDFDocumentV23_1,
+    IDFDocumentV23_2,
+    IDFDocumentV24_1,
+    IDFDocumentV24_2,
+    IDFDocumentV25_1,
+    IDFDocumentV25_2,
+    IDFDocumentV26_1,
+    IDFDocument,
+)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
@@ -115,7 +148,7 @@ def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
     return error_detail
 
 
-def _ensure_sqlite_output(doc: IDFDocument[Literal[True]]) -> None:
+def _ensure_sqlite_output(doc: AnyIDFDocument[Literal[True]]) -> None:
     """Ensure simulations produce SQLite tabular output for downstream tools.
 
     Many read-only tools and embedded apps rely on the EnergyPlus SQLite file.
@@ -136,9 +169,10 @@ def _ensure_sqlite_output(doc: IDFDocument[Literal[True]]) -> None:
             logger.info("Updated Output:SQLite to option_type=SimpleAndTabular before simulation")
 
     # OutputControl:Files can suppress SQLite/tabular file generation even when
-    # Output:SQLite is present. Force the relevant flags to "Yes".
-    if "OutputControl:Files" in doc:
-        ctrl = doc["OutputControl:Files"].first()
+    # Output:SQLite is present. Force the relevant flags to "Yes". The type arrived
+    # in EnergyPlus 9.4, so narrow the model to those releases before reading it.
+    if doc.version >= (9, 4, 0) and "OutputControl:Files" in doc:
+        ctrl = as_version(doc, _SINCE_9_4)["OutputControl:Files"].first()
         if ctrl:
             changed = False
             if ctrl.output_sqlite != "Yes":
@@ -161,7 +195,7 @@ _REQUIRED_SUMMARY_REPORTS = frozenset({
 })
 
 
-def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
+def _ensure_summary_reports(doc: AnyIDFDocument[Literal[True]]) -> None:
     """Ensure ``Output:Table:SummaryReports`` includes reports needed by downstream tools."""
     if "Output:Table:SummaryReports" not in doc:
         doc.add(

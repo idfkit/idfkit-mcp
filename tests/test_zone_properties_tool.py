@@ -130,3 +130,40 @@ class TestGetZoneProperties:
 
         result = await call_tool(client, "get_zone_properties", {"zone_name": "Room"}, GetZonePropertiesResult)
         assert result.zones[0].hvac_connections == ["Room"]
+
+    async def test_windows_and_doors_counted_per_zone(self, client: object) -> None:
+        state = get_state()
+        doc = new_document()
+        state.document = doc
+        state.schema = doc.schema
+        for zone, wall in (("Room", "Room_Wall"), ("Other", "Other_Wall")):
+            doc.add("Zone", zone)
+            doc.add(
+                "BuildingSurface:Detailed",
+                wall,
+                surface_type="Wall",
+                construction_name="",
+                zone_name=zone,
+                outside_boundary_condition="Outdoors",
+                validate=False,
+            )
+        for name, host, kind in (
+            ("Room_Win1", "Room_Wall", "Window"),
+            ("Room_Win2", "ROOM_WALL", "Window"),
+            ("Room_Door", "Room_Wall", "Door"),
+            ("Other_Win", "Other_Wall", "Window"),
+        ):
+            doc.add(
+                "FenestrationSurface:Detailed",
+                name,
+                surface_type=kind,
+                construction_name="",
+                building_surface_name=host,
+                validate=False,
+            )
+
+        result = await call_tool(client, "get_zone_properties", {"zone_name": "Room"}, GetZonePropertiesResult)
+        counts = result.zones[0].surface_counts
+        assert counts.walls == 1
+        assert counts.windows == 2
+        assert counts.doors == 1

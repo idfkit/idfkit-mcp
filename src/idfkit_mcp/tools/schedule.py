@@ -17,7 +17,8 @@ from idfkit_mcp.schedule_viewer import SCHEDULE_VIEWER_HTML
 from idfkit_mcp.state import get_state
 
 if TYPE_CHECKING:
-    from idfkit import IDFDocument, IDFObject
+    from idfkit import IDFObject
+from idfkit.document import AnyIDFDocument
 
 logger = logging.getLogger(__name__)
 
@@ -44,33 +45,28 @@ _ALL_SCHEDULE_TYPES = (
 _MAX_SCHEDULES = 30
 
 
-def _resolve_type_limits(doc: IDFDocument[bool], limits_name: str | None) -> dict[str, object] | None:
+def _resolve_type_limits(doc: AnyIDFDocument[bool], limits_name: str | None) -> dict[str, object] | None:
     """Look up ScheduleTypeLimits and extract bounds."""
     if not limits_name:
         return None
-    collection = doc.get_collection("ScheduleTypeLimits")
-    if not collection:
-        return None
-    obj = collection.get(limits_name)
+    obj = doc["ScheduleTypeLimits"].get(limits_name)
     if obj is None:
         return None
-    lower = getattr(obj, "lower_limit_value", None)
-    upper = getattr(obj, "upper_limit_value", None)
-    numeric_type = getattr(obj, "numeric_type", None) or "Continuous"
-    unit_type = getattr(obj, "unit_type", None) or "Dimensionless"
+    lower = obj.lower_limit_value
+    upper = obj.upper_limit_value
     return {
         "name": limits_name,
         "lower": float(lower) if lower is not None else None,
         "upper": float(upper) if upper is not None else None,
-        "numericType": str(numeric_type),
-        "unitType": str(unit_type),
+        "numericType": obj.numeric_type or "Continuous",
+        "unitType": obj.unit_type or "Dimensionless",
     }
 
 
 def _evaluate_one(
     obj: IDFObject,
     obj_type: str,
-    doc: IDFDocument[bool],
+    doc: AnyIDFDocument[bool],
     year: int,
 ) -> dict[str, object] | None:
     """Evaluate a single schedule object, returning None on failure."""
@@ -79,11 +75,12 @@ def _evaluate_one(
     try:
         vals = values(obj, year=year, document=doc)
     except ScheduleEvaluationError as e:
-        logger.warning("Failed to evaluate schedule '%s': %s", getattr(obj, "name", "?"), e)
+        logger.warning("Failed to evaluate schedule '%s': %s", obj.name, e)
         return None
+    # Schedule:Week:* types have no type limits, so the field is looked up, not read.
     limits_name = getattr(obj, "schedule_type_limits_name", None)
     return {
-        "name": getattr(obj, "name", "") or "",
+        "name": obj.name,
         "objectType": obj_type,
         "values": [round(v, 4) for v in vals],
         "typeLimits": _resolve_type_limits(doc, str(limits_name) if limits_name else None),
@@ -92,7 +89,7 @@ def _evaluate_one(
 
 def _find_schedule_by_name(
     name: str,
-    doc: IDFDocument[bool],
+    doc: AnyIDFDocument[bool],
     year: int,
 ) -> tuple[list[dict[str, object]], list[str]]:
     """Search all schedule types for a specific named schedule."""
@@ -117,7 +114,7 @@ def _find_schedule_by_name(
 
 
 def _collect_all_schedules(
-    doc: IDFDocument[bool],
+    doc: AnyIDFDocument[bool],
     year: int,
 ) -> tuple[list[dict[str, object]], list[str]]:
     """Collect and evaluate all top-level schedules from the model."""
@@ -134,7 +131,7 @@ def _collect_all_schedules(
             if result is not None:
                 schedules.append(result)
             else:
-                skipped.append(str(getattr(obj, "name", "?") or "?"))
+                skipped.append(obj.name or "?")
     return schedules, skipped
 
 

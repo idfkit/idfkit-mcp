@@ -15,7 +15,7 @@ import idfkit
 from fastmcp import Context
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import tool
-from idfkit import IDFDocument
+from idfkit.document import AnyIDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -243,7 +243,7 @@ async def migrate_model(
         except UnsupportedVersionError as exc:
             raise ToolError(str(exc)) from exc
 
-        migrated_doc = cast("IDFDocument[Literal[True]] | None", report.migrated_model)
+        migrated_doc = cast("AnyIDFDocument[Literal[True]] | None", report.migrated_model)
         state.document = migrated_doc
         if migrated_doc is not None:
             state.schema = migrated_doc.schema

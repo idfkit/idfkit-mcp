@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastmcp.tools import tool
-from idfkit import IDFDocument, IDFObject
+from idfkit import IDFObject
+from idfkit.document import AnyIDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from idfkit_mcp.models import GetZonePropertiesResult, SurfaceTypeCounts, ZoneProperties
 from idfkit_mcp.state import get_state
+
+if TYPE_CHECKING:
+    from idfkit.document import AnyBuildingSurfaceDetailed
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ _SURFACE_TYPE_MAP: dict[str, str] = {
 
 
 def _zone_geometry(
-    doc: IDFDocument, zone_name: str, has_surfaces: bool
+    doc: AnyIDFDocument, zone_name: str, has_surfaces: bool
 ) -> tuple[float | None, float | None, float | None]:
     """Return (floor_area_m2, volume_m3, height_m) or (None, None, None) if no surfaces."""
     if not has_surfaces:
@@ -47,46 +51,50 @@ def _zone_geometry(
         return None, None, None
 
 
-def _surface_counts(refs: set[IDFObject]) -> tuple[SurfaceTypeCounts, set[str]]:
-    """Count surfaces by type for a zone; return counts and set of host surface names."""
-    counts = SurfaceTypeCounts()
-    host_surfaces: set[str] = set()
-
-    for surface in refs:
-        if surface.obj_type != "BuildingSurface:Detailed":
+def _zone_surfaces(doc: AnyIDFDocument, refs: set[IDFObject]) -> list[AnyBuildingSurfaceDetailed]:
+    """The zone's BuildingSurface:Detailed objects, typed as every EnergyPlus release declares them."""
+    collection = doc["BuildingSurface:Detailed"]
+    surfaces: list[AnyBuildingSurfaceDetailed] = []
+    for obj in refs:
+        if obj.obj_type != "BuildingSurface:Detailed":
             continue
-        host_surfaces.add(surface.name.lower())
-        surface_type = surface.data.get("surface_type", "").lower()
+        surface = collection.get(obj.name)
+        if surface is not None:
+            surfaces.append(surface)
+    return surfaces
+
+
+def _surface_counts(surfaces: list[AnyBuildingSurfaceDetailed]) -> SurfaceTypeCounts:
+    """Count a zone's surfaces by type."""
+    counts = SurfaceTypeCounts()
+    for surface in surfaces:
+        surface_type = (surface.surface_type or "").lower()
         bucket = _SURFACE_TYPE_MAP.get(surface_type, "other")
         setattr(counts, bucket, getattr(counts, bucket) + 1)
+    return counts
 
-    return counts, host_surfaces
 
-
-def _fenestration_counts(doc: IDFDocument, host_surfaces: set[str]) -> tuple[int, int]:
-    """Count windows and doors for surfaces in this zone."""
+def _fenestration_counts(doc: AnyIDFDocument, surfaces: list[AnyBuildingSurfaceDetailed]) -> tuple[int, int]:
+    """Count windows and doors hosted by a zone's surfaces."""
+    collection = doc["FenestrationSurface:Detailed"]
     windows = doors = 0
-    for host_name in host_surfaces:
-        for fen in doc.get_referencing(host_name):
-            if fen.obj_type != "FenestrationSurface:Detailed":
+    for surface in surfaces:
+        for obj in doc.get_referencing(surface.name):
+            if obj.obj_type != "FenestrationSurface:Detailed":
                 continue
-            if fen.data.get("surface_type", "").lower() == "door":
+            fen = collection.get(obj.name)
+            if fen is None:
+                continue
+            if (fen.surface_type or "").lower() == "door":
                 doors += 1
             else:
                 windows += 1
     return windows, doors
 
 
-def _zone_constructions(refs: set[IDFObject]) -> list[str]:
-    """Unique construction names used by surfaces in this zone."""
-    names: set[str] = set()
-    for surface in refs:
-        if surface.obj_type != "BuildingSurface:Detailed":
-            continue
-        cn = surface.data.get("construction_name", "")
-        if cn:
-            names.add(cn)
-    return sorted(names)
+def _zone_constructions(surfaces: list[AnyBuildingSurfaceDetailed]) -> list[str]:
+    """Unique construction names used by a zone's surfaces."""
+    return sorted({surface.construction_name for surface in surfaces if surface.construction_name})
 
 
 def _zone_schedules(refs: set[IDFObject]) -> list[str]:
@@ -119,12 +127,13 @@ def _zone_thermostats(refs: set[IDFObject]) -> list[str]:
     return [obj.name for obj in refs if obj.obj_type == "ZoneControl:Thermostat" and obj.name]
 
 
-def _build_zone_properties(doc: IDFDocument, zone_name: str) -> ZoneProperties:
+def _build_zone_properties(doc: AnyIDFDocument, zone_name: str) -> ZoneProperties:
     """Build a ZoneProperties summary for one zone."""
     refs = doc.get_referencing(zone_name)
-    counts, host_surfaces = _surface_counts(refs)
-    has_surfaces = len(host_surfaces) > 0
-    windows, doors = _fenestration_counts(doc, host_surfaces)
+    surfaces = _zone_surfaces(doc, refs)
+    counts = _surface_counts(surfaces)
+    has_surfaces = len(surfaces) > 0
+    windows, doors = _fenestration_counts(doc, surfaces)
     counts.windows = windows
     counts.doors = doors
 
@@ -136,7 +145,7 @@ def _build_zone_properties(doc: IDFDocument, zone_name: str) -> ZoneProperties:
         volume_m3=vol,
         height_m=height,
         surface_counts=counts,
-        constructions=_zone_constructions(refs),
+        constructions=_zone_constructions(surfaces),
         schedules=_zone_schedules(refs),
         hvac_connections=_zone_hvac_connections(refs, zone_name),
         thermostats=_zone_thermostats(refs),
