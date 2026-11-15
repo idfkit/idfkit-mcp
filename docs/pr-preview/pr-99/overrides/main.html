@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {#- The head tags of docs/identity/hosts/mcp.idfkit.com/head.html, served from the vendored
+      directory under docs/identity/ rather than from the host's root. The SVG icon is already
+      emitted by base.html from theme.favicon, so it is not restated here. The two theme-color
+      lines are pasted verbatim from head.html; the check exempts a line that equals one of its. -#}
+  {% set identity_host = "identity/hosts/mcp.idfkit.com/" %}
+  <link rel="icon" href="{{ (identity_host ~ 'favicon.ico') | url }}" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="{{ (identity_host ~ 'apple-touch-icon.png') | url }}">
+  <link rel="manifest" href="{{ (identity_host ~ 'manifest.webmanifest') | url }}">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#060a14">
+  <meta property="og:image" content="{{ config.site_url }}{{ identity_host }}og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{{ config.site_url }}{{ identity_host }}og.png">
+{% endblock %}
