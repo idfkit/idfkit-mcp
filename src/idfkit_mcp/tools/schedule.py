@@ -18,7 +18,7 @@ from idfkit_mcp.state import get_state
 
 if TYPE_CHECKING:
     from idfkit import IDFObject
-from idfkit.document import AnyIDFDocument
+    from idfkit.document import AnyIDFDocument
 
 logger = logging.getLogger(__name__)
 

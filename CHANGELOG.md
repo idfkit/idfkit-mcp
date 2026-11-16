@@ -7,26 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Tests for the schedule viewer's extraction (type limits, a schedule without limits, a named
-  lookup), for window and door counts in `get_zone_properties`, for `check_model_integrity`
-  on an EnergyPlus 9.4 model, and for the pre-simulation output settings on 9.3 and 9.4 models.
-
 ### Changed
 
-- The loaded model is typed as `AnyIDFDocument`, which idfkit 1.3.0rc1 added and which accepts a
-  model of any EnergyPlus release idfkit supports, rather than as the 26.2 `IDFDocument`. The
-  server loads models of 8.9 to 26.2, and the old annotation let the type checker pass code that
-  reads an object type or field only 26.2 has. `check_model_integrity`, `get_zone_properties` and
-  `view_schedules` now read fields through typed objects (`surface.zone_name`,
-  `fen.building_surface_name`, `limits.lower_limit_value`) instead of `obj.data.get("zone_name")`
-  or `getattr`, so pyright reports a misspelled field, or one some supported release lacks. Tool
-  output is unchanged.
-- Before a simulation, `run_simulation` reads `OutputControl:Files` only on a model of 9.4 or
-  later, the releases that have it, and narrows the model to those releases with `as_version`.
-  A `"OutputControl:Files" in doc` check used to narrow the model to the 26.2 type, so a 9.4
-  model's control object was type-checked against the 26.2 declaration.
+- The server types the loaded model as idfkit's `AnyIDFDocument`, which covers every
+  EnergyPlus release from 8.9 to 26.2, instead of as the 26.2 `IDFDocument`, and
+  `check_model_integrity`, `get_zone_properties`, `view_schedules` and `run_simulation` read
+  fields through typed objects, so pyright reports a misspelled field or one some supported
+  release lacks. Tool output is unchanged. ([#99](https://github.com/idfkit/idfkit-mcp/pull/99))
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.

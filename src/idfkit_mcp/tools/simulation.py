@@ -28,6 +28,7 @@ from idfkit.versioned import (
     IDFDocumentV25_1,
     IDFDocumentV25_2,
     IDFDocumentV26_1,
+    IDFDocumentV26_2,
     as_version,
 )
 from mcp.types import ToolAnnotations
@@ -55,7 +56,10 @@ from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
 
 logger = logging.getLogger(__name__)
 
-# The releases that have OutputControl:Files, which EnergyPlus 9.4 introduced.
+# The releases that have OutputControl:Files, which EnergyPlus 9.4 introduced. At run time
+# as_version reads IDFDocument as the latest release, so every release from 9.4 on must be
+# listed by its own type as well: when idfkit adopts a newer release, add the type it brings
+# for the release that was latest. test_ensure_sqlite_output_on_every_release fails until then.
 _SINCE_9_4 = (
     IDFDocumentV9_4,
     IDFDocumentV9_5,
@@ -69,6 +73,7 @@ _SINCE_9_4 = (
     IDFDocumentV25_1,
     IDFDocumentV25_2,
     IDFDocumentV26_1,
+    IDFDocumentV26_2,
     IDFDocument,
 )
 

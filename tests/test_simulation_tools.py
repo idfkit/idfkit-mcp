@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 from fastmcp.exceptions import ToolError
 from idfkit.simulation.result import SimulationResult
+from idfkit.versions import ENERGYPLUS_VERSIONS
 
 from idfkit_mcp.models import ListOutputVariablesResult
 from idfkit_mcp.state import ServerState
@@ -437,6 +438,25 @@ class TestEnsureSqliteOutput:
         assert ctrl is not None
         assert ctrl.output_sqlite == "Yes"
         assert ctrl.output_tabular == "Yes"
+
+    @pytest.mark.parametrize("version", ENERGYPLUS_VERSIONS, ids=lambda v: ".".join(map(str, v)))
+    def test_ensure_sqlite_output_on_every_release(self, version: tuple[int, int, int]) -> None:
+        """Every supported release passes, so a release missing from _SINCE_9_4 fails here."""
+        from idfkit import new_document
+
+        from idfkit_mcp.tools.simulation import _ensure_sqlite_output
+
+        doc = new_document(version=version)
+        if version >= (9, 4, 0):
+            doc.add("OutputControl:Files", output_sqlite="No", output_tabular="No")
+        _ensure_sqlite_output(doc)
+        sqlite = doc["Output:SQLite"].first()
+        assert sqlite is not None
+        assert sqlite.option_type == "SimpleAndTabular"
+        if version >= (9, 4, 0):
+            ctrl = doc["OutputControl:Files"].first()
+            assert ctrl is not None
+            assert ctrl.output_sqlite == "Yes"
 
     def test_model_before_output_control_files_gets_sqlite(self) -> None:
         from idfkit import new_document

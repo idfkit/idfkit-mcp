@@ -172,7 +172,7 @@ def get_zone_properties(
     doc = state.require_model()
 
     if zone_name is not None:
-        if "Zone" not in doc or doc.get_collection("Zone").get(zone_name) is None:
+        if "Zone" not in doc or doc["Zone"].get(zone_name) is None:
             from fastmcp.exceptions import ToolError
 
             raise ToolError(f"Zone '{zone_name}' not found in the model.")
@@ -180,7 +180,7 @@ def get_zone_properties(
     else:
         if "Zone" not in doc:
             return GetZonePropertiesResult(zone_count=0, zones=[])
-        zones = [_build_zone_properties(doc, z.name) for z in doc.get_collection("Zone")]
+        zones = [_build_zone_properties(doc, z.name) for z in doc["Zone"]]
 
     logger.debug("get_zone_properties: returned %d zone(s)", len(zones))
     return GetZonePropertiesResult(zone_count=len(zones), zones=zones)
