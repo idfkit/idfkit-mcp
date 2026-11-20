@@ -167,3 +167,24 @@ class TestGetZoneProperties:
         assert counts.walls == 1
         assert counts.windows == 2
         assert counts.doors == 1
+
+    async def test_blank_surface_types_count_as_other_and_window(self, client: object) -> None:
+        """surface_type is required, so a blank one would raise on read; it counts as before."""
+        state = get_state()
+        doc = new_document()
+        state.document = doc
+        state.schema = doc.schema
+        doc.add("Zone", "Room")
+        doc.add("BuildingSurface:Detailed", "Typed", surface_type="WALL", zone_name="Room", validate=False)
+        doc.add("BuildingSurface:Detailed", "Untyped", zone_name="Room", validate=False)
+        doc.add(
+            "FenestrationSurface:Detailed", "Door", surface_type="DOOR", building_surface_name="Typed", validate=False
+        )
+        doc.add("FenestrationSurface:Detailed", "Blank", building_surface_name="Typed", validate=False)
+
+        result = await call_tool(client, "get_zone_properties", {"zone_name": "Room"}, GetZonePropertiesResult)
+        counts = result.zones[0].surface_counts
+        assert counts.walls == 1
+        assert counts.other == 1
+        assert counts.doors == 1
+        assert counts.windows == 1

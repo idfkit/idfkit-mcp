@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastmcp.tools import tool
 from idfkit import IDFObject
@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
-_SURFACE_TYPE_MAP: dict[str, str] = {
-    "wall": "walls",
-    "floor": "floors",
-    "ceiling": "ceilings",
-    "roof": "roofs",
+# Keyed by the schema's spelling, in which idfkit reads every choice whatever case the file used.
+_SURFACE_TYPE_MAP: dict[Literal["Wall", "Floor", "Ceiling", "Roof"], str] = {
+    "Wall": "walls",
+    "Floor": "floors",
+    "Ceiling": "ceilings",
+    "Roof": "roofs",
 }
 
 
@@ -65,11 +66,12 @@ def _zone_surfaces(doc: AnyIDFDocument, refs: set[IDFObject]) -> list[AnyBuildin
 
 
 def _surface_counts(surfaces: list[AnyBuildingSurfaceDetailed]) -> SurfaceTypeCounts:
-    """Count a zone's surfaces by type."""
+    """Count a zone's surfaces by type; one with no surface type counts as other."""
     counts = SurfaceTypeCounts()
     for surface in surfaces:
-        surface_type = (surface.surface_type or "").lower()
-        bucket = _SURFACE_TYPE_MAP.get(surface_type, "other")
+        # surface_type is required, so reading it blank raises; get() returns None instead.
+        has_type = surface.get("surface_type") is not None
+        bucket = _SURFACE_TYPE_MAP.get(surface.surface_type, "other") if has_type else "other"
         setattr(counts, bucket, getattr(counts, bucket) + 1)
     return counts
 
@@ -85,7 +87,8 @@ def _fenestration_counts(doc: AnyIDFDocument, surfaces: list[AnyBuildingSurfaceD
             fen = collection.get(obj.name)
             if fen is None:
                 continue
-            if (fen.surface_type or "").lower() == "door":
+            # A fenestration surface with no surface type counts as a window, as before.
+            if fen.get("surface_type") is not None and fen.surface_type == "Door":
                 doors += 1
             else:
                 windows += 1

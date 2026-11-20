@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from sqlite3 import OperationalError
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastmcp import Context
 from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
@@ -13,24 +13,8 @@ from fastmcp.exceptions import ToolError
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from fastmcp.tools.base import ToolResult
-from idfkit import IDFDocument
 from idfkit.document import AnyIDFDocument
-from idfkit.versioned import (
-    IDFDocumentV9_4,
-    IDFDocumentV9_5,
-    IDFDocumentV9_6,
-    IDFDocumentV22_1,
-    IDFDocumentV22_2,
-    IDFDocumentV23_1,
-    IDFDocumentV23_2,
-    IDFDocumentV24_1,
-    IDFDocumentV24_2,
-    IDFDocumentV25_1,
-    IDFDocumentV25_2,
-    IDFDocumentV26_1,
-    IDFDocumentV26_2,
-    as_version,
-)
+from idfkit.versioned import as_version
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -54,28 +38,11 @@ from idfkit_mcp.models import (
 from idfkit_mcp.state import get_state
 from idfkit_mcp.tools._billing import BillingProbe, build_billing_meta
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    # The object classes exist only in idfkit's stubs.
+    from idfkit.document import AnyOutputTableSummaryReportsReportsItem
 
-# The releases that have OutputControl:Files, which EnergyPlus 9.4 introduced. At run time
-# as_version reads IDFDocument as the latest release, so every release from 9.4 on must be
-# listed by its own type as well: when idfkit adopts a newer release, add the type it brings
-# for the release that was latest. test_ensure_sqlite_output_on_every_release fails until then.
-_SINCE_9_4 = (
-    IDFDocumentV9_4,
-    IDFDocumentV9_5,
-    IDFDocumentV9_6,
-    IDFDocumentV22_1,
-    IDFDocumentV22_2,
-    IDFDocumentV23_1,
-    IDFDocumentV23_2,
-    IDFDocumentV24_1,
-    IDFDocumentV24_2,
-    IDFDocumentV25_1,
-    IDFDocumentV25_2,
-    IDFDocumentV26_1,
-    IDFDocumentV26_2,
-    IDFDocument,
-)
+logger = logging.getLogger(__name__)
 
 _READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 _RUN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True)
@@ -161,24 +128,21 @@ def _ensure_sqlite_output(doc: AnyIDFDocument[Literal[True]]) -> None:
     than adding duplicates.  Also override ``OutputControl:Files`` when it
     explicitly suppresses SQLite or tabular output.
     """
-    if "Output:SQLite" not in doc:
-        doc.add("Output:SQLite", "", option_type="SimpleAndTabular")
+    obj = doc.output_sqlite.first()
+    if obj is None:
+        doc.output_sqlite.add(option_type="SimpleAndTabular")
         logger.info("Added Output:SQLite with option_type=SimpleAndTabular before simulation")
-    else:
-        obj = doc["Output:SQLite"].first()
-        if not obj:
-            doc.add("Output:SQLite", "", option_type="SimpleAndTabular")
-            logger.info("Added missing Output:SQLite entry to existing collection before simulation")
-        elif obj.option_type != "SimpleAndTabular":
-            obj.option_type = "SimpleAndTabular"
-            logger.info("Updated Output:SQLite to option_type=SimpleAndTabular before simulation")
+    elif obj.option_type != "SimpleAndTabular":
+        obj.option_type = "SimpleAndTabular"
+        logger.info("Updated Output:SQLite to option_type=SimpleAndTabular before simulation")
 
     # OutputControl:Files can suppress SQLite/tabular file generation even when
     # Output:SQLite is present. Force the relevant flags to "Yes". The type arrived
-    # in EnergyPlus 9.4, so narrow the model to those releases before reading it.
-    if doc.version >= (9, 4, 0) and "OutputControl:Files" in doc:
-        ctrl = as_version(doc, _SINCE_9_4)["OutputControl:Files"].first()
-        if ctrl:
+    # in EnergyPlus 9.4, so narrow the model to the releases since then before reading it;
+    # since="9.4" grows as idfkit adopts new releases, so there is no list to keep current.
+    if doc.version >= (9, 4, 0):
+        ctrl = as_version(doc, since="9.4").output_control_files.first()
+        if ctrl is not None:
             changed = False
             if ctrl.output_sqlite != "Yes":
                 ctrl.output_sqlite = "Yes"
@@ -190,8 +154,16 @@ def _ensure_sqlite_output(doc: AnyIDFDocument[Literal[True]]) -> None:
                 logger.info("Enabled output_sqlite and output_tabular in OutputControl:Files")
 
 
-# Summary reports that downstream tools and viewers require.
-_REQUIRED_SUMMARY_REPORTS = frozenset({
+# Summary reports that downstream tools and viewers require. Typed as literals so pyright checks
+# each name against the report_name choices of every supported release.
+_RequiredSummaryReport = Literal[
+    "AnnualBuildingUtilityPerformanceSummary",
+    "InputVerificationandResultsSummary",
+    "SensibleHeatGainSummary",
+    "SystemSummary",
+    "HVACSizingSummary",
+]
+_REQUIRED_SUMMARY_REPORTS: frozenset[_RequiredSummaryReport] = frozenset({
     "AnnualBuildingUtilityPerformanceSummary",
     "InputVerificationandResultsSummary",
     "SensibleHeatGainSummary",
@@ -203,15 +175,15 @@ _REQUIRED_SUMMARY_REPORTS = frozenset({
 def _ensure_summary_reports(doc: AnyIDFDocument[Literal[True]]) -> None:
     """Ensure ``Output:Table:SummaryReports`` includes reports needed by downstream tools."""
     if "Output:Table:SummaryReports" not in doc:
-        doc.add(
-            "Output:Table:SummaryReports",
-            fields={"reports": [{"report_name": name} for name in sorted(_REQUIRED_SUMMARY_REPORTS)]},
-        )
+        reports: list[AnyOutputTableSummaryReportsReportsItem] = [
+            {"report_name": name} for name in sorted(_REQUIRED_SUMMARY_REPORTS)
+        ]
+        doc.output_table_summary_reports.add(reports=reports)
         logger.info("Added Output:Table:SummaryReports with %s", sorted(_REQUIRED_SUMMARY_REPORTS))
         return
 
-    obj = doc["Output:Table:SummaryReports"].first()
-    if not obj:
+    obj = doc.output_table_summary_reports.first()
+    if obj is None:
         return
 
     existing = {group.report_name for group in obj.reports if group.report_name is not None}
@@ -226,7 +198,7 @@ def _ensure_summary_reports(doc: AnyIDFDocument[Literal[True]]) -> None:
     }:
         return
 
-    missing = _REQUIRED_SUMMARY_REPORTS - existing
+    missing = {name for name in _REQUIRED_SUMMARY_REPORTS if name not in existing}
     if not missing:
         return
 

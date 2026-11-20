@@ -9,11 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The server requires idfkit 1.3.0rc2. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
 - The server types the loaded model as idfkit's `AnyIDFDocument`, which covers every
   EnergyPlus release from 8.9 to 26.2, instead of as the 26.2 `IDFDocument`, and
   `check_model_integrity`, `get_zone_properties`, `view_schedules` and `run_simulation` read
   fields through typed objects, so pyright reports a misspelled field or one some supported
-  release lacks. Tool output is unchanged. ([#99](https://github.com/idfkit/idfkit-mcp/pull/99))
+  release lacks. `run_simulation` reaches `OutputControl:Files` through
+  `as_version(doc, since="9.4")`, which covers each release idfkit adopts after 26.2 without a
+  list to keep current. A model that leaves a required field blank is still checked: the object
+  is skipped, as before, rather than ending the check that read it. Tool output is unchanged.
+  ([#99](https://github.com/idfkit/idfkit-mcp/pull/99))
+
+### Fixed
+
+- Under idfkit 1.3.0rc2, `analyze_peak_loads` again reports a sizing or peak table the run did
+  not write (a heating table after a design-day-only run, for example) as unavailable, instead
+  of failing with `Not found`. ([#99](https://github.com/idfkit/idfkit-mcp/pull/99))
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.

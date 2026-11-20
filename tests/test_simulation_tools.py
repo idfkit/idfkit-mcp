@@ -427,11 +427,11 @@ class TestEnsureSqliteOutput:
 
     def test_overrides_output_control_files_on_9_4_model(self) -> None:
         from idfkit import new_document
-        from idfkit.versioned import IDFDocumentV9_4, as_version
+        from idfkit.versioned import IDFDocumentV9_4
 
         from idfkit_mcp.tools.simulation import _ensure_sqlite_output
 
-        doc = as_version(new_document(version=(9, 4, 0)), IDFDocumentV9_4)
+        doc = new_document(IDFDocumentV9_4)
         doc.add("OutputControl:Files", output_sqlite="No", output_tabular="No")
         _ensure_sqlite_output(doc)
         ctrl = doc["OutputControl:Files"].first()
@@ -441,7 +441,7 @@ class TestEnsureSqliteOutput:
 
     @pytest.mark.parametrize("version", ENERGYPLUS_VERSIONS, ids=lambda v: ".".join(map(str, v)))
     def test_ensure_sqlite_output_on_every_release(self, version: tuple[int, int, int]) -> None:
-        """Every supported release passes, so a release missing from _SINCE_9_4 fails here."""
+        """Every supported release passes, including any release idfkit adopts later."""
         from idfkit import new_document
 
         from idfkit_mcp.tools.simulation import _ensure_sqlite_output
@@ -460,11 +460,11 @@ class TestEnsureSqliteOutput:
 
     def test_model_before_output_control_files_gets_sqlite(self) -> None:
         from idfkit import new_document
-        from idfkit.versioned import IDFDocumentV9_3, as_version
+        from idfkit.versioned import IDFDocumentV9_3
 
         from idfkit_mcp.tools.simulation import _ensure_sqlite_output
 
-        doc = as_version(new_document(version=(9, 3, 0)), IDFDocumentV9_3)
+        doc = new_document(IDFDocumentV9_3)
         _ensure_sqlite_output(doc)
         sqlite = doc["Output:SQLite"].first()
         assert sqlite is not None

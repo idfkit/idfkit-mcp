@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from fastmcp.exceptions import ToolError
 from idfkit import new_document
+from idfkit.versioned import IDFDocumentV9_4
 
 from idfkit_mcp.models import ModelIntegrityResult
 from idfkit_mcp.state import ServerState, get_state
@@ -83,7 +84,7 @@ class TestCheckModelIntegrity:
     async def test_checks_read_a_model_of_an_older_release(self, client: object) -> None:
         """The checks read fields every release shares, so a 9.4 model is checked like a 26.2 one."""
         state = get_state()
-        doc = new_document(version=(9, 4, 0))
+        doc = new_document(IDFDocumentV9_4)
         state.document = doc
         state.schema = doc.schema
         doc.add("Zone", "ZoneA")
@@ -104,6 +105,39 @@ class TestCheckModelIntegrity:
         assert not any(i.object_name == "ZoneA" for i in result.issues)
         mismatched = {i.object_name for i in result.issues if "reciprocal" in i.message}
         assert mismatched == {"WallA"}
+
+    async def test_blank_required_fields_skip_the_object(self, client: object) -> None:
+        """A model that leaves a required field blank is checked, not refused.
+
+        Reading a blank required field raises MissingRequiredFieldError, which would end the
+        check that read it; each check skips such an object instead, as validate_model reports it.
+        """
+        state = get_state()
+        doc = new_document()
+        state.document = doc
+        state.schema = doc.schema
+        doc.add("Zone", "ZoneA")
+        doc.add("BuildingSurface:Detailed", "NoFields", validate=False)
+        doc.add(
+            "BuildingSurface:Detailed",
+            "WallA",
+            surface_type="WALL",
+            zone_name="ZoneA",
+            outside_boundary_condition="SURFACE",
+            outside_boundary_condition_object="Missing",
+            validate=False,
+        )
+        doc.add("FenestrationSurface:Detailed", "NoHost", validate=False)
+        doc.add("FenestrationSurface:Detailed", "Orphan", building_surface_name="Nowhere", validate=False)
+        doc.add("ZoneHVAC:EquipmentConnections", validate=False)
+
+        result = await call_tool(client, "check_model_integrity", model=ModelIntegrityResult)
+
+        flagged = {(i.category, i.object_name) for i in result.issues}
+        assert not any(name == "ZoneA" for _, name in flagged)
+        assert any(name == "WallA" for _, name in flagged)
+        assert any(name == "Orphan" for _, name in flagged)
+        assert not any(name in {"NoFields", "NoHost"} for _, name in flagged)
 
     async def test_fenestration_missing_host(self, client: object) -> None:
         state = get_state()
