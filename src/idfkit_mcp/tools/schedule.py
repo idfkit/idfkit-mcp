@@ -17,7 +17,8 @@ from idfkit_mcp.schedule_viewer import SCHEDULE_VIEWER_HTML
 from idfkit_mcp.state import get_state
 
 if TYPE_CHECKING:
-    from idfkit import IDFDocument, IDFObject
+    from idfkit import IDFObject
+    from idfkit.document import AnyIDFDocument
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ _ALL_SCHEDULE_TYPES = (
 _MAX_SCHEDULES = 30
 
 
-def _resolve_type_limits(doc: IDFDocument[bool], limits_name: str | None) -> dict[str, object] | None:
+def _resolve_type_limits(doc: AnyIDFDocument[bool], limits_name: str | None) -> dict[str, object] | None:
     """Look up ScheduleTypeLimits and extract bounds."""
     if not limits_name:
         return None
@@ -70,7 +71,7 @@ def _resolve_type_limits(doc: IDFDocument[bool], limits_name: str | None) -> dic
 def _evaluate_one(
     obj: IDFObject,
     obj_type: str,
-    doc: IDFDocument[bool],
+    doc: AnyIDFDocument[bool],
     year: int,
 ) -> dict[str, object] | None:
     """Evaluate a single schedule object, returning None on failure."""
@@ -92,7 +93,7 @@ def _evaluate_one(
 
 def _find_schedule_by_name(
     name: str,
-    doc: IDFDocument[bool],
+    doc: AnyIDFDocument[bool],
     year: int,
 ) -> tuple[list[dict[str, object]], list[str]]:
     """Search all schedule types for a specific named schedule."""
@@ -117,7 +118,7 @@ def _find_schedule_by_name(
 
 
 def _collect_all_schedules(
-    doc: IDFDocument[bool],
+    doc: AnyIDFDocument[bool],
     year: int,
 ) -> tuple[list[dict[str, object]], list[str]]:
     """Collect and evaluate all top-level schedules from the model."""

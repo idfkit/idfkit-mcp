@@ -6,7 +6,8 @@ import logging
 from typing import Annotated
 
 from fastmcp.tools import tool
-from idfkit import IDFDocument, IDFObject
+from idfkit import IDFObject
+from idfkit.document import AnyIDFDocument
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -26,7 +27,7 @@ _SURFACE_TYPE_MAP: dict[str, str] = {
 
 
 def _zone_geometry(
-    doc: IDFDocument, zone_name: str, has_surfaces: bool
+    doc: AnyIDFDocument, zone_name: str, has_surfaces: bool
 ) -> tuple[float | None, float | None, float | None]:
     """Return (floor_area_m2, volume_m3, height_m) or (None, None, None) if no surfaces."""
     if not has_surfaces:
@@ -63,7 +64,7 @@ def _surface_counts(refs: set[IDFObject]) -> tuple[SurfaceTypeCounts, set[str]]:
     return counts, host_surfaces
 
 
-def _fenestration_counts(doc: IDFDocument, host_surfaces: set[str]) -> tuple[int, int]:
+def _fenestration_counts(doc: AnyIDFDocument, host_surfaces: set[str]) -> tuple[int, int]:
     """Count windows and doors for surfaces in this zone."""
     windows = doors = 0
     for host_name in host_surfaces:
@@ -119,7 +120,7 @@ def _zone_thermostats(refs: set[IDFObject]) -> list[str]:
     return [obj.name for obj in refs if obj.obj_type == "ZoneControl:Thermostat" and obj.name]
 
 
-def _build_zone_properties(doc: IDFDocument, zone_name: str) -> ZoneProperties:
+def _build_zone_properties(doc: AnyIDFDocument, zone_name: str) -> ZoneProperties:
     """Build a ZoneProperties summary for one zone."""
     refs = doc.get_referencing(zone_name)
     counts, host_surfaces = _surface_counts(refs)

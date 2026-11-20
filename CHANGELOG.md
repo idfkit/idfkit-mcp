@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The server requires idfkit 1.3.0rc2. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
+- The server requires idfkit 1.3.0rc2, whose loaders type a model as `AnyIDFDocument`: what every
+  supported EnergyPlus release declares. The server's document is annotated so, and
+  `run_simulation` reaches `OutputControl:Files`, which arrived in 9.4, through
+  `as_version(doc, since="9.4")`. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.

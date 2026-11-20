@@ -13,7 +13,8 @@ from fastmcp.exceptions import ToolError
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from fastmcp.tools.base import ToolResult
-from idfkit import IDFDocument
+from idfkit.document import AnyIDFDocument
+from idfkit.versioned import as_version
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -115,7 +116,7 @@ def _serialize_simulation_errors(errors: Any) -> dict[str, Any]:
     return error_detail
 
 
-def _ensure_sqlite_output(doc: IDFDocument[Literal[True]]) -> None:
+def _ensure_sqlite_output(doc: AnyIDFDocument[Literal[True]]) -> None:
     """Ensure simulations produce SQLite tabular output for downstream tools.
 
     Many read-only tools and embedded apps rely on the EnergyPlus SQLite file.
@@ -136,9 +137,11 @@ def _ensure_sqlite_output(doc: IDFDocument[Literal[True]]) -> None:
             logger.info("Updated Output:SQLite to option_type=SimpleAndTabular before simulation")
 
     # OutputControl:Files can suppress SQLite/tabular file generation even when
-    # Output:SQLite is present. Force the relevant flags to "Yes".
-    if "OutputControl:Files" in doc:
-        ctrl = doc["OutputControl:Files"].first()
+    # Output:SQLite is present. Force the relevant flags to "Yes". The type arrived
+    # in EnergyPlus 9.4, so narrow the model to the releases since then before reading it;
+    # since="9.4" grows as idfkit adopts new releases, so there is no list to keep current.
+    if doc.version >= (9, 4, 0):
+        ctrl = as_version(doc, since="9.4")["OutputControl:Files"].first()
         if ctrl:
             changed = False
             if ctrl.output_sqlite != "Yes":
@@ -161,7 +164,7 @@ _REQUIRED_SUMMARY_REPORTS = frozenset({
 })
 
 
-def _ensure_summary_reports(doc: IDFDocument[Literal[True]]) -> None:
+def _ensure_summary_reports(doc: AnyIDFDocument[Literal[True]]) -> None:
     """Ensure ``Output:Table:SummaryReports`` includes reports needed by downstream tools."""
     if "Output:Table:SummaryReports" not in doc:
         doc.add(
