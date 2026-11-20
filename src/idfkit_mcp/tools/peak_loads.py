@@ -76,6 +76,20 @@ def _open_sql(result: Any) -> Any:
     return SQLResult(sql_path)
 
 
+def _table_rows(sql: Any, report_name: str, table_name: str) -> list[Any]:
+    """The rows of one tabular table, or none when the run did not write it.
+
+    A design-day-only run, for example, writes no heating sizing table. idfkit raises
+    ``ResultLookupError`` for a table the database lacks; the analysis reports it as absent.
+    """
+    from idfkit.exceptions import ResultLookupError
+
+    try:
+        return sql.get_tabular_data(report_name=report_name, table_name=table_name)
+    except ResultLookupError:
+        return []
+
+
 _ZONE_SUMMARY_AGGREGATE_ROWS = frozenset({
     "CONDITIONED TOTAL",
     "UNCONDITIONED TOTAL",
@@ -114,10 +128,7 @@ def _get_zone_areas(sql: Any) -> dict[str, ZoneAreaInfo]:
     facility total correctly applies zone multipliers and only includes zones that
     count toward the building floor area.
     """
-    rows = sql.get_tabular_data(
-        report_name="InputVerificationandResultsSummary",
-        table_name="Zone Summary",
-    )
+    rows = _table_rows(sql, "InputVerificationandResultsSummary", "Zone Summary")
 
     # Group columns by zone row
     by_zone: dict[str, dict[str, str]] = {}
@@ -201,10 +212,7 @@ def _parse_peak_components(
     after a design-day-only run). The summary is then reported as unavailable rather
     than as a zero peak.
     """
-    rows = sql.get_tabular_data(
-        report_name="SensibleHeatGainSummary",
-        table_name=table_name,
-    )
+    rows = _table_rows(sql, "SensibleHeatGainSummary", table_name)
 
     # Group rows by zone (row_name)
     by_zone: dict[str, dict[str, str]] = {}
@@ -301,7 +309,7 @@ def _parse_sizing(sql: Any, table_name: str, zone_areas: dict[str, ZoneAreaInfo]
     Zone-level sizing loads are reported per-instance (no multiplier), so per-zone
     W/m² uses the zone's raw area.
     """
-    rows = sql.get_tabular_data(report_name="HVACSizingSummary", table_name=table_name)
+    rows = _table_rows(sql, "HVACSizingSummary", table_name)
 
     by_zone: dict[str, dict[str, str]] = {}
     for r in rows:
