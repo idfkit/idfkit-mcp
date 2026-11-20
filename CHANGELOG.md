@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The server requires idfkit 1.3.0rc2. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.
 - `notify-dependents.yml` waits until PyPI lists the release among the package's releases, which
   is what each dependent's order check reads, as well as serving the release's own metadata.
+
+### Fixed
+
+- Under idfkit 1.3.0rc2, `analyze_peak_loads` again reports a sizing or peak table the run did
+  not write (a heating table after a design-day-only run, for example) as unavailable, instead
+  of failing with `Not found`. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
 
 ## [0.12.0] - 2026-11-13
 
