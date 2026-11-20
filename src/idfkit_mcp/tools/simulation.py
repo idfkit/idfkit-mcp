@@ -598,7 +598,7 @@ def list_output_variables(
     limit = min(limit, 200)
 
     variables = result.variables
-    if variables is not None and (variables.variables or variables.meters):
+    if variables.variables or variables.meters:
         from idfkit.simulation.parsers.rdd import OutputVariable
 
         all_items = variables.search(search) if search else [*variables.variables, *variables.meters]

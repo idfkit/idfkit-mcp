@@ -17,7 +17,7 @@ class TestErrorText:
         with pytest.raises(ToolError) as raised:
             await call_tool(client, "describe_object_type", {"object_type": "Zone:Bogus"})
         message = str(raised.value)
-        assert message.startswith("Unknown object type: 'Zone:Bogus'\n")
+        assert message.startswith("Unknown object type: 'Zone:Bogus'")
         assert "\\n" not in message
 
     async def test_duplicate_object_suggests_update(self, client: object, state_with_model: ServerState) -> None:
@@ -34,7 +34,7 @@ class TestErrorText:
         )
         duplicate, unknown = (entry["error"] for entry in result.results)
         assert "use update_object" in duplicate
-        assert unknown.startswith("Unknown object type: 'Zone:Bogus'\n")
+        assert unknown.startswith("Unknown object type: 'Zone:Bogus'")
 
     async def test_wrapped_runtime_error_is_unwrapped(self, client: object) -> None:
         with pytest.raises(ToolError, match=r"^No model loaded\. Use load_model or new_model first\.$"):
