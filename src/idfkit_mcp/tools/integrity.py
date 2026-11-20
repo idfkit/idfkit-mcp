@@ -34,6 +34,12 @@ _REQUIRED_CONTROLS = (
     "SimulationControl",
 )
 
+# The checks read fields through typed objects, so pyright reports a misspelled field or one some
+# supported release lacks. A field every release requires reads as its value, never None, and
+# raises MissingRequiredFieldError when a hand-written or validate=False model leaves it blank.
+# This tool exists to inspect such models, so each check first asks obj.get(field), which returns
+# None instead of raising, and skips the object as it did before; validate_model reports the gap.
+
 
 def _check_zones_with_no_surfaces(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     """Every Zone must have at least one BuildingSurface:Detailed."""
@@ -44,12 +50,11 @@ def _check_zones_with_no_surfaces(doc: AnyIDFDocument) -> list[IntegrityIssue]:
     # Collect zone names referenced by surfaces
     surface_zones: set[str] = set()
     if "BuildingSurface:Detailed" in doc:
-        for surface in doc.get_collection("BuildingSurface:Detailed"):
-            zn = surface.data.get("zone_name")
-            if zn:
-                surface_zones.add(zn.lower())
+        for surface in doc["BuildingSurface:Detailed"]:
+            if surface.get("zone_name") is not None:
+                surface_zones.add(surface.zone_name.lower())
 
-    for zone in doc.get_collection("Zone"):
+    for zone in doc["Zone"]:
         if zone.name.lower() not in surface_zones:
             issues.append(
                 IntegrityIssue(
@@ -108,12 +113,12 @@ def _check_surface_boundary_mismatches(doc: AnyIDFDocument) -> list[IntegrityIss
     if "BuildingSurface:Detailed" not in doc:
         return issues
 
-    collection = doc.get_collection("BuildingSurface:Detailed")
+    collection = doc["BuildingSurface:Detailed"]
     for surface in collection:
-        obc = surface.data.get("outside_boundary_condition", "")
-        if obc.lower() != "surface":
+        # Choices read in the schema's spelling whatever case the file used.
+        if surface.get("outside_boundary_condition") is None or surface.outside_boundary_condition != "Surface":
             continue
-        partner_name = surface.data.get("outside_boundary_condition_object", "")
+        partner_name = surface.outside_boundary_condition_object or ""
         if not partner_name:
             issues.append(
                 IntegrityIssue(
@@ -144,7 +149,7 @@ def _check_surface_boundary_mismatches(doc: AnyIDFDocument) -> list[IntegrityIss
             )
             continue
         # Check reciprocal reference
-        partner_obc_obj = partner.data.get("outside_boundary_condition_object", "")
+        partner_obc_obj = partner.outside_boundary_condition_object or ""
         if partner_obc_obj.lower() != surface.name.lower():
             issues.append(
                 IntegrityIssue(
@@ -168,10 +173,12 @@ def _check_fenestration_hosts(doc: AnyIDFDocument) -> list[IntegrityIssue]:
         return issues
     surface_names: set[str] = set()
     if "BuildingSurface:Detailed" in doc:
-        surface_names = {s.name.lower() for s in doc.get_collection("BuildingSurface:Detailed")}
-    for fen in doc.get_collection("FenestrationSurface:Detailed"):
-        host = fen.data.get("building_surface_name", "")
-        if host and host.lower() not in surface_names:
+        surface_names = {s.name.lower() for s in doc["BuildingSurface:Detailed"]}
+    for fen in doc["FenestrationSurface:Detailed"]:
+        if fen.get("building_surface_name") is None:
+            continue
+        host = fen.building_surface_name
+        if host.lower() not in surface_names:
             issues.append(
                 IntegrityIssue(
                     severity="error",
@@ -194,10 +201,12 @@ def _check_hvac_zone_references(doc: AnyIDFDocument) -> list[IntegrityIssue]:
         return issues
     zone_names: set[str] = set()
     if "Zone" in doc:
-        zone_names = {z.name.lower() for z in doc.get_collection("Zone")}
-    for conn in doc.get_collection("ZoneHVAC:EquipmentConnections"):
-        zn = conn.data.get("zone_name", "")
-        if zn and zn.lower() not in zone_names:
+        zone_names = {z.name.lower() for z in doc["Zone"]}
+    for conn in doc["ZoneHVAC:EquipmentConnections"]:
+        if conn.get("zone_name") is None:
+            continue
+        zn = conn.zone_name
+        if zn.lower() not in zone_names:
             issues.append(
                 IntegrityIssue(
                     severity="error",

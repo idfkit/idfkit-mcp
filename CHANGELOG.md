@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   supported EnergyPlus release declares. The server's document is annotated so, and
   `run_simulation` reaches `OutputControl:Files`, which arrived in 9.4, through
   `as_version(doc, since="9.4")`. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
+- `check_model_integrity`, `get_zone_properties`, `view_schedules` and `run_simulation` read
+  fields through idfkit's typed objects, so pyright reports a misspelled field or one some
+  supported release lacks, and create objects through typed collections. A model that leaves a
+  required field blank is still checked: the object is skipped, as before, rather than ending
+  the check that read it. Tool output is unchanged.
+  ([#99](https://github.com/idfkit/idfkit-mcp/pull/99))
 - The offer `notify-dependents.yml` sends after a release names that release: it passes
   `offered_by` (`idfkit-mcp 0.12.0`) to each dependent's `bump-idfkit.yml`, so the pull request
   says which release offered the level.
