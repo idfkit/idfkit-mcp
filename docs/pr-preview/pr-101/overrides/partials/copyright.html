@@ -1,0 +1,22 @@
+{#- The footer of every page: the ownership line (config.copyright) and the family links, from
+    docs/identity/material/footer.html. "MCP" is this site. -#}
+<div class="md-copyright">
+  {% if config.copyright %}
+    <div class="md-copyright__highlight idfkit-ownership">{{ config.copyright }}</div>
+  {% endif %}
+  <nav aria-label="idfkit" class="idfkit-family">
+    <a href="https://idfkit.com">idfkit</a>
+    <a href="https://developers.idfkit.com">Developers</a>
+    <a href="https://docs.idfkit.com">EnergyPlus docs</a>
+    <a href="https://app.idfkit.com">Envelop</a>
+    <a href="https://mcp.idfkit.com" aria-current="page">MCP</a>
+    <a href="https://shoebox.idfkit.com">Shoebox</a>
+    <a href="https://github.com/idfkit">GitHub</a>
+  </nav>
+  {% if not config.extra.generator == false %}
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  {% endif %}
+</div>
