@@ -7,12 +7,13 @@ import logging
 from datetime import date
 from typing import TYPE_CHECKING, Annotated
 
-from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
+from fastmcp.apps import AppConfig, app_config_to_meta_dict
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import ToolResult, tool
 from mcp.types import TextContent, ToolAnnotations
 from pydantic import Field
 
+from idfkit_mcp.app_meta import app_resource_meta
 from idfkit_mcp.schedule_viewer import SCHEDULE_VIEWER_HTML
 from idfkit_mcp.state import get_state
 
@@ -215,15 +216,7 @@ def view_schedules(
     name="schedule_viewer",
     title="Schedule Heatmap Viewer",
     description="Interactive heatmap viewer for EnergyPlus schedules.",
-    meta={
-        "ui": app_config_to_meta_dict(
-            AppConfig(
-                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-                domain="schedule-viewer.idfkit.com",
-                prefersBorder=False,
-            )
-        )
-    },
+    meta=app_resource_meta(resource_domains=["https://unpkg.com"], subdomain="schedule-viewer"),
 )
 def schedule_viewer_html() -> str:
     """Return the self-contained schedule viewer HTML."""

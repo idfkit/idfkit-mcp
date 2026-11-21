@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 from fastmcp.server.lifespan import lifespan
 from fastmcp.server.providers import FileSystemProvider
 
+from idfkit_mcp.app_meta import ClaudeAppDomainMiddleware
 from idfkit_mcp.errors import FastMCPToolErrorLogFilter, ToolExecutionMiddleware
 from idfkit_mcp.uploads import IdfUploadStore
 
@@ -111,6 +112,7 @@ mcp = FastMCP(
     providers=[FileSystemProvider(Path(__file__).parent / "tools"), uploads],
 )
 mcp.add_middleware(ToolExecutionMiddleware())
+mcp.add_middleware(ClaudeAppDomainMiddleware())
 logging.getLogger("fastmcp.server.server").addFilter(FastMCPToolErrorLogFilter())
 
 

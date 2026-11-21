@@ -117,6 +117,25 @@ Hosted deployments (HTTP transport, multi-replica, shared volumes) can redirect
 file storage away from the ephemeral container filesystem via environment
 variables.
 
+### `IDFKIT_MCP_PUBLIC_URL`
+
+The public URL at which clients reach a hosted server's MCP endpoint, for example
+`https://server.idfkit.com/mcp`. The viewers and the `file_manager` UI are MCP Apps, and each
+host decides which origin an app may declare in `_meta.ui.domain`:
+
+- ChatGPT requires a domain on a published app, and each app declares one under `idfkit.com`.
+- claude.ai accepts only the first 32 hex characters of the SHA-256 of the public URL followed by
+  `.claudemcpcontent.com`, and does not render an app that declares anything else.
+
+When the client identifies itself as Claude at `initialize`, the server replaces the domain on
+`resources/read` with the hashed one if this variable is set, and removes it if it is unset (a
+local `stdio` server), so the host assigns its own. The URL must match the one configured in the
+client exactly, including the path and the absence of a trailing slash.
+
+```bash
+IDFKIT_MCP_PUBLIC_URL=https://server.idfkit.com/mcp idfkit-mcp --transport http
+```
+
 ### `IDFKIT_MCP_UPLOAD_DIR`
 
 Where files dropped into the `file_manager` UI are stored. When unset, uploads
