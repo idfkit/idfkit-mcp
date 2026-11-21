@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-21
+
 ### Changed
 
 - The server requires idfkit 1.3.0rc2, whose loaders type a model as `AnyIDFDocument`: what every
@@ -33,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   followed by `.claudemcpcontent.com`. For a client that identifies itself as Claude, the server now
   serves that domain, derived from the new `IDFKIT_MCP_PUBLIC_URL` variable, or no domain when the
   variable is unset. Other clients see the `idfkit.com` domains as before.
+  ([#101](https://github.com/idfkit/idfkit-mcp/pull/101))
 - Under idfkit 1.3.0rc2, `analyze_peak_loads` again reports a sizing or peak table the run did
   not write (a heating table after a design-day-only run, for example) as unavailable, instead
   of failing with `Not found`. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))
@@ -251,7 +254,8 @@ Initial public release.
 - Session persistence across server restarts.
 - PyPI trusted publishing (OIDC) for releases.
 
-[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.12.0...HEAD
+[unreleased]: https://github.com/idfkit/idfkit-mcp/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/idfkit/idfkit-mcp/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/idfkit/idfkit-mcp/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/idfkit/idfkit-mcp/compare/v0.10.0...v0.11.0
