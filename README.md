@@ -95,6 +95,7 @@ The server reads these environment variables:
 | `IDFKIT_MCP_PORT` | `8000` | Default for `--port` |
 | `IDFKIT_MCP_LOG_LEVEL` | `INFO` | Log level for the server and idfkit |
 | `IDFKIT_MCP_UPLOAD_DIR` | unset (in memory) | Directory for disk-backed uploads |
+| `IDFKIT_MCP_PUBLIC_URL` | unset | Public MCP URL of a hosted server (for example `https://server.idfkit.com/mcp`). Claude clients are served the app domain derived from it, which claude.ai requires to render the viewers and the file manager. |
 
 `IDFKIT_MCP_OUTPUT_DIRS` (allowed directories for files written by `save_model` and `export_timeseries`) and `IDFKIT_MCP_SIMULATION_DIR` (parent directory for simulation runs) are described in the [documentation](https://mcp.idfkit.com/docs/).
 

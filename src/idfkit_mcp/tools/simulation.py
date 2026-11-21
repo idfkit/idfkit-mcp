@@ -8,7 +8,7 @@ from sqlite3 import OperationalError
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastmcp import Context
-from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
+from fastmcp.apps import AppConfig, app_config_to_meta_dict
 from fastmcp.exceptions import ToolError
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
@@ -18,6 +18,7 @@ from idfkit.versioned import as_version
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from idfkit_mcp.app_meta import app_resource_meta
 from idfkit_mcp.models import (
     ClassifiedWarning,
     EndUseRow,
@@ -906,15 +907,7 @@ def view_simulation_report() -> SimulationReportResult:
     name="report_viewer",
     title="Simulation Report Viewer",
     description="Interactive browser for EnergyPlus tabular simulation reports.",
-    meta={
-        "ui": app_config_to_meta_dict(
-            AppConfig(
-                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-                domain="report-viewer.idfkit.com",
-                prefersBorder=False,
-            )
-        )
-    },
+    meta=app_resource_meta(resource_domains=["https://unpkg.com"], subdomain="report-viewer"),
 )
 def report_viewer_html() -> str:
     """Return the self-contained report viewer HTML."""

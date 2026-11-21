@@ -8,11 +8,12 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
+from fastmcp.apps import AppConfig, app_config_to_meta_dict
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import tool
 from mcp.types import ToolAnnotations
 
+from idfkit_mcp.app_meta import app_resource_meta
 from idfkit_mcp.models import (
     DesignDaySizing,
     FacilityPeakSummary,
@@ -535,15 +536,7 @@ def analyze_peak_loads() -> PeakLoadAnalysisResult:
     name="peak_loads_viewer",
     title="Peak Load Viewer",
     description="Interactive peak load QA/QC viewer for heating and cooling load breakdowns.",
-    meta={
-        "ui": app_config_to_meta_dict(
-            AppConfig(
-                csp=ResourceCSP(resourceDomains=["https://unpkg.com"]),
-                domain="peak-loads-viewer.idfkit.com",
-                prefersBorder=False,
-            )
-        )
-    },
+    meta=app_resource_meta(resource_domains=["https://unpkg.com"], subdomain="peak-loads-viewer"),
 )
 def peak_loads_viewer_html() -> str:
     """Return the self-contained peak load viewer HTML."""

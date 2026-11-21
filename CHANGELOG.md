@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The file manager and the four viewers render on claude.ai. Each app declares a fixed
+  `_meta.ui.domain` under `idfkit.com`, which ChatGPT requires, but claude.ai refuses to render an
+  app whose domain is not the first 32 hex characters of the SHA-256 of the server's public URL
+  followed by `.claudemcpcontent.com`. For a client that identifies itself as Claude, the server now
+  serves that domain, derived from the new `IDFKIT_MCP_PUBLIC_URL` variable, or no domain when the
+  variable is unset. Other clients see the `idfkit.com` domains as before.
 - Under idfkit 1.3.0rc2, `analyze_peak_loads` again reports a sizing or peak table the run did
   not write (a heating table after a design-day-only run, for example) as unavailable, instead
   of failing with `Not found`. ([#100](https://github.com/idfkit/idfkit-mcp/pull/100))

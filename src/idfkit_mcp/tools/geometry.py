@@ -7,13 +7,14 @@ import logging
 from collections import Counter
 from typing import Annotated, Literal
 
-from fastmcp.apps import AppConfig, ResourceCSP, app_config_to_meta_dict
+from fastmcp.apps import AppConfig, app_config_to_meta_dict
 from fastmcp.resources.function_resource import resource
 from fastmcp.tools import ToolResult, tool
 from idfkit import ResolvedSurface, Scene, get_scene
 from mcp.types import TextContent, ToolAnnotations
 from pydantic import Field
 
+from idfkit_mcp.app_meta import app_resource_meta
 from idfkit_mcp.state import get_state
 from idfkit_mcp.viewer import VIEWER_HTML
 
@@ -150,15 +151,9 @@ def view_geometry(
     name="geometry_viewer",
     title="3D Geometry Viewer",
     description="Interactive Three.js viewer for EnergyPlus building geometry.",
-    meta={
-        "ui": app_config_to_meta_dict(
-            AppConfig(
-                csp=ResourceCSP(resourceDomains=["https://cdn.jsdelivr.net", "https://unpkg.com"]),
-                domain="geometry-viewer.idfkit.com",
-                prefersBorder=False,
-            )
-        )
-    },
+    meta=app_resource_meta(
+        resource_domains=["https://cdn.jsdelivr.net", "https://unpkg.com"], subdomain="geometry-viewer"
+    ),
 )
 def geometry_viewer_html() -> str:
     """Return the self-contained Three.js viewer HTML."""
